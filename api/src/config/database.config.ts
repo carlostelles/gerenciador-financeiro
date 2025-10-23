@@ -29,7 +29,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Movimento,
         Reserva,
       ],
-      synchronize: false, // Desabilitado em produção por segurança
+      synchronize: true, // Desabilitado em produção por segurança
       logging: this.configService.get('NODE_ENV') === 'development',
       migrations: ['dist/migrations/*.js'],
       migrationsTableName: 'migrations',

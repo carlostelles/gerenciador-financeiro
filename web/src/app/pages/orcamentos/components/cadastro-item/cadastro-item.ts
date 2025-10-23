@@ -11,10 +11,11 @@ import { CommonModule } from '@angular/common';
 import { TuiInputNumber, TuiTooltip } from '@taiga-ui/kit';
 import { TuiStringHandler } from '@taiga-ui/cdk/types';
 import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
+import { TuiForm } from '@taiga-ui/layout';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { CategoriaService } from '../../../../core/services/categoria.service';
-import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, OrcamentoItem, CategoriaTipo, formatPeriod, CurrencyPipe, PromptService, UpdateOrcamentoItemDto, ToastService, CategoriaBadgeComponent } from '../../../../shared';
+import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, OrcamentoItem, formatPeriod, CurrencyPipe, PromptService, UpdateOrcamentoItemDto, ToastService, CategoriaBadgeComponent } from '../../../../shared';
 
 @Component({
   selector: 'app-cadastro-orcamento-item',
@@ -38,7 +39,8 @@ import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, Orcam
     TuiTooltip,
     TuiNotification,
     CurrencyPipe,
-    CategoriaBadgeComponent
+    CategoriaBadgeComponent,
+    TuiForm
   ],
   templateUrl: './cadastro-item.html',
   styleUrls: ['./cadastro-item.scss']
@@ -207,7 +209,7 @@ export class OrcamentosItemCadastroComponent {
       });
   }
 
-  getTotalOrcamento(orcamento: Orcamento): number {
-    return orcamento.items?.reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
+  getTotalOrcamento(orcamento?: Orcamento): number {
+    return orcamento?.items?.reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
   }
 }

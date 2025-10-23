@@ -1,4 +1,4 @@
-<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="orcamentoItemForm" (ngSubmit)="onSubmit()">
+<form tuiForm="l" [formGroup]="orcamentoItemForm" (ngSubmit)="onSubmit()">
     <div class="flex gap-1">
         <tui-textfield tuiChevron [stringify]="stringify">
             <label tuiLabel for="categoria">Categoria *</label>
@@ -51,7 +51,7 @@
                 <th tuiTh>Ações</th>
             </tr>
         </thead>
-        <tbody tuiTbody>
+        <tbody tuiTbody *ngIf="orcamento()">
             <tr *ngFor="let item of orcamento().items">
                 <td tuiTd>{{ getCategoria(item.categoriaId)?.nome ?? 'Desconhecida' }}</td>
                 <td tuiTd>
@@ -75,7 +75,7 @@
         </tbody>
     </table>
 
-    <div *ngIf="orcamento().items.length === 0" class="empty-state">
+    <div *ngIf="orcamento() && orcamento().items.length === 0" class="empty-state">
         <tui-icon icon="@tui.chart-bar" [style.height.rem]="4" class="empty-icon" />
         <p>Nenhum item encontrado.</p>
         <p>Preencha o formulário para criar seu primeiro item.</p>

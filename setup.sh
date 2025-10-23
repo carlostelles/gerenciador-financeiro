@@ -65,7 +65,7 @@ fi
 
 if ! command -v docker-compose &> /dev/null; then
     error "Docker Compose não está instalado. Por favor, instale o Docker Compose primeiro."
-    exit 1
+    #exit 1
 fi
 
 log "✅ Docker $(docker --version)"

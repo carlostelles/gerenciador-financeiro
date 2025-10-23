@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield } from '@taiga-ui/core';
+import { TuiAppearance, TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield } from '@taiga-ui/core';
 import { TuiChevron, TuiDataListWrapper, TuiInputDate, TuiInputNumber, TuiSelect } from '@taiga-ui/kit';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiDay, TuiMonth, TuiStringHandler } from '@taiga-ui/cdk';
 import { TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
+import { TuiForm } from '@taiga-ui/layout';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { MovimentoService } from '../../../../core/services/movimento.service';
@@ -29,6 +30,7 @@ import { CategoriaService } from '../../../../core/services/categoria.service';
         TuiNumberFormat,
         TuiCurrencyPipe,
         TuiInputNumber,
+        TuiForm
     ],
     templateUrl: './cadastro.html',
     styleUrls: ['./cadastro.scss']
@@ -68,7 +70,7 @@ export class OrcamentosCadastroComponent implements OnInit {
                 descricao: ['', [Validators.maxLength(255)]]
             });
 
-        console.log('Movimentação para edição:', this.context.data);
+        console.log('Movimentação para edição:', this.movimentacao());
         if (this.movimentacao()) {
             const dataString = this.movimentacao()!.data;
             const [year, month, day] = dataString.split('-').map(Number);
@@ -92,7 +94,7 @@ export class OrcamentosCadastroComponent implements OnInit {
     // Quando alterar o campo data, carregar o orçamento daquele período
     onDataChange(data: TuiMonth) {
         const periodo = data ? `${data.year}-${String(data.month + 1).padStart(2, '0')}` : null;
-        console.log('Movimentação para edição:', data, periodo);
+        console.log('Data movimentação para edição:', data, periodo);
         this.periodo.set(periodo || '');
         if (periodo) {
             this.loadOrcamentoByPeriodoData(periodo);

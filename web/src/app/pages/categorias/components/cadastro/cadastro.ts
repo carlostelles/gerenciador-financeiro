@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, ElementRef, inject, OnChanges } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TuiButton, TuiDialogContext, TuiTextfield } from '@taiga-ui/core';
 import { injectContext } from '@taiga-ui/polymorpheus';
+import { TuiChip } from '@taiga-ui/kit';
+import { TuiForm } from '@taiga-ui/layout';
 
 import { CategoriaService } from '../../../../core/services/categoria.service';
 import { Categoria, CategoriaTipo } from '../../../../shared/interfaces';
-import { CommonModule } from '@angular/common';
-import { TuiChip } from '@taiga-ui/kit';
 
 @Component({
   selector: 'app-categorias-cadastro',
@@ -16,6 +17,7 @@ import { TuiChip } from '@taiga-ui/kit';
     TuiButton,
     TuiTextfield,
     TuiChip,
+    TuiForm
   ],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,

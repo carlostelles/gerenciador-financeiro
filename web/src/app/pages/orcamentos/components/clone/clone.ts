@@ -6,6 +6,8 @@ import { TuiCalendarMonth, TuiInputMonth } from '@taiga-ui/kit';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiBooleanHandler } from '@taiga-ui/cdk/types';
 import { TuiMonth } from '@taiga-ui/cdk/date-time';
+import { TuiForm } from '@taiga-ui/layout';
+
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { Orcamento, CloneOrcamentoDto, FormatPeriodPipe, ToastService } from '../../../../shared';
@@ -21,7 +23,8 @@ import { Orcamento, CloneOrcamentoDto, FormatPeriodPipe, ToastService } from '..
         TuiTextfield,
         TuiInputMonth,
         TuiCalendarMonth,
-        FormatPeriodPipe
+        FormatPeriodPipe,
+        TuiForm
     ],
     templateUrl: './clone.html',
     styleUrls: ['./clone.scss']

@@ -1,4 +1,4 @@
-<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="cloneForm" (ngSubmit)="onSubmit()">
+<form tuiForm="l" [formGroup]="cloneForm" (ngSubmit)="onSubmit()">
     <p class="tui-text_body-l-2">O orçamento <strong>{{ orcamento().descricao }}</strong> de 
         <strong>{{ orcamento().periodo | formatPeriod }}</strong> será clonado para o novo período.</p>
     <tui-textfield>

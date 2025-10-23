@@ -3,12 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { AuthResponse, JwtToken, LoginDto, RefreshTokenDto } from '../../shared/interfaces';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly baseUrl = '/api';
+  private readonly baseUrl = environment.apiUrl;
   private readonly tokenKey = 'auth_token';
   private readonly refreshTokenKey = 'refresh_token';
   private readonly tokenExpirationKey = 'token_expiration';

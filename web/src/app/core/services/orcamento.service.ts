@@ -9,13 +9,14 @@ import {
   CreateOrcamentoItemDto,
   UpdateOrcamentoItemDto
 } from '../../shared/interfaces/orcamento.interface';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrcamentoService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api';
+  private readonly baseUrl = environment.apiUrl;
   private readonly apiUrl = `${this.baseUrl}/orcamentos`;
 
   // CRUD básico de orçamentos

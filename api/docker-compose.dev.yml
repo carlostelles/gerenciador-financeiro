@@ -12,13 +12,13 @@ services:
       - DB_TYPE=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_USERNAME=root
-      - DB_PASSWORD=password
-      - DB_DATABASE=gerenciador_financeiro
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=${DB_DATABASE}
       - MONGO_URI=mongodb://mongo:27017/gerenciador_financeiro_logs
-      - JWT_SECRET=your-super-secret-jwt-key
+      - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=5m
-      - JWT_REFRESH_SECRET=your-super-secret-refresh-key
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - JWT_REFRESH_EXPIRES_IN=7d
     depends_on:
       - mysql
@@ -33,10 +33,10 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: gerenciador_financeiro
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -51,7 +51,7 @@ services:
     volumes:
       - mongo_data:/data/db
     environment:
-      MONGO_INITDB_DATABASE: gerenciador_financeiro_logs
+      MONGO_INITDB_DATABASE: ${MONGO_URI}
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

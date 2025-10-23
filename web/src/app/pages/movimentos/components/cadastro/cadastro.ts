@@ -5,7 +5,7 @@ import { TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield
 import { TuiChevron, TuiDataListWrapper, TuiInputDate, TuiInputNumber, TuiSelect } from '@taiga-ui/kit';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiDay, TuiMonth, TuiStringHandler } from '@taiga-ui/cdk';
-import { TuiAmountPipe, TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
+import { TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { MovimentoService } from '../../../../core/services/movimento.service';

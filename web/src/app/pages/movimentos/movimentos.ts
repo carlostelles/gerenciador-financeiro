@@ -91,7 +91,6 @@ export class MovimentosComponent implements OnInit {
     }
 
     get saldoOrcamento(): number {
-        console.log(this.totalOrcamentoDespesa, this.totalDespesas);
         return this.totalOrcamentoDespesa - this.totalDespesas;
     }
 
@@ -144,7 +143,6 @@ export class MovimentosComponent implements OnInit {
         this.isLoading.set(true);
         this.movimentoService.getAll(periodo).subscribe({
             next: (movimentos) => {
-                console.log(movimentos);
                 this.movimentos.set(movimentos);
                 this.isLoading.set(false);
             },

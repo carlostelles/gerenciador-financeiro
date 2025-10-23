@@ -63,13 +63,13 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     error "Docker Compose não está instalado. Por favor, instale o Docker Compose primeiro."
     #exit 1
 fi
 
 log "✅ Docker $(docker --version)"
-log "✅ Docker Compose $(docker-compose --version)"
+log "✅ Docker Compose $(docker compose version)"
 
 # Determinar ambiente
 ENVIRONMENT=${1:-prod}
@@ -149,7 +149,7 @@ log "Iniciando serviços..."
 
 if [[ "$ENVIRONMENT" == "prod" ]]; then
     log "🚀 Iniciando ambiente de produção..."
-    docker-compose up --build -d
+    docker compose up --build -d
     
     # Aguardar que os serviços estejam prontos
     log "⏳ Aguardando serviços ficarem prontos..."
@@ -174,7 +174,7 @@ if [[ "$ENVIRONMENT" == "prod" ]]; then
     
     if [ $attempt -eq $max_attempts ]; then
         error "Timeout aguardando serviços. Verifique os logs."
-        docker-compose logs
+        docker compose logs
         exit 1
     fi
     
@@ -194,7 +194,7 @@ if [[ "$ENVIRONMENT" == "prod" ]]; then
     
 else
     log "🚀 Iniciando ambiente de desenvolvimento..."
-    docker-compose -f docker-compose.dev.yml up -d
+    docker compose -f docker compose.dev.yml up -d
     
     # Aguardar bancos de dados
     log "⏳ Aguardando bancos de dados..."

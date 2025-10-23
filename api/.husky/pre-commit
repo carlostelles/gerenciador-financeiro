@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Executa testes unitários
+echo "🧪 Executando testes unitários..."
+npm run test
+
+# Executa testes E2E
+echo "🔧 Executando testes E2E..."
+npm run test:e2e
+
+echo "✅ Todos os testes passaram com sucesso!"

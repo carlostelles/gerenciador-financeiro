@@ -1,0 +1,26 @@
+<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="orcamentoForm" (ngSubmit)="onSubmit()">
+    <tui-textfield>
+        <label tuiLabel for="periodo">Período *</label>
+        <input placeholder="Selecione o mês" tuiInputMonth formControlName="periodo" />
+        <tui-calendar-month *tuiTextfieldDropdown [min]="min" [disabledItemHandler]="disabledItemHandler" />
+        <div *ngIf="orcamentoForm.get('periodo')?.invalid && orcamentoForm.get('periodo')?.touched" class="error-message">
+            <span *ngIf="orcamentoForm.get('periodo')?.errors?.['required']">Período é obrigatório</span>
+        </div>
+    </tui-textfield>
+
+    <tui-textfield>
+        <label tuiLabel for="descricao">Descrição</label>
+        <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a descrição" />
+    </tui-textfield>
+
+    <div class="form-actions">
+        <button type="button" tuiButton appearance="secondary" size="m" (click)="onCancel()" [disabled]="isSubmitting()">
+            Cancelar
+        </button>
+
+        <button type="submit" tuiButton appearance="primary" size="m"
+            [disabled]="orcamentoForm.invalid || isSubmitting()">
+            {{ isSubmitting() ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Próximo') }}
+        </button>
+    </div>
+</form>

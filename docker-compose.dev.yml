@@ -1,0 +1,48 @@
+services:
+  # Banco de dados MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: gf-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-gerenciador_financeiro}
+      MYSQL_USER: ${DB_USER:-gf_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gf_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+      - ./api/docker/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - gf-network-dev
+
+  # Banco de dados MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: gf-mongodb-dev
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-adminpassword}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-gerenciador_logs}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_dev:/data/db
+    networks:
+      - gf-network-dev
+
+  # API Backend executar localmente com: cd api && npm run start:dev
+  # Web Frontend executar localmente com: cd web/gerenciador-financeiro && npm start
+
+networks:
+  gf-network-dev:
+    driver: bridge
+    name: gerenciador-financeiro-dev
+
+volumes:
+  mysql_data_dev:
+    name: gf-mysql-data-dev
+  mongodb_data_dev:
+    name: gf-mongodb-data-dev

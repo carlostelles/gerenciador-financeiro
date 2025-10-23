@@ -1,0 +1,118 @@
+<div class="container">
+    <div class="header">
+        <h2>Gerenciar Movimentações</h2>
+        <button tuiButton appearance="primary" size="m" (click)="openFormModal()">
+            Nova Movimentação
+        </button>
+    </div>
+
+    <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" *ngIf="periodos().length">
+        <ng-container *ngFor="let periodo of periodos()">
+            <button *tuiItem tuiTab type="button" (click)="loadMovimentos(periodo)">
+                <tui-badge appearance="neutral" iconStart="@tui.calendar">
+                    {{ periodo | formatPeriod }}
+                </tui-badge>
+            </button>
+        </ng-container>
+    </tui-tabs-with-more>
+
+    <div class="content" *ngIf="!isLoading()">
+        <div class="summary">
+            <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="receitasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
+                <tui-avatar appearance="info" src="@tui.banknote-arrow-up" />
+                <div tuiTitle>
+                    <strong [class.positive]="true">{{ totalReceitas | currency }}</strong>
+                    <div tuiSubtitle>Receitas do mês</div>
+                </div>
+            </div>
+            <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="despesasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
+                <tui-avatar appearance="accent" src="@tui.banknote-arrow-down" />
+                <div tuiTitle>
+                    <strong [class.negative]="true">{{ totalDespesas * -1 | currency }}</strong>
+                    <div tuiSubtitle>Despesas do mês</div>
+                </div>
+            </div>
+            <div tuiAppearance="floating" tuiCardLarge tuiCell>
+                <tui-avatar [appearance]="saldo >= 0 ? 'positive' : 'negative'" src="@tui.dollar-sign" />
+                <div tuiTitle>
+                    <strong [class.negative]="saldo < 0" [class.positive]="saldo >= 0">{{ saldo | currency }}</strong>
+                    <div tuiSubtitle>Saldo</div>
+                </div>
+            </div>
+            <div tuiAppearance="floating" tuiCardLarge tuiCell>
+                <tui-avatar [appearance]="saldoOrcamento >= 0 ? 'positive' : 'negative'" src="@tui.banknote" />
+                <div tuiTitle>
+                    <strong [class.negative]="saldoOrcamento < 0" [class.positive]="saldoOrcamento >= 0">{{
+                        saldoOrcamento | currency }}</strong>
+                    <div tuiSubtitle>Orçamento disponível</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table tuiTable size="l">
+                <thead>
+                    <tr>
+                        <th tuiTh>Data</th>
+                        <th tuiTh>Categoria</th>
+                        <th tuiTh>Valor</th>
+                        <th tuiTh>Ações</th>
+                    </tr>
+                </thead>
+                <tbody tuiTbody>
+                    <tr *ngFor="let movimento of movimentos(); trackBy: trackByFn">
+                        <td tuiTd>
+                            <tui-badge appearance="secondary" iconStart="@tui.calendar">
+                                {{ movimento.data | date:'dd/MM/yyyy' }}
+                            </tui-badge>
+                        </td>
+                        <td tuiTd>
+                            <app-categoria-badge [tipo]="movimento.orcamentoItem.categoria.tipo"></app-categoria-badge>
+                            {{ movimento.orcamentoItem.categoria.nome }} {{ movimento.orcamentoItem.descricao ? '
+                            - ' + movimento.orcamentoItem.descricao : ''}}
+                            @if(movimento.descricao) {
+                            <tui-icon icon="@tui.info" [tuiTooltip]="movimento.descricao"></tui-icon>
+                            }
+                        </td>
+                        <td tuiTd>{{ (movimento.orcamentoItem.categoria.tipo === 'DESPESA' ? movimento.valor * -1 :
+                            movimento.valor) | currency }}</td>
+                        <td tuiTd class="actions">
+                            <button tuiButton appearance="secondary" size="s" (click)="openFormModal(movimento)">
+                                <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary"
+                                    tuiTooltip="Editar movimentação" aria-label="Editar movimentação" />
+                            </button>
+                            <button tuiButton appearance="destructive" size="s" (click)="confirmDelete(movimento)">
+                                <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger"
+                                    tuiTooltip="Excluir movimentação" aria-label="Excluir movimentação" />
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div *ngIf="!movimentos().length" class="empty-state">
+                <tui-icon icon="@tui.chart-bar" [style.height.rem]="4" class="empty-icon" />
+                <p>Nenhuma movimentação encontrada.</p>
+                <p>Clique em "Nova Movimentação" para criar sua primeira movimentação.</p>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="isLoading()" class="loading">
+        <p>Carregando movimentações...</p>
+    </div>
+</div>
+
+<ng-template #receitasTooltip>
+    <div tuiTitle>
+        <strong>{{ totalOrcamentoReceita | currency }}</strong>
+        <div tuiSubtitle>Total de receitas esperadas para o mês</div>
+    </div>
+</ng-template>
+
+<ng-template #despesasTooltip>
+    <div tuiTitle>
+        <strong>{{ totalOrcamentoDespesa * -1 | currency }}</strong>
+        <div tuiSubtitle>Total de despesas esperadas para o mês</div>
+    </div>
+</ng-template>

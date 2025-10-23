@@ -1,0 +1,24 @@
+<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="cloneForm" (ngSubmit)="onSubmit()">
+    <p class="tui-text_body-l-2">O orçamento <strong>{{ orcamento().descricao }}</strong> de 
+        <strong>{{ orcamento().periodo | formatPeriod }}</strong> será clonado para o novo período.</p>
+    <tui-textfield>
+        <label tuiLabel for="periodo">Período *</label>
+        <input placeholder="Selecione o mês" tuiInputMonth formControlName="periodo" />
+        <tui-calendar-month *tuiTextfieldDropdown [min]="min"
+            [disabledItemHandler]="disabledItemHandler" />
+        <div *ngIf="cloneForm.get('periodo')?.invalid && cloneForm.get('periodo')?.touched" class="error-message">
+            <span *ngIf="cloneForm.get('periodo')?.errors?.['required']">Período é obrigatório</span>
+        </div>
+    </tui-textfield>
+
+    <div class="form-actions">
+        <button type="button" tuiButton appearance="secondary" size="m" (click)="onCancel()" [disabled]="isSubmitting()">
+            Cancelar
+        </button>
+
+        <button type="submit" tuiButton appearance="primary" size="m"
+            [disabled]="cloneForm.invalid || isSubmitting()">
+            {{ isSubmitting() ? 'Salvando...' : 'Clonar' }}
+        </button>
+    </div>
+</form>

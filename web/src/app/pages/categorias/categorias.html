@@ -1,0 +1,51 @@
+<div class="container">
+    <div class="header">
+        <h2>Gerenciar Categorias</h2>
+        <button tuiButton appearance="primary" size="m" (click)="openFormModal()">
+            Nova Categoria
+        </button>
+    </div>
+
+    <div class="content" *ngIf="!isLoading()">
+        <div class="table-container">
+            <table tuiTable size="l">
+                <thead>
+                    <tr>
+                        <th tuiTh>Nome</th>
+                        <th tuiTh>Tipo</th>
+                        <th tuiTh>Descrição</th>
+                        <th tuiTh>Ações</th>
+                    </tr>
+                </thead>
+                <tbody tuiTbody>
+                    <tr *ngFor="let categoria of categorias; trackBy: trackByFn">
+                        <td tuiTd>{{ categoria.nome }}</td>
+                        <td tuiTd>
+                            <app-categoria-badge [tipo]="categoria.tipo"></app-categoria-badge>
+                        </td>
+                        <td tuiTd>{{ categoria.descricao || '-' }}</td>
+                        <td tuiTd class="actions">
+                            <button tuiButton appearance="secondary" size="s" (click)="openFormModal(categoria)">
+                                <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary" tuiTooltip="Editar categoria"
+                                    aria-label="Editar categoria" />
+                            </button>
+                            <button tuiButton appearance="destructive" size="s" (click)="confirmDelete(categoria)">
+                                <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger" tuiTooltip="Excluir categoria"
+                                    aria-label="Excluir categoria" />
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div *ngIf="categorias.length === 0" class="empty-state">
+                <p>Nenhuma categoria encontrada.</p>
+                <p>Clique em "Nova Categoria" para adicionar sua primeira categoria.</p>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="isLoading()" class="loading">
+        <p>Carregando categorias...</p>
+    </div>
+</div>

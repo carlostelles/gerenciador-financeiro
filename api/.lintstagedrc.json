@@ -1,0 +1,11 @@
+{
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.ts": [
+      "npm run test:cov -- --findRelatedTests --passWithNoTests"
+    ]
+  }
+}

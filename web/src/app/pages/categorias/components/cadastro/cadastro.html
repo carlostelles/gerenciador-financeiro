@@ -1,0 +1,38 @@
+<form tuiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="categoriaForm" (ngSubmit)="saveCategoria()">
+
+    <tui-textfield>
+        <label tuiLabel for="nome">Nome da Categoria *</label>
+        <input tuiTextfield id="nome" formControlName="nome" type="text" placeholder="Digite o nome da categoria" />
+        <div *ngIf="categoriaForm.get('nome')?.invalid && categoriaForm.get('nome')?.touched" class="error-message">
+            <span *ngIf="categoriaForm.get('nome')?.errors?.['required']">Nome é obrigatório</span>
+            <span *ngIf="categoriaForm.get('nome')?.errors?.['minlength']">Nome deve ter pelo menos 2 caracteres</span>
+        </div>
+    </tui-textfield>
+
+    <tui-textfield class="radiobox-group">
+        <label>Tipo *</label>
+        <div class="radiobox-options">
+            <label *ngFor="let tipo of tipoOptions" for="tipo" [appearance]="tipo.appearance"
+                [iconStart]="`@tui.${tipo.icon}`" tuiChip>
+                {{ tipo.label }}
+                <input appearance="outline-grayscale" name="tipo" formControlName="tipo" tuiChip type="radio"
+                    [value]="tipo.value" />
+            </label>
+        </div>
+    </tui-textfield>
+
+    <tui-textfield>
+        <label tuiLabel for="descricao">Descrição</label>
+        <input tuiTextfield id="descricao" formControlName="descricao" type="text"
+            placeholder="Digite uma descrição (opcional)" />
+    </tui-textfield>
+
+    <div class="form-actions">
+        <button type="button" tuiButton appearance="secondary" size="m" (click)="onClose()">
+            Cancelar
+        </button>
+        <button type="submit" tuiButton appearance="primary" size="m" [disabled]="categoriaForm.invalid">
+            {{ categoria ? 'Atualizar' : 'Criar' }}
+        </button>
+    </div>
+</form>

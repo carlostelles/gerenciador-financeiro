@@ -1,0 +1,44 @@
+<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="movimentoForm" (ngSubmit)="onSubmit()">
+  <div class="flex gap-1">
+    <tui-textfield>
+      <label tuiLabel for="periodo">Data *</label>
+      <input placeholder="Selecione o dia" tuiInputDate formControlName="data" />
+      <tui-calendar *tuiTextfieldDropdown />
+      <div *ngIf="movimentoForm.get('periodo')?.invalid && movimentoForm.get('periodo')?.touched" class="error-message">
+        <span *ngIf="movimentoForm.get('periodo')?.errors?.['required']">Data é obrigatória</span>
+      </div>
+    </tui-textfield>
+
+    <tui-textfield>
+      <label tuiLabel>Valor *</label>
+      <input formControlName="valor" tuiInputNumber
+        [tuiNumberFormat]="{thousandSeparator: '.', decimalSeparator: ',', decimalMode: 'always'}"
+        [prefix]="('BRL' | tuiCurrency) + ' '" />
+    </tui-textfield>
+  </div>
+
+  <tui-textfield tuiChevron [stringify]="stringify">
+    <label tuiLabel for="categoria">Categoria *</label>
+    <input tuiSelect formControlName="orcamentoItemId" />
+    <tui-data-list *tuiTextfieldDropdown>
+      <button *ngFor="let item of orcamentoItens()" new tuiOption type="button" [value]="item.id">
+        {{ item.categoria.nome }} {{ item.descricao ? ' - ' + item.descricao : '' }}
+      </button>
+    </tui-data-list>
+  </tui-textfield>
+
+  <tui-textfield>
+    <label tuiLabel for="descricao">Descrição</label>
+    <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a descrição" />
+  </tui-textfield>
+
+  <div class="form-actions">
+    <button type="button" tuiButton appearance="secondary" size="m" (click)="onCancel()" [disabled]="isSubmitting()">
+      Cancelar
+    </button>
+
+    <button type="submit" tuiButton appearance="primary" size="m" [disabled]="movimentoForm.invalid || isSubmitting()">
+      {{ isSubmitting() ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Cadastrar') }}
+    </button>
+  </div>
+</form>

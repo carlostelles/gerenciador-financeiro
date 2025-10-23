@@ -1,0 +1,58 @@
+<div class="login-container">
+  <div class="login-card">
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" autocomplete="off">
+      <h2 class="login-title">Entrar</h2>
+      
+      <tui-textfield>
+        <label tuiLabel for="email">E-mail</label>
+        <input
+          tuiTextfield
+          id="email"
+          formControlName="email"
+          type="email"
+          placeholder="Digite seu e-mail"
+        />
+        <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" 
+             class="error-message">
+          <span *ngIf="loginForm.get('email')?.errors?.['required']">E-mail é obrigatório</span>
+          <span *ngIf="loginForm.get('email')?.errors?.['email']">E-mail deve ser válido</span>
+        </div>
+      </tui-textfield>
+
+      <tui-textfield>
+        <label tuiLabel for="senha">Senha</label>
+        <input
+          tuiTextfield
+          id="senha"
+          formControlName="senha"
+          type="password"
+          placeholder="Digite sua senha"
+        />
+        <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched" 
+             class="error-message">
+          <span *ngIf="loginForm.get('senha')?.errors?.['required']">Senha é obrigatória</span>
+        </div>
+      </tui-textfield>
+
+      <div class="form-actions">
+        <button 
+          tuiButton 
+          size="m" 
+          type="submit"
+          [disabled]="loginForm.invalid || isLoading"
+          class="submit-button"
+        >
+          {{ isLoading ? 'Entrando...' : 'Entrar' }}
+        </button>
+      </div>
+
+      <div class="signup-link">
+        <p>Não tem uma conta? <a routerLink="/signup">Cadastre-se</a></p>
+      </div>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+    </form>
+  </div>
+</div>

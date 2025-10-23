@@ -1,0 +1,83 @@
+<form uiAppearance="floating" tuiCardLarge tuiForm="m" [formGroup]="orcamentoItemForm" (ngSubmit)="onSubmit()">
+    <div class="flex gap-1">
+        <tui-textfield tuiChevron [stringify]="stringify">
+            <label tuiLabel for="categoria">Categoria *</label>
+            <input tuiComboBox formControlName="categoriaId" [strict]="false" />
+            <tui-data-list *tuiTextfieldDropdown>
+                <button *ngFor="let categoria of categorias()" new tuiOption type="button" [value]="categoria.id">
+                    {{ categoria.nome }} <app-categoria-badge [tipo]="categoria.tipo"></app-categoria-badge>
+                </button>
+            </tui-data-list>
+        </tui-textfield>
+
+        <tui-textfield>
+            <label tuiLabel>Valor *</label>
+            <input formControlName="valor" tuiInputNumber
+                [tuiNumberFormat]="{thousandSeparator: '.', decimalSeparator: ',', decimalMode: 'always'}"
+                [prefix]="('BRL' | tuiCurrency) + ' '" />
+        </tui-textfield>
+    </div>
+
+    <tui-textfield>
+        <label tuiLabel for="descricao">Observação</label>
+        <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a observação" />
+    </tui-textfield>
+
+    <div class="form-actions">
+        <tui-notification size="s">
+            <span tuiTitle>Total: {{ getTotalOrcamento(orcamento()) | currency }}</span>
+        </tui-notification>
+        <div class="form-buttons">
+            <button type="reset" tuiButton appearance="secondary" size="m" (click)="onReset()"
+                [disabled]="isSubmitting()">
+                Limpar
+            </button>
+            <button type="submit" tuiButton appearance="primary" size="m"
+                [disabled]="orcamentoItemForm.invalid || isSubmitting()">
+                {{ isSubmitting() ? 'Salvando...' : (orcamentoItemForm.value.id ? 'Atualizar' : 'Cadastrar') }}
+            </button>
+        </div>
+    </div>
+</form>
+
+<div class="table-container">
+    <table tuiTable size="l">
+        <thead>
+            <tr>
+                <th tuiTh>Categoria</th>
+                <th tuiTh>Tipo</th>
+                <th tuiTh>Descrição</th>
+                <th tuiTh>Valor</th>
+                <th tuiTh>Ações</th>
+            </tr>
+        </thead>
+        <tbody tuiTbody>
+            <tr *ngFor="let item of orcamento().items">
+                <td tuiTd>{{ getCategoria(item.categoriaId)?.nome ?? 'Desconhecida' }}</td>
+                <td tuiTd>
+                    @if (!!getCategoria(item.categoriaId)) {
+                        <app-categoria-badge [tipo]="getCategoria(item.categoriaId)!.tipo"></app-categoria-badge>
+                    }
+                </td>
+                <td tuiTd>{{ item.descricao }}</td>
+                <td tuiTd class="currency">{{ item.valor | currency }}</td>
+                <td tuiTd class="actions">
+                    <button tuiButton appearance="secondary" size="s" (click)="loadFormItem(item)">
+                        <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary"
+                            tuiTooltip="Editar item" aria-label="Editar item" />
+                    </button>
+                    <button tuiButton appearance="destructive" size="s" (click)="confirmDelete(item)">
+                        <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger" tuiTooltip="Excluir item"
+                            aria-label="Excluir item" />
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div *ngIf="orcamento().items.length === 0" class="empty-state">
+        <tui-icon icon="@tui.chart-bar" [style.height.rem]="4" class="empty-icon" />
+        <p>Nenhum item encontrado.</p>
+        <p>Preencha o formulário para criar seu primeiro item.</p>
+    </div>
+</div>

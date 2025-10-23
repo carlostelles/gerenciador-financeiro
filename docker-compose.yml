@@ -1,0 +1,146 @@
+services:
+  # Banco de dados MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: gf-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-gerenciador_financeiro}
+      MYSQL_USER: ${DB_USER:-gf_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gf_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./api/docker/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - gf-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Banco de dados MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: gf-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-adminpassword}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-gerenciador_logs}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - gf-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # API Backend
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: production
+    container_name: gf-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      
+      # MySQL Database
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USER:-gf_user}
+      DB_PASSWORD: ${DB_PASSWORD:-gf_password}
+      DB_DATABASE: ${DB_NAME:-gerenciador_financeiro}
+      
+      # MongoDB
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-adminpassword}@mongodb:27017/${MONGO_DB:-gerenciador_logs}?authSource=admin
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-jwt-key}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      
+      # Swagger (desabilitado em produção)
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - gf-network
+    volumes:
+      - api_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Frontend Web App
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: production
+    container_name: gf-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    networks:
+      - gf-network
+    depends_on:
+      - api
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: gf-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+      - api
+    networks:
+      - gf-network
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_logs:/var/log/nginx
+
+networks:
+  gf-network:
+    driver: bridge
+    name: gerenciador-financeiro
+
+volumes:
+  mysql_data:
+    name: gf-mysql-data
+  mongodb_data:
+    name: gf-mongodb-data
+  api_logs:
+    name: gf-api-logs
+  nginx_logs:
+    name: gf-nginx-logs

@@ -1,0 +1,17 @@
+:host {
+    .summary {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 2rem;
+        padding-block: 1.5rem;
+
+        .positive {
+            color: var(--tui-text-positive);
+        }
+
+        .negative {
+            color: var(--tui-text-negative);
+        }
+    }
+}

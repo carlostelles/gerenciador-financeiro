@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+.env.production
+coverage
+coverage-e2e
+*.log
+.DS_Store
+.vscode/settings.json
+.venv
+.idea

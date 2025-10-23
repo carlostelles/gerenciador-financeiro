@@ -1,0 +1,33 @@
+<!-- Add id for accessibility purposes -->
+<h2 [id]="context.id">{{ context.heading }}</h2>
+<section>
+    <!-- TODO: Polymorpheus fix type -->
+    <ng-container *polymorpheusOutlet="$any(context.content) as text; context: context">
+        <p [innerHTML]="text"></p>
+    </ng-container>
+</section>
+<p class="buttons">
+    <button
+        tuiButton
+        type="button"
+        class="tui-space_right-3"
+        size="m"
+        [appearance]="context.buttons[0]?.appearance || 'primary'"
+        [iconStart]="context.buttons[0]?.icon ? `@tui.${context.buttons[0]?.icon}` : null"
+        (click)="onClick(true)"
+        *ngIf="context.buttons.length > 0"
+    >
+        {{ context.buttons[0].label }}
+    </button>
+    <button
+        tuiButton
+        type="button"
+        size="m"
+        [appearance]="context.buttons[1]?.appearance || 'secondary'"
+        [iconStart]="context.buttons[1]?.icon ? `@tui.${context.buttons[1]?.icon}` : null"
+        (click)="onClick(false)"
+        *ngIf="context.buttons.length > 1"
+    >
+        {{ context.buttons[1].label }}
+    </button>
+</p>

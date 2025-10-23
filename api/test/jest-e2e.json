@@ -1,0 +1,50 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapping": {
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  "collectCoverage": true,
+  "collectCoverageFrom": [
+    "../src/**/*.{ts,js}",
+    "!../src/**/*.spec.ts",
+    "!../src/**/*.d.ts",
+    "!../src/main.ts",
+    "!../src/**/*.module.ts",
+    "!../src/**/*.interface.ts",
+    "!../src/**/*.dto.ts",
+    "!../src/**/*.entity.ts",
+    "!../src/**/*.enum.ts",
+    "!../src/**/*.config.ts",
+    "!../src/database/**",
+    "!../src/migrations/**",
+    "!../src/**/index.ts"
+  ],
+  "coverageDirectory": "../coverage-e2e",
+  "coverageReporters": [
+    "text",
+    "text-summary",
+    "html",
+    "lcov",
+    "json",
+    "clover"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 0,
+      "functions": 0,
+      "lines": 0,
+      "statements": 0
+    }
+  },
+  "setupFilesAfterEnv": [],
+  "testTimeout": 30000,
+  "forceExit": true,
+  "detectOpenHandles": true,
+  "verbose": true
+}

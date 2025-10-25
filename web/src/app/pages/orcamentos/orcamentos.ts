@@ -8,23 +8,24 @@ import {TuiTable, TuiTableControl} from '@taiga-ui/addon-table';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { OrcamentosItemCadastroComponent } from './components/cadastro-item/cadastro-item';
-import { formatPeriod, FormatPeriodPipe, CurrencyPipe, Orcamento, PromptService, ToastService } from '../../shared';
+import { formatPeriod, FormatPeriodPipe, CurrencyPipe, Orcamento, PromptService, ToastService, ButtonFloatComponent } from '../../shared';
 import { OrcamentosCloneComponent } from './components/clone/clone';
 
 @Component({
     selector: 'app-orcamentos',
     standalone: true,
     imports: [
-        CommonModule,
-        TuiButton,
-        TuiBadge,
-        TuiIcon,
-        TuiTooltip,
-        TuiTable,
-        TuiTableControl,
-        CurrencyPipe,
-        FormatPeriodPipe
-    ],
+    CommonModule,
+    TuiButton,
+    TuiBadge,
+    TuiIcon,
+    TuiTooltip,
+    TuiTable,
+    TuiTableControl,
+    CurrencyPipe,
+    FormatPeriodPipe,
+    ButtonFloatComponent
+],
     providers: [TuiConfirmService],
     changeDetection: ChangeDetectionStrategy.OnPush,
     templateUrl: './orcamentos.html',
@@ -85,7 +86,7 @@ export class OrcamentosComponent implements OnInit {
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosItemCadastroComponent), {
                 label: orcamento ? 'Editar orçamento' : 'Cadastrar orçamento',
-                size: 'l',
+                size: 'auto',
                 data: orcamento,
             })
             .subscribe({
@@ -139,8 +140,16 @@ export class OrcamentosComponent implements OnInit {
             });
     }
 
-    getTotalOrcamento(orcamento: Orcamento): number {
-        return orcamento.items?.reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
+    getTotalReceitas(orcamento: Orcamento): number {
+        return orcamento.items
+            ?.filter(item => item.categoria.tipo === 'RECEITA')
+            .reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
+    }
+
+    getTotalDespesas(orcamento: Orcamento): number {
+        return orcamento.items
+            ?.filter(item => item.categoria.tipo === 'DESPESA')
+            .reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
     }
 
     trackByFn(index: number, item: Orcamento): number {

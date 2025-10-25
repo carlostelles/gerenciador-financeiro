@@ -48,7 +48,7 @@ export class OrcamentosService {
   async findAll(usuarioId: number): Promise<Orcamento[]> {
     return this.orcamentoRepository.find({
       where: { usuarioId },
-      relations: ['items'],
+      relations: ['items', 'items.categoria'],
       order: { periodo: 'DESC' },
     });
   }

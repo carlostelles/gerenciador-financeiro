@@ -1,6 +1,6 @@
 import { CategoriaTipo } from "../interfaces";
 
-export function getCategoriaBadge(tipo: CategoriaTipo): { label: string; appearance: string, icon: string } {
+export function getCategoriaBadge(tipo?: CategoriaTipo): { label: string; appearance: string, icon: string } | undefined {
     switch (tipo) {
       case CategoriaTipo.RECEITA:
         return {
@@ -14,5 +14,7 @@ export function getCategoriaBadge(tipo: CategoriaTipo): { label: string; appeara
         return {
           label: 'Reserva', appearance: 'positive', icon: 'piggy-bank'
         };
+      default:
+        return undefined;
     }
   }

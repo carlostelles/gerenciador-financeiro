@@ -1,9 +1,9 @@
 <div class="container">
     <div class="header">
         <h2>Gerenciar Orçamentos</h2>
-        <button tuiButton appearance="primary" size="m" (click)="openFormModal()">
+        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
             Novo Orçamento
-        </button>
+        </app-button-float>
     </div>
 
     <div class="content" *ngIf="!isLoading()">
@@ -14,7 +14,8 @@
                         <th tuiTh>Período</th>
                         <th tuiTh>Descrição</th>
                         <th tuiTh>Total de Itens</th>
-                        <th tuiTh>Valor Total</th>
+                        <th tuiTh>Receitas</th>
+                        <th tuiTh>Despesas</th>
                         <th tuiTh>Ações</th>
                     </tr>
                 </thead>
@@ -32,8 +33,11 @@
                                 {{ orcamento.items.length || 0 }} item(s)
                             </tui-badge>
                         </td>
-                        <td tuiTd class="currency" (click)="openFormItensModal(orcamento)" [style.cursor]="'pointer'">
-                            {{ getTotalOrcamento(orcamento) | currency }}
+                        <td tuiTd class="currency positive" (click)="openFormItensModal(orcamento)" [style.cursor]="'pointer'">
+                            {{ getTotalReceitas(orcamento) | currency }}
+                        </td>
+                        <td tuiTd class="currency negative" (click)="openFormItensModal(orcamento)" [style.cursor]="'pointer'">
+                            -{{ getTotalDespesas(orcamento) | currency }}
                         </td>
                         <td tuiTd class="actions">
                             <button tuiButton appearance="secondary" size="s" (click)="openFormItensModal(orcamento)">

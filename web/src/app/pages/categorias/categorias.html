@@ -1,9 +1,9 @@
 <div class="container">
     <div class="header">
         <h2>Gerenciar Categorias</h2>
-        <button tuiButton appearance="primary" size="m" (click)="openFormModal()">
+        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
             Nova Categoria
-        </button>
+        </app-button-float>
     </div>
 
     <div class="content" *ngIf="!isLoading()">

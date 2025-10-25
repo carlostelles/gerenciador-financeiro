@@ -58,7 +58,6 @@ export class OrcamentosController {
     description: 'Lista de orçamentos retornada com sucesso',
   })
   findAll(@CurrentUser() user: any) {
-    Logger.log(`User ID: ${user}`, 'OrcamentosController');
     return this.orcamentosService.findAll(user.sub);
   }
 

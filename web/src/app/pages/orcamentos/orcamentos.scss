@@ -1,0 +1,13 @@
+:host {
+    .currency {
+        font-weight: 600;
+        
+        &.positive {
+            color: var(--tui-text-positive);
+        }
+
+        &.negative {
+            color: var(--tui-text-negative);
+        }
+    }
+}

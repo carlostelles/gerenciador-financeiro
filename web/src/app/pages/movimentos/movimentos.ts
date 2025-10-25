@@ -2,10 +2,10 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiIcon, TuiTitle } from '@taiga-ui/core';
-import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
+import { TuiAvatar, TuiBadge, TuiConfirmService, TuiFloatingContainer, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
 import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 
-import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento } from '../../shared';
+import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento, ButtonFloatComponent } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
@@ -33,7 +33,8 @@ import { TuiBlockDetails, TuiCardLarge, TuiCell } from '@taiga-ui/layout';
     TuiCardLarge,
     TuiAppearance,
     CurrencyPipe,
-    TuiHint
+    TuiHint,
+    ButtonFloatComponent
 ],
     providers: [TuiConfirmService],
     changeDetection: ChangeDetectionStrategy.OnPush,

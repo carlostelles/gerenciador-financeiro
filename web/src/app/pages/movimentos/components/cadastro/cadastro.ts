@@ -2,36 +2,39 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield } from '@taiga-ui/core';
-import { TuiChevron, TuiDataListWrapper, TuiInputDate, TuiInputNumber, TuiSelect } from '@taiga-ui/kit';
+import { TuiChevron, TuiComboBox, TuiDataListWrapper, TuiFilterByInputPipe, TuiInputDate, TuiInputNumber, TuiSelect } from '@taiga-ui/kit';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
-import { TuiDay, TuiMonth, TuiStringHandler } from '@taiga-ui/cdk';
+import { TuiDay, TuiIdentityMatcher, TuiMonth, TuiStringHandler, TuiStringMatcher } from '@taiga-ui/cdk';
 import { TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
 import { TuiForm } from '@taiga-ui/layout';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { MovimentoService } from '../../../../core/services/movimento.service';
-import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, OrcamentoItem, Movimento } from '../../../../shared';
+import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, OrcamentoItem, Movimento, CategoriaBadgeComponent } from '../../../../shared';
 import { CategoriaService } from '../../../../core/services/categoria.service';
+import { map } from 'rxjs';
 
 @Component({
     selector: 'app-orcamentos-cadastro',
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        TuiButton,
-        TuiTextfield,
-        TuiInputDate,
-        TuiChevron,
-        TuiSelect,
-        TuiDataList,
-        TuiDataListWrapper,
-        TuiNumberFormat,
-        TuiCurrencyPipe,
-        TuiInputNumber,
-        TuiForm
-    ],
+    CommonModule,
+    ReactiveFormsModule,
+    TuiButton,
+    TuiTextfield,
+    TuiInputDate,
+    TuiChevron,
+    TuiComboBox,
+    TuiFilterByInputPipe,
+    TuiDataList,
+    TuiDataListWrapper,
+    TuiNumberFormat,
+    TuiCurrencyPipe,
+    TuiInputNumber,
+    TuiForm,
+    CategoriaBadgeComponent
+],
     templateUrl: './cadastro.html',
     styleUrls: ['./cadastro.scss']
 })
@@ -48,10 +51,12 @@ export class OrcamentosCadastroComponent implements OnInit {
     protected readonly periodo = signal<string>('');
     protected readonly isSubmitting = signal<boolean>(false);
     protected readonly orcamentoItens = signal<OrcamentoItem[]>([]);
-    protected readonly stringify: TuiStringHandler<number> = (id) => {
-        const item = this.orcamentoItens().find((item) => item.id === id);
-        return item ? `${item.categoria?.nome} ${item.descricao ? '- ' + item.descricao : ''}` : '';
+    protected readonly stringify: TuiStringHandler<OrcamentoItem> = (orcamentoItem) => {
+        const item = this.orcamentoItens().find((item) => item.id === orcamentoItem.id);
+        return item?.descricao || '';
     }
+    protected readonly matcher: TuiStringMatcher<OrcamentoItem> = (item, query) => item.descricao.toLowerCase().includes(query.toLowerCase());
+    protected readonly identityMatcher: TuiIdentityMatcher<OrcamentoItem> = (a, b) => a.id === b.id;
     protected readonly movimentacao = signal<Movimento | undefined>(this.context.data);
 
     get isEditing(): boolean {
@@ -64,13 +69,12 @@ export class OrcamentosCadastroComponent implements OnInit {
 
     private initializeForm() {
         this.movimentoForm = this.fb.group({
-                data: ['', [Validators.required]],
-                orcamentoItemId: ['', [Validators.required]],
-                valor: [null, [Validators.required, Validators.min(0.01)]],
-                descricao: ['', [Validators.maxLength(255)]]
-            });
+            data: ['', [Validators.required]],
+            orcamentoItem: ['', [Validators.required]],
+            valor: [null, [Validators.required, Validators.min(0.01)]],
+            descricao: ['', [Validators.maxLength(255)]]
+        });
 
-        console.log('Movimentação para edição:', this.movimentacao());
         if (this.movimentacao()) {
             const dataString = this.movimentacao()!.data;
             const [year, month, day] = dataString.split('-').map(Number);
@@ -78,7 +82,7 @@ export class OrcamentosCadastroComponent implements OnInit {
 
             this.movimentoForm.patchValue({
                 data: tuiMonth,
-                orcamentoItemId: this.movimentacao()!.orcamentoItemId,
+                orcamentoItem: this.movimentacao()!.orcamentoItem,
                 valor: this.movimentacao()!.valor,
                 descricao: this.movimentacao()!.descricao || ''
             });
@@ -86,7 +90,6 @@ export class OrcamentosCadastroComponent implements OnInit {
 
         // Subscribe to data field changes
         this.movimentoForm.get('data')?.valueChanges.subscribe((value) => {
-            console.log('Data alterada:', value);
             this.onDataChange(value);
         });
     }
@@ -94,7 +97,6 @@ export class OrcamentosCadastroComponent implements OnInit {
     // Quando alterar o campo data, carregar o orçamento daquele período
     onDataChange(data: TuiMonth) {
         const periodo = data ? `${data.year}-${String(data.month + 1).padStart(2, '0')}` : null;
-        console.log('Data movimentação para edição:', data, periodo);
         this.periodo.set(periodo || '');
         if (periodo) {
             this.loadOrcamentoByPeriodoData(periodo);
@@ -103,21 +105,25 @@ export class OrcamentosCadastroComponent implements OnInit {
 
     private loadOrcamentoByPeriodoData(periodo: string) {
         this.isSubmitting.set(true);
-        this.orcamentoService.findByPeriodo(periodo).subscribe({
-            next: (orcamento) => {
-                if (orcamento) {
-                    this.orcamentoItens.set(orcamento.items || []);
-                    console.log('Orçamento encontrado:', orcamento);
+        this.orcamentoService.findByPeriodo(periodo)
+            .pipe(
+                map((response) => response?.items
+                    .sort((a, b) => (a.descricao).localeCompare(b.descricao)))
+            )
+            .subscribe({
+                next: (items) => {
+                    if (items) {
+                        this.orcamentoItens.set(items || []);
+                    }
+                },
+                error: (error) => {
+                    console.error('Erro ao carregar orçamento por período:', error);
+                    this.isSubmitting.set(false);
+                },
+                complete: () => {
+                    this.isSubmitting.set(false);
                 }
-            },
-            error: (error) => {
-                console.error('Erro ao carregar orçamento por período:', error);
-                this.isSubmitting.set(false);
-            },
-            complete: () => {
-                this.isSubmitting.set(false);
-            }
-        });
+            });
     }
 
     onSubmit() {

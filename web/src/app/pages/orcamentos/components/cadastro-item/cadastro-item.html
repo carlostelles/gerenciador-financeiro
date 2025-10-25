@@ -24,9 +24,14 @@
     </tui-textfield>
 
     <div class="form-actions">
-        <tui-notification size="s">
-            <span tuiTitle>Total: {{ getTotalOrcamento(orcamento()) | currency }}</span>
-        </tui-notification>
+        <div>
+            <app-categoria-badge [tipo]="CategoriaTipo.DESPESA">
+                Despesas: {{ getTotalDespesas(orcamento()) | currency }}
+            </app-categoria-badge>
+            <app-categoria-badge [tipo]="CategoriaTipo.RECEITA">
+                Receitas: {{ getTotalReceitas(orcamento()) | currency }}
+            </app-categoria-badge>
+        </div>
         <div class="form-buttons">
             <button type="reset" tuiButton appearance="secondary" size="m" (click)="onReset()"
                 [disabled]="isSubmitting()">
@@ -56,7 +61,7 @@
                 <td tuiTd>{{ getCategoria(item.categoriaId)?.nome ?? 'Desconhecida' }}</td>
                 <td tuiTd>
                     @if (!!getCategoria(item.categoriaId)) {
-                        <app-categoria-badge [tipo]="getCategoria(item.categoriaId)!.tipo"></app-categoria-badge>
+                    <app-categoria-badge [tipo]="getCategoria(item.categoriaId)!.tipo"></app-categoria-badge>
                     }
                 </td>
                 <td tuiTd>{{ item.descricao }}</td>

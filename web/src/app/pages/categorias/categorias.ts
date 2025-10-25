@@ -6,7 +6,7 @@ import { TuiConfirmService, TuiTooltip } from '@taiga-ui/kit';
 import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 
 import { CategoriaService } from '../../core/services/categoria.service';
-import { Categoria, PromptService, ToastService, CategoriaBadgeComponent } from '../../shared';
+import { Categoria, PromptService, ToastService, CategoriaBadgeComponent, ButtonFloatComponent } from '../../shared';
 import { CategoriasCadastroComponent } from './components/cadastro/cadastro';
 
 @Component({
@@ -19,7 +19,8 @@ import { CategoriasCadastroComponent } from './components/cadastro/cadastro';
     TuiTooltip,
     TuiTable,
     TuiTableControl,
-    CategoriaBadgeComponent
+    CategoriaBadgeComponent,
+    ButtonFloatComponent
 ],
   providers: [TuiConfirmService],
   changeDetection: ChangeDetectionStrategy.OnPush,

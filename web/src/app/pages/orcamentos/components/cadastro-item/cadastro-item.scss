@@ -9,7 +9,18 @@
             gap: 1rem;
             justify-content: space-between;
             border-top: 1px solid var(--tui-border);
-            align-items: flex-end;;
+            align-items: flex-end;
+
+            app-categoria-badge {
+                ::ng-deep tui-badge {
+                    font-weight: 700;
+                    font-size: .85rem !important;
+                }
+
+                &:first-child {
+                    margin-right: .5rem;
+                }
+            }
 
             .form-buttons {
                 display: flex;

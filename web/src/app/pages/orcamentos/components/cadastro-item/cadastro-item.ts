@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { TuiButton, TuiDataList, TuiDialogContext, TuiIcon, TuiNotification, TuiNumberFormat } from '@taiga-ui/core';
+import { TuiButton, TuiDataList, TuiDialogContext, TuiIcon, TuiNumberFormat } from '@taiga-ui/core';
 import { TuiTextfield } from '@taiga-ui/core/components/textfield';
 import { TuiComboBox } from '@taiga-ui/kit/components/combo-box';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
@@ -15,7 +15,7 @@ import { TuiForm } from '@taiga-ui/layout';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { CategoriaService } from '../../../../core/services/categoria.service';
-import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, OrcamentoItem, formatPeriod, CurrencyPipe, PromptService, UpdateOrcamentoItemDto, ToastService, CategoriaBadgeComponent } from '../../../../shared';
+import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, OrcamentoItem, formatPeriod, CurrencyPipe, PromptService, UpdateOrcamentoItemDto, ToastService, CategoriaBadgeComponent, CategoriaTipo } from '../../../../shared';
 
 @Component({
   selector: 'app-cadastro-orcamento-item',
@@ -37,7 +37,6 @@ import { Orcamento, UpdateOrcamentoDto, Categoria, CreateOrcamentoItemDto, Orcam
     TuiTable,
     TuiTableControl,
     TuiTooltip,
-    TuiNotification,
     CurrencyPipe,
     CategoriaBadgeComponent,
     TuiForm
@@ -53,6 +52,7 @@ export class OrcamentosItemCadastroComponent {
   private readonly promptService = inject(PromptService);
   private readonly toast = inject(ToastService);
 
+  protected readonly CategoriaTipo = CategoriaTipo;
   protected readonly categorias = signal<Categoria[]>([]);
   protected readonly orcamento = signal<Orcamento>(this.context.data!);
   protected readonly isSubmitting = signal<boolean>(false);
@@ -209,7 +209,15 @@ export class OrcamentosItemCadastroComponent {
       });
   }
 
-  getTotalOrcamento(orcamento?: Orcamento): number {
-    return orcamento?.items?.reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
+  getTotalDespesas(orcamento: Orcamento): number {
+    return orcamento.items
+      ?.filter(item => item.categoria.tipo === 'DESPESA')
+      .reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
+  }
+
+  getTotalReceitas(orcamento: Orcamento): number {
+    return orcamento.items
+      ?.filter(item => item.categoria.tipo === 'RECEITA')
+      .reduce((total, item) => Number(total) + Number(item.valor), 0) || 0;
   }
 }

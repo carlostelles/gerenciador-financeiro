@@ -89,8 +89,10 @@ export class MovimentacoesService {
       }
     }
 
-    Object.assign(movimento, updateMovimentoDto);
-    return this.movimentoRepository.save(movimento);
+    const { orcamentoItem, ...movimentoData } = movimento;
+    Object.assign(movimentoData, updateMovimentoDto);
+    
+    return this.movimentoRepository.save(movimentoData);
   }
 
   async remove(periodo: string, id: number, usuarioId: number): Promise<void> {

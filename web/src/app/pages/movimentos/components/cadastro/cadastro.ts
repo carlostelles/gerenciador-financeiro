@@ -108,6 +108,10 @@ export class OrcamentosCadastroComponent implements OnInit {
         this.orcamentoService.findByPeriodo(periodo)
             .pipe(
                 map((response) => response?.items
+                    .map(item => ({
+                        ...item,
+                        descricao: (item.descricao ? item.descricao + ' - ' : '') + item.categoria.nome,
+                    }))
                     .sort((a, b) => (a.descricao).localeCompare(b.descricao)))
             )
             .subscribe({
@@ -129,8 +133,12 @@ export class OrcamentosCadastroComponent implements OnInit {
     onSubmit() {
         if (this.movimentoForm.valid) {
             this.isSubmitting.set(true);
-            const orcamentoData = this.movimentoForm.value;
-
+            const { orcamentoItem, ...rest } = this.movimentoForm.value;
+            const orcamentoData = {
+                ...rest,
+                orcamentoItemId: orcamentoItem.id,
+            };
+    
             if (this.isEditing && this.context.data) {
                 this.updateMovimento(this.context.data.id, orcamentoData);
             } else {

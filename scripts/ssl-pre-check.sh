@@ -31,11 +31,17 @@ echo ""
 
 # 2. Verificar se nginx está rodando
 echo "2️⃣ Verificando Nginx..."
-if docker-compose ps nginx | grep -q "Up"; then
+if command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD="docker-compose"
+else
+    COMPOSE_CMD="docker compose"
+fi
+
+if $COMPOSE_CMD ps nginx | grep -q "Up"; then
     printf "${GREEN}✅ Container Nginx está rodando${NC}\n"
 else
     printf "${RED}❌ Container Nginx não está rodando${NC}\n"
-    echo "Execute: docker-compose up -d nginx"
+    echo "Execute: $COMPOSE_CMD up -d nginx"
 fi
 echo ""
 
@@ -59,11 +65,11 @@ echo ""
 # 4. Verificar diretório ACME
 echo "4️⃣ Verificando diretório ACME..."
 ACME_DIR="/var/www/certbot/.well-known/acme-challenge"
-if docker-compose exec nginx test -d "$ACME_DIR" 2>/dev/null; then
+if $COMPOSE_CMD exec nginx test -d "$ACME_DIR" 2>/dev/null; then
     printf "${GREEN}✅ Diretório ACME existe: $ACME_DIR${NC}\n"
 else
     printf "${YELLOW}⚠️  Criando diretório ACME...${NC}\n"
-    docker-compose exec nginx mkdir -p "$ACME_DIR" 2>/dev/null || printf "${RED}❌ Falha ao criar diretório ACME${NC}\n"
+    $COMPOSE_CMD exec nginx mkdir -p "$ACME_DIR" 2>/dev/null || printf "${RED}❌ Falha ao criar diretório ACME${NC}\n"
 fi
 echo ""
 
@@ -73,7 +79,7 @@ TEST_FILE="test-$(date +%s).txt"
 TEST_CONTENT="test-acme-challenge-$(date)"
 
 # Criar arquivo de teste
-if docker-compose run --rm --entrypoint /bin/sh certbot -c "echo '$TEST_CONTENT' > /var/www/certbot/.well-known/acme-challenge/$TEST_FILE" 2>/dev/null; then
+if $COMPOSE_CMD run --rm --entrypoint /bin/sh certbot -c "echo '$TEST_CONTENT' > /var/www/certbot/.well-known/acme-challenge/$TEST_FILE" 2>/dev/null; then
     printf "${GREEN}✅ Arquivo de teste criado${NC}\n"
     
     # Testar acesso ao arquivo
@@ -89,7 +95,7 @@ if docker-compose run --rm --entrypoint /bin/sh certbot -c "echo '$TEST_CONTENT'
         fi
         
         # Limpar arquivo de teste
-        docker-compose run --rm --entrypoint /bin/sh certbot -c "rm -f /var/www/certbot/.well-known/acme-challenge/$TEST_FILE" 2>/dev/null
+        $COMPOSE_CMD run --rm --entrypoint /bin/sh certbot -c "rm -f /var/www/certbot/.well-known/acme-challenge/$TEST_FILE" 2>/dev/null
     else
         printf "${YELLOW}⚠️  curl não disponível - teste manualmente:${NC}\n"
         echo "   http://$DOMAIN/.well-known/acme-challenge/$TEST_FILE"
@@ -101,11 +107,11 @@ echo ""
 
 # 6. Verificar configuração nginx
 echo "6️⃣ Verificando configuração Nginx..."
-if docker-compose exec nginx nginx -t 2>/dev/null; then
+if $COMPOSE_CMD exec nginx nginx -t 2>/dev/null; then
     printf "${GREEN}✅ Configuração Nginx válida${NC}\n"
 else
     printf "${RED}❌ Configuração Nginx inválida${NC}\n"
-    echo "Execute: docker-compose exec nginx nginx -t"
+    echo "Execute: $COMPOSE_CMD exec nginx nginx -t"
 fi
 echo ""
 

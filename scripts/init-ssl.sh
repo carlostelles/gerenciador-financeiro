@@ -89,7 +89,11 @@ if [ $? -eq 0 ]; then
     
     echo ""
     echo "🔧 Para aplicar o certificado, reinicie o Nginx:"
-    echo "docker-compose restart nginx"
+    if command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose restart nginx"
+    else
+        echo "docker compose restart nginx"
+    fi
     
 else
     echo "❌ Erro ao obter certificado SSL"

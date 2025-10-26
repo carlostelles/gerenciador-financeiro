@@ -180,5 +180,9 @@ if curl -s --connect-timeout 5 "https://$DOMAIN/health" | grep -q "healthy"; the
     echo "🌐 Acesse: https://$DOMAIN"
 else
     echo "⚠️  Status Geral: Sistema com problemas ou inacessível"
-    echo "🔧 Execute: docker-compose logs -f"
+    if command -v docker-compose >/dev/null 2>&1; then
+        echo "🔧 Execute: docker-compose logs -f"
+    else
+        echo "🔧 Execute: docker compose logs -f"
+    fi
 fi

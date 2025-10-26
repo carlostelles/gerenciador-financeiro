@@ -13,6 +13,8 @@ import { UpdateOrcamentoDto } from './dto/update-orcamento.dto';
 import { CreateOrcamentoItemDto } from './dto/create-orcamento-item.dto';
 import { UpdateOrcamentoItemDto } from './dto/update-orcamento-item.dto';
 import { OrcamentoByPeriodoResponseDto } from './dto/find-by-periodo.dto';
+import { LogsService } from '../logs/logs.service';
+import { LogAcao } from '../../common/types';
 
 @Injectable()
 export class OrcamentosService {
@@ -21,6 +23,7 @@ export class OrcamentosService {
     private orcamentoRepository: Repository<Orcamento>,
     @InjectRepository(OrcamentoItem)
     private orcamentoItemRepository: Repository<OrcamentoItem>,
+    private logsService: LogsService,
   ) {}
 
   async create(
@@ -42,7 +45,25 @@ export class OrcamentosService {
       usuarioId,
     });
 
-    return this.orcamentoRepository.save(orcamento);
+    const savedOrcamento = await this.orcamentoRepository.save(orcamento);
+
+    // Log da criação
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Orçamento criado: ${savedOrcamento.descricao} (${savedOrcamento.periodo})`,
+        acao: LogAcao.CREATE,
+        entidade: 'Orcamento',
+        entidadeId: savedOrcamento.id.toString(),
+        dadosNovos: savedOrcamento,
+      });
+    } catch (error) {
+      // Falha ao registrar log não impede operação principal
+      console.error('Erro ao registrar log de criação de orçamento:', error);
+    }
+
+    return savedOrcamento;
   }
 
   async findAll(usuarioId: number): Promise<Orcamento[]> {
@@ -132,8 +153,27 @@ export class OrcamentosService {
       }
     }
 
+    const dadosAnteriores = JSON.parse(JSON.stringify(orcamento));
     Object.assign(orcamento, updateOrcamentoDto);
-    return this.orcamentoRepository.save(orcamento);
+    const orcamentoAtualizado = await this.orcamentoRepository.save(orcamento);
+
+    // Log da atualização
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Orçamento atualizado: ${orcamentoAtualizado.descricao} (${orcamentoAtualizado.periodo})`,
+        acao: LogAcao.UPDATE,
+        entidade: 'Orcamento',
+        entidadeId: id.toString(),
+        dadosAnteriores,
+        dadosNovos: orcamentoAtualizado,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de atualização de orçamento:', error);
+    }
+
+    return orcamentoAtualizado;
   }
 
   async remove(id: number, usuarioId: number): Promise<void> {
@@ -146,6 +186,21 @@ export class OrcamentosService {
     }
 
     await this.orcamentoRepository.remove(orcamento);
+
+    // Log da exclusão
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Orçamento excluído: ${orcamento.descricao} (${orcamento.periodo})`,
+        acao: LogAcao.DELETE,
+        entidade: 'Orcamento',
+        entidadeId: id.toString(),
+        dadosAnteriores: orcamento,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de exclusão de orçamento:', error);
+    }
   }
 
   async clone(
@@ -185,7 +240,24 @@ export class OrcamentosService {
 
     await this.orcamentoItemRepository.save(itensClonados);
 
-    return this.findOne(orcamentoSalvo.id, usuarioId);
+    const orcamentoCompleto = await this.findOne(orcamentoSalvo.id, usuarioId);
+
+    // Log da clonagem
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Orçamento clonado: ${orcamentoCompleto.descricao} (${orcamentoCompleto.periodo})`,
+        acao: LogAcao.CREATE,
+        entidade: 'Orcamento',
+        entidadeId: orcamentoSalvo.id.toString(),
+        dadosNovos: orcamentoCompleto,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de clonagem de orçamento:', error);
+    }
+
+    return orcamentoCompleto;
   }
 
   // Métodos para itens de orçamento
@@ -201,7 +273,24 @@ export class OrcamentosService {
       orcamentoId,
     });
 
-    return this.orcamentoItemRepository.save(item);
+    const savedItem = await this.orcamentoItemRepository.save(item);
+
+    // Log da criação do item
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Item de orçamento criado: ${savedItem.descricao}`,
+        acao: LogAcao.CREATE,
+        entidade: 'OrcamentoItem',
+        entidadeId: savedItem.id.toString(),
+        dadosNovos: savedItem,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de criação de item de orçamento:', error);
+    }
+
+    return savedItem;
   }
 
   async findItems(orcamentoId: number, usuarioId: number): Promise<OrcamentoItem[]> {
@@ -240,8 +329,27 @@ export class OrcamentosService {
   ): Promise<OrcamentoItem> {
     const item = await this.findItem(orcamentoId, itemId, usuarioId);
 
+    const dadosAnteriores = JSON.parse(JSON.stringify(item));
     Object.assign(item, updateItemDto);
-    return this.orcamentoItemRepository.save(item);
+    const itemAtualizado = await this.orcamentoItemRepository.save(item);
+
+    // Log da atualização do item
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Item de orçamento atualizado: ${itemAtualizado.descricao}`,
+        acao: LogAcao.UPDATE,
+        entidade: 'OrcamentoItem',
+        entidadeId: itemId.toString(),
+        dadosAnteriores,
+        dadosNovos: itemAtualizado,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de atualização de item de orçamento:', error);
+    }
+
+    return itemAtualizado;
   }
 
   async removeItem(
@@ -259,5 +367,20 @@ export class OrcamentosService {
     }
 
     await this.orcamentoItemRepository.remove(item);
+
+    // Log da exclusão do item
+    try {
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Item de orçamento excluído: ${item.descricao}`,
+        acao: LogAcao.DELETE,
+        entidade: 'OrcamentoItem',
+        entidadeId: itemId.toString(),
+        dadosAnteriores: item,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de exclusão de item de orçamento:', error);
+    }
   }
 }

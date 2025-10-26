@@ -14,7 +14,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse): Observable<HttpEvent<any>> => {
       // Se for erro 401 e não for uma tentativa de refresh token
-      if (error.status === 401 && !req.url.includes('/auth/refresh')) {
+      if (error.status === 401 && !req.url.includes('/auth/refresh') && !req.url.includes('/auth/login')) {
         return handle401Error(req, next, authService, router);
       }
       
@@ -42,7 +42,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         });
       }
       
-      if (error.status > 404 && error.status < 500) {
+      if (error.status > 404 && error.status < 500 || error.status === 401) {
         alerts.open(error.error.message, { appearance: 'negative' }).subscribe();
       }
       

@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { TuiButton, TuiLabel, TuiTextfield } from '@taiga-ui/core';
+import { TuiButton, TuiFlagPipe, TuiLabel, TuiTextfield } from '@taiga-ui/core';
 import { UsuarioService } from '../../core/services/usuario.service';
 import { CreateUsuarioDto } from '../../shared/interfaces';
+import { TuiInputPhone } from '@taiga-ui/kit';
 
 @Component({
   selector: 'app-signup',
@@ -12,8 +13,11 @@ import { CreateUsuarioDto } from '../../shared/interfaces';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    RouterModule,
     TuiLabel,
     TuiTextfield,
+    TuiInputPhone,
+    TuiFlagPipe,
     TuiButton
   ],
   templateUrl: './signup.html',
@@ -22,7 +26,6 @@ import { CreateUsuarioDto } from '../../shared/interfaces';
 export class SignupComponent {
   signupForm: FormGroup;
   isLoading = false;
-  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -32,12 +35,11 @@ export class SignupComponent {
     this.signupForm = this.fb.group({
       nome: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
-      telefone: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]],
+      telefone: ['', [Validators.required, Validators.pattern(/^\+\d{13}$/)]],
       senha: ['', [
         Validators.required,
         Validators.minLength(8),
-        Validators.maxLength(16),
-        Validators.pattern(/^[a-zA-Z0-9]+$/)
+        Validators.maxLength(16)
       ]]
     });
   }
@@ -45,7 +47,6 @@ export class SignupComponent {
   onSubmit(): void {
     if (this.signupForm.valid) {
       this.isLoading = true;
-      this.errorMessage = '';
 
       const formValue = this.signupForm.value;
       const userData: CreateUsuarioDto = {
@@ -61,7 +62,6 @@ export class SignupComponent {
         },
         error: (error) => {
           this.isLoading = false;
-          this.errorMessage = error.error?.message || 'Erro ao cadastrar usuário';
         }
       });
     }

@@ -23,7 +23,6 @@ import { LoginDto } from '../../shared/interfaces';
 export class LoginComponent {
   loginForm: FormGroup;
   isLoading = false;
-  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -39,7 +38,6 @@ export class LoginComponent {
   onSubmit(): void {
     if (this.loginForm.valid) {
       this.isLoading = true;
-      this.errorMessage = '';
 
       const credentials: LoginDto = this.loginForm.value;
 
@@ -49,7 +47,6 @@ export class LoginComponent {
         },
         error: (error) => {
           this.isLoading = false;
-          this.errorMessage = error.error?.message || 'Erro ao fazer login';
         }
       });
     }

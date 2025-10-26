@@ -2,84 +2,48 @@
   <div class="signup-card">
     <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
       <h2 class="signup-title">Cadastrar</h2>
-      
-      <div class="form-field">
+
+      <tui-textfield>
         <label tuiLabel for="nome">Nome</label>
-        <input
-          tuiTextfield
-          id="nome"
-          formControlName="nome"
-          placeholder="Digite seu nome completo"
-        />
-        <div *ngIf="signupForm.get('nome')?.invalid && signupForm.get('nome')?.touched" 
-             class="error-message">
+        <input tuiTextfield id="nome" formControlName="nome" placeholder="Digite seu nome completo" />
+        <div *ngIf="signupForm.get('nome')?.invalid && signupForm.get('nome')?.touched" class="error-message">
           Nome é obrigatório
         </div>
-      </div>
+      </tui-textfield>
 
-      <div class="form-field">
+      <tui-textfield>
         <label tuiLabel for="email">E-mail</label>
-        <input
-          tuiTextfield
-          id="email"
-          formControlName="email"
-          type="email"
-          placeholder="Digite seu e-mail"
-        />
-        <div *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched" 
-             class="error-message">
+        <input tuiTextfield id="email" formControlName="email" type="email" placeholder="Digite seu e-mail" />
+        <div *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched" class="error-message">
           <span *ngIf="signupForm.get('email')?.errors?.['required']">E-mail é obrigatório</span>
           <span *ngIf="signupForm.get('email')?.errors?.['email']">E-mail deve ser válido</span>
         </div>
-      </div>
+      </tui-textfield>
 
-      <div class="form-field">
+      <tui-textfield [tuiTextfieldCleaner]="false">
         <label tuiLabel for="telefone">Telefone</label>
-        <input
-          tuiTextfield
-          id="telefone"
-          formControlName="telefone"
-          placeholder="5511999999999"
-        />
-        <div *ngIf="signupForm.get('telefone')?.invalid && signupForm.get('telefone')?.touched" 
-             class="error-message">
+        <input tuiInputPhone id="telefone" formControlName="telefone" mask="+55 ## #####-####" />
+        <img alt="Bandeira do Brasil" width="28" [src]="'BR' | tuiFlag" [style.border-radius.%]="50" />
+        <div *ngIf="signupForm.get('telefone')?.invalid && signupForm.get('telefone')?.touched" class="error-message">
           <span *ngIf="signupForm.get('telefone')?.errors?.['required']">Telefone é obrigatório</span>
-          <span *ngIf="signupForm.get('telefone')?.errors?.['pattern']">Telefone deve ter 13 dígitos</span>
+          <span *ngIf="signupForm.get('telefone')?.errors?.['pattern']">Telefone inválido</span>
         </div>
-      </div>
+      </tui-textfield>
 
-      <div class="form-field">
+      <tui-textfield>
         <label tuiLabel for="senha">Senha</label>
-        <input
-          tuiTextfield
-          id="senha"
-          formControlName="senha"
-          type="password"
-          placeholder="Digite sua senha"
-        />
-        <div *ngIf="signupForm.get('senha')?.invalid && signupForm.get('senha')?.touched" 
-             class="error-message">
+        <input tuiTextfield id="senha" formControlName="senha" type="password" placeholder="Digite sua senha" />
+        <div *ngIf="signupForm.get('senha')?.invalid && signupForm.get('senha')?.touched" class="error-message">
           <span *ngIf="signupForm.get('senha')?.errors?.['required']">Senha é obrigatória</span>
           <span *ngIf="signupForm.get('senha')?.errors?.['minlength']">Senha deve ter no mínimo 8 caracteres</span>
           <span *ngIf="signupForm.get('senha')?.errors?.['maxlength']">Senha deve ter no máximo 16 caracteres</span>
-          <span *ngIf="signupForm.get('senha')?.errors?.['pattern']">Senha deve conter apenas caracteres alfanuméricos</span>
         </div>
-      </div>
+      </tui-textfield>
 
       <div class="form-actions">
-        <button 
-          tuiButton 
-          size="m" 
-          type="submit"
-          [disabled]="signupForm.invalid || isLoading"
-          class="submit-button"
-        >
+        <button tuiButton size="m" type="submit" [disabled]="signupForm.invalid || isLoading" class="submit-button">
           {{ isLoading ? 'Cadastrando...' : 'Cadastrar' }}
         </button>
-      </div>
-
-      <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
       </div>
     </form>
   </div>

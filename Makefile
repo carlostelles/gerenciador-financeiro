@@ -1,7 +1,7 @@
 # Makefile para Gerenciador Financeiro
 
 .DEFAULT_GOAL := help
-.PHONY: help build up down logs clean dev-up dev-down prod-up prod-down ssl-init ssl-init-prod ssl-pre-check ssl-renew ssl-check ssl-deploy
+.PHONY: help build up down logs clean dev-up dev-down prod-up prod-down ssl-init ssl-init-prod ssl-pre-check ssl-renew ssl-check ssl-deploy nginx-rebuild
 
 # Variáveis
 COMPOSE_FILE_DEV = docker-compose.dev.yml
@@ -149,6 +149,16 @@ ssl-init: ## Obter certificado SSL inicial para desenvolvimento (auto-assinado)
 ssl-pre-check: ## Verificar pré-requisitos para certificação SSL
 	@echo "🔍 Verificando pré-requisitos SSL..."
 	@sh scripts/ssl-pre-check.sh
+
+nginx-rebuild: ## Reconstruir container nginx com health check corrigido
+	@echo "🔧 Reconstruindo container nginx..."
+	docker-compose stop nginx
+	docker-compose build --no-cache nginx
+	docker-compose up -d nginx
+	@echo "✅ Nginx reconstruído e reiniciado!"
+	@echo "⏳ Aguardando health check..."
+	@sleep 30
+	docker-compose ps nginx
 
 ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 	@echo "🔒 Obtendo certificado SSL para $(DOMAIN)..."

@@ -6,6 +6,10 @@ RUN apk --no-cache add curl openssl
 # Copiar configurações customizadas
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY conf.d/ /etc/nginx/conf.d/
+COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+
+# Tornar script executável
+RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Criar diretórios necessários para SSL e Let's Encrypt
 RUN mkdir -p /var/www/certbot
@@ -34,9 +38,9 @@ USER nginx-user
 # Expor portas
 EXPOSE 80 443
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:80/health || exit 1
+# Health check - mais robusto para produção
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=5 \
+  CMD /usr/local/bin/healthcheck.sh
 
 # Comando de produção
 CMD ["nginx", "-g", "daemon off;"]

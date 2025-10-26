@@ -26,16 +26,18 @@
         <button iconStart="@tui.receipt" tuiAsideItem routerLink="/movimentacoes" type="button">
             <span tuiFade>Movimentações</span>
         </button>
-        <button iconStart="@tui.piggy-bank" tuiAsideItem routerLink="/reservas" type="button">
+        <!-- <button iconStart="@tui.piggy-bank" tuiAsideItem routerLink="/reservas" type="button">
             <span tuiFade>Reservas</span>
-        </button>
+        </button> -->
         <hr />
-        <button iconStart="@tui.users" tuiAsideItem routerLink="/usuarios" type="button" *ngIf="isAdmin">
+        @if (isAdmin()) {
+        <button iconStart="@tui.users" tuiAsideItem routerLink="/usuarios" type="button">
             <span tuiFade>Usuários</span>
         </button>
-        <button iconStart="@tui.clipboard-clock" tuiAsideItem routerLink="/logs" type="button" *ngIf="isAdmin">
+        <button iconStart="@tui.clipboard-clock" tuiAsideItem routerLink="/logs" type="button">
             <span tuiFade>Logs</span>
         </button>
+        }
         <footer>
             <button tuiAsideItem type="button" [iconStart]="expanded() ? '@tui.chevron-left' : '@tui.chevron-right'"
                 (click)="handleToggle()">

@@ -1,7 +1,7 @@
 # Makefile para Gerenciador Financeiro
 
 .DEFAULT_GOAL := help
-.PHONY: help build up down logs clean dev-up dev-down prod-up prod-down ssl-init ssl-init-prod ssl-renew ssl-check ssl-deploy
+.PHONY: help build up down logs clean dev-up dev-down prod-up prod-down ssl-init ssl-init-prod ssl-pre-check ssl-renew ssl-check ssl-deploy
 
 # Variáveis
 COMPOSE_FILE_DEV = docker-compose.dev.yml
@@ -146,6 +146,10 @@ ssl-init: ## Obter certificado SSL inicial para desenvolvimento (auto-assinado)
 	@echo "   - HTTPS: https://localhost"
 	@echo "   - HTTP redireciona para HTTPS"
 
+ssl-pre-check: ## Verificar pré-requisitos para certificação SSL
+	@echo "🔍 Verificando pré-requisitos SSL..."
+	@sh scripts/ssl-pre-check.sh
+
 ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 	@echo "🔒 Obtendo certificado SSL para $(DOMAIN)..."
 	@echo "⚠️  IMPORTANTE: Certifique-se de que:"
@@ -155,28 +159,28 @@ ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 	@read -p "Continuar? (y/N) " confirm && [ "$$confirm" = "y" ]
 	@echo "🔄 Configurando Nginx para HTTP apenas..."
 	@if command -v docker-compose >/dev/null 2>&1; then \
-		docker-compose -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh http; \
+		docker-compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"; \
 		docker-compose -f $(COMPOSE_FILE_PROD) restart nginx; \
 		sleep 5; \
 		echo "🔒 Solicitando certificado SSL..."; \
-		docker-compose -f $(COMPOSE_FILE_PROD) run --rm certbot /scripts/init-ssl.sh; \
+		docker-compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "sh /scripts/init-ssl.sh"; \
 		if [ $$? -eq 0 ]; then \
 			echo "🔄 Configurando Nginx para HTTPS..."; \
-			docker-compose -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh https; \
+			docker-compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh https"; \
 			docker-compose -f $(COMPOSE_FILE_PROD) restart nginx; \
 			echo "✅ SSL configurado com sucesso!"; \
 		else \
 			echo "❌ Erro ao obter certificado SSL"; \
 		fi; \
 	else \
-		docker compose -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh http; \
+		docker compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"; \
 		docker compose -f $(COMPOSE_FILE_PROD) restart nginx; \
 		sleep 5; \
 		echo "🔒 Solicitando certificado SSL..."; \
-		docker compose -f $(COMPOSE_FILE_PROD) run --rm certbot /scripts/init-ssl.sh; \
+		docker compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "sh /scripts/init-ssl.sh"; \
 		if [ $$? -eq 0 ]; then \
 			echo "🔄 Configurando Nginx para HTTPS..."; \
-			docker compose -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh https; \
+			docker compose -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh https"; \
 			docker compose -f $(COMPOSE_FILE_PROD) restart nginx; \
 			echo "✅ SSL configurado com sucesso!"; \
 		else \

@@ -33,20 +33,33 @@ mkdir -p "$WWW_PATH/.well-known/acme-challenge"
 
 # Verificar se o domínio está acessível
 echo "Verificando conectividade com $DOMAIN..."
-if ! curl -s --connect-timeout 10 "http://$DOMAIN/.well-known/acme-challenge/" > /dev/null; then
-    echo "Aviso: Não foi possível conectar com $DOMAIN. Certifique-se de que:"
-    echo "1. O DNS está configurado corretamente"
-    echo "2. O servidor está acessível na porta 80"
-    echo "3. O Nginx está rodando e configurado"
-    echo ""
-    echo "Continuando com a solicitação do certificado..."
+if command -v curl >/dev/null 2>&1; then
+    if ! curl -s --connect-timeout 10 "http://$DOMAIN/.well-known/acme-challenge/" > /dev/null; then
+        echo "Aviso: Não foi possível conectar com $DOMAIN. Certifique-se de que:"
+        echo "1. O DNS está configurado corretamente"
+        echo "2. O servidor está acessível na porta 80"
+        echo "3. O Nginx está rodando e configurado"
+        echo ""
+    else
+        echo "✅ Conectividade OK com $DOMAIN"
+    fi
+else
+    echo "ℹ️  Curl não disponível - pulando verificação de conectividade"
 fi
+echo "Continuando com a solicitação do certificado..."
 
 # Obter ou renovar certificado
 echo "Solicitando certificado SSL para $DOMAIN..."
 
-# Usar staging para testes (remova --staging para produção)
-echo "Usando staging environment para testes..."
+# Verificar se é ambiente de produção ou desenvolvimento
+if [ "$1" = "staging" ] || [ "$SSL_STAGING" = "true" ]; then
+    echo "Usando staging environment para testes..."
+    STAGING_FLAG="--staging"
+else
+    echo "Usando ambiente de produção..."
+    STAGING_FLAG=""
+fi
+
 certbot certonly \
     --webroot \
     --webroot-path="$WWW_PATH" \
@@ -54,7 +67,7 @@ certbot certonly \
     --agree-tos \
     --no-eff-email \
     --verbose \
-    --staging \
+    $STAGING_FLAG \
     -d "$DOMAIN"
 
 if [ $? -eq 0 ]; then

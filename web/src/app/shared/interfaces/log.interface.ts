@@ -7,9 +7,15 @@ export enum LogAcao {
 }
 
 export interface Log {
-  id: number;
-  data: string;
+  _id: string;
+  data: Date;
   usuarioId: number;
   descricao: string;
   acao: LogAcao;
+  entidade?: string;
+  entidadeId?: string;
+  dadosAnteriores?: any;
+  dadosNovos?: any;
+  createdAt: Date;
+  updatedAt: Date;
 }

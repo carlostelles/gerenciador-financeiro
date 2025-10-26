@@ -1,0 +1,72 @@
+<div class="log-details">
+  <div class="content">
+    <div class="info-grid">
+      <div class="info-item">
+        <label>ID:</label>
+        <span>{{ log._id }}</span>
+      </div>
+
+      <div class="info-item">
+        <label>Data/Hora:</label>
+        <span>{{ log.data | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+      </div>
+
+      <div class="info-item">
+        <label>Usuário:</label>
+        <span>Usuário #{{ log.usuarioId }}</span>
+      </div>
+
+      <div class="info-item">
+        <label>Ação:</label>
+        <tui-badge [appearance]="getAcaoBadge(log.acao).appearance">
+          {{ getAcaoBadge(log.acao).label }}
+        </tui-badge>
+      </div>
+
+      <div class="info-item" *ngIf="log.entidade">
+        <label>Entidade:</label>
+        <span>{{ log.entidade }}</span>
+      </div>
+
+      <div class="info-item" *ngIf="log.entidadeId">
+        <label>ID da Entidade:</label>
+        <span>{{ log.entidadeId }}</span>
+      </div>
+
+      <div class="info-item full-width">
+        <label>Descrição:</label>
+        <span>{{ log.descricao }}</span>
+      </div>
+    </div>
+
+    <!-- Dados Anteriores -->
+    <div class="data-section" *ngIf="log.dadosAnteriores">
+      <h4>Dados Anteriores</h4>
+      <pre class="json-data">{{ log.dadosAnteriores | json }}</pre>
+    </div>
+
+    <!-- Dados Novos -->
+    <div class="data-section" *ngIf="log.dadosNovos">
+      <h4>Dados Novos</h4>
+      <pre class="json-data">{{ log.dadosNovos | json }}</pre>
+    </div>
+
+    <!-- Timestamps -->
+    <div class="timestamps">
+      <div class="timestamp">
+        <label>Criado em:</label>
+        <span>{{ log.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+      </div>
+      <div class="timestamp">
+        <label>Atualizado em:</label>
+        <span>{{ log.updatedAt | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button tuiButton appearance="outline" size="m" (click)="onClose()">
+      Fechar
+    </button>
+  </div>
+</div>

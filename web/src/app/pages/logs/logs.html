@@ -1,0 +1,73 @@
+<div class="container">
+    <div class="header">
+        <h2>Logs do Sistema</h2>
+        <div class="header-actions">
+            <button tuiButton appearance="secondary" size="m" (click)="loadLogs()">
+                <tui-icon icon="@tui.refresh-cw" [style.height.rem]="1"></tui-icon>
+                Atualizar
+            </button>
+        </div>
+    </div>
+
+    @if (!isLoading()) {
+    <div class="table-container">
+        <table tuiTable size="l">
+            <thead>
+                <tr>
+                    <th tuiTh>Data/Hora</th>
+                    <th tuiTh>Usuário</th>
+                    <th tuiTh>Ação</th>
+                    <th tuiTh>Entidade</th>
+                    <th tuiTh>Descrição</th>
+                    <th tuiTh>Ações</th>
+                </tr>
+            </thead>
+            <tbody tuiTbody>
+                <tr *ngFor="let log of logs(); trackBy: trackByFn">
+                    <td tuiTd>{{ log.data | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+                    <td tuiTd>{{ formatUser(log.usuarioId) }}</td>
+                    <td tuiTd>
+                        <tui-badge [appearance]="getAcaoBadge(log.acao).appearance">
+                            <tui-icon [icon]="getAcaoBadge(log.acao).icon" [style.height.rem]="1"></tui-icon>
+                            {{ getAcaoBadge(log.acao).label }}
+                        </tui-badge>
+                    </td>
+                    <td tuiTd>
+                        @if (getEntidadeBadge(log.entidade); as entidadeBadge) {
+                        <tui-badge [appearance]="entidadeBadge.appearance">
+                            <tui-icon [icon]="entidadeBadge.icon" [style.height.rem]="1"></tui-icon>
+                            {{ entidadeBadge.label }}
+                        </tui-badge>
+                        } @else {
+                        <span class="no-entity">-</span>
+                        }
+                    </td>
+                    <td tuiTd class="description">
+                        <span [title]="log.descricao">{{ log.descricao }}</span>
+                    </td>
+                    <td tuiTd class="actions">
+                        <button tuiButton appearance="secondary" size="s" (click)="viewDetails(log)"
+                            title="Ver detalhes">
+                            <tui-icon icon="@tui.eye" [style.height.rem]="1"></tui-icon>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        @if (logs.length === 0) {
+        <div class="empty-state">
+            <p>Nenhum log encontrado.</p>
+            <p>Os logs do sistema aparecerão aqui conforme as ações forem realizadas.</p>
+        </div>
+        }
+    </div>
+    }
+
+    @if (isLoading()) {
+    <div class="loading">
+        <tui-icon icon="@tui.loader" [style.height.rem]="2" class="loading-icon"></tui-icon>
+        <p>Carregando logs...</p>
+    </div>
+    }
+</div>

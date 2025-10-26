@@ -27,6 +27,11 @@ export const routes: Routes = [
         canActivate: [AdminGuard]
       },
       {
+        path: 'logs',
+        loadComponent: () => import('./pages/logs/logs').then(m => m.LogsComponent),
+        canActivate: [AdminGuard]
+      },
+      {
         path: 'orcamentos',
         loadComponent: () => import('./pages/orcamentos/orcamentos').then(m => m.OrcamentosComponent)
       },

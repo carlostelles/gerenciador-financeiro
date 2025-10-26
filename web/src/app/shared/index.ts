@@ -5,8 +5,7 @@ export * from './interfaces';
 export * from './pipes';
 
 // Helpers
-export * from './helpers/currency';
-export * from './helpers/date';
+export * from './helpers';
 
 // Components
 export * from './components';

@@ -129,6 +129,38 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - nginx_logs:/var/log/nginx
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+
+  # Certbot para SSL/TLS certificates
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gf-certbot
+    restart: "no"
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - ./scripts:/scripts:ro
+    command: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
+    depends_on:
+      - nginx
+
+  # Cron para auto-renovação de certificados
+  certbot-cron:
+    image: alpine:latest
+    container_name: gf-certbot-cron
+    restart: unless-stopped
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - ./scripts:/scripts:ro
+    command: /bin/sh -c "
+      apk add --no-cache dcron &&
+      echo '0 2 * * * /scripts/renew-cert.sh >> /var/log/cron.log 2>&1' | crontab - &&
+      echo 'Starting cron daemon...' &&
+      crond -f"
+    depends_on:
+      - certbot
 
 networks:
   gf-network:
@@ -144,3 +176,7 @@ volumes:
     name: gf-api-logs
   nginx_logs:
     name: gf-nginx-logs
+  certbot_certs:
+    name: gf-certbot-certs
+  certbot_www:
+    name: gf-certbot-www

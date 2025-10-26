@@ -25,7 +25,7 @@ export class UsuarioService {
   }
 
   update(id: number, usuario: UpdateUsuarioDto): Observable<Usuario> {
-    return this.http.put<Usuario>(`${this.baseUrl}/usuarios/${id}`, usuario);
+    return this.http.patch<Usuario>(`${this.baseUrl}/usuarios/${id}`, usuario);
   }
 
   delete(id: number): Observable<void> {

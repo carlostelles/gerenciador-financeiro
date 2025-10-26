@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
+import { AdminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   {
@@ -19,6 +20,11 @@ export const routes: Routes = [
       {
         path: 'categorias',
         loadComponent: () => import('./pages/categorias/categorias').then(m => m.CategoriasComponent)
+      },
+      {
+        path: 'usuarios',
+        loadComponent: () => import('./pages/usuarios/usuarios').then(m => m.UsuariosComponent),
+        canActivate: [AdminGuard]
       },
       {
         path: 'orcamentos',

@@ -1,0 +1,82 @@
+<form tuiForm="l" [formGroup]="usuarioForm" (ngSubmit)="saveUsuario()">
+        <!-- Nome -->
+        <tui-textfield>
+            <label tuiLabel for="nome">Nome completo</label>
+            <input tuiTextfield id="nome" formControlName="nome" placeholder="Digite o nome completo" />
+            <div *ngIf="hasFieldError('nome', 'required')" class="error-message">
+                Nome é obrigatório
+            </div>
+            <div *ngIf="hasFieldError('nome', 'minlength')" class="error-message">
+                Nome deve ter pelo menos 2 caracteres
+            </div>
+        </tui-textfield>
+
+        <!-- Email -->
+        <tui-textfield>
+            <label tuiLabel for="email">E-mail</label>
+            <input tuiTextfield id="email" formControlName="email" type="email" placeholder="Digite o e-mail" />
+            <div *ngIf="hasFieldError('email', 'required')" class="error-message">
+                E-mail é obrigatório
+            </div>
+            <div *ngIf="hasFieldError('email', 'email')" class="error-message">
+                E-mail deve ser válido
+            </div>
+        </tui-textfield>
+
+        <!-- Telefone -->
+        <tui-textfield [tuiTextfieldCleaner]="false">
+            <label tuiLabel for="telefone">Telefone</label>
+            <input tuiInputPhone id="telefone" formControlName="telefone" mask="+55 ## #####-####" />
+            <img alt="Bandeira do Brasil" width="28" [src]="'BR' | tuiFlag" [style.border-radius.%]="50" />
+            <div *ngIf="usuarioForm.get('telefone')?.invalid && usuarioForm.get('telefone')?.touched"
+                class="error-message">
+                <span *ngIf="usuarioForm.get('telefone')?.errors?.['required']">Telefone é obrigatório</span>
+                <span *ngIf="usuarioForm.get('telefone')?.errors?.['pattern']">Telefone inválido</span>
+            </div>
+        </tui-textfield>
+
+        <!-- Senha -->
+        <tui-textfield>
+            <label tuiLabel for="senha">{{ usuario ? 'Nova senha (opcional)' : 'Senha' }}</label>
+            <input tuiTextfield id="senha" formControlName="senha" type="password"
+                [placeholder]="usuario ? 'Deixe em branco para manter a atual' : 'Digite a senha'" />
+            <div *ngIf="usuarioForm.get('senha')?.invalid && usuarioForm.get('senha')?.touched" class="error-message">
+                <span *ngIf="hasFieldError('senha', 'required')">Senha é obrigatória</span>
+                <span *ngIf="hasFieldError('senha', 'minlength')">Senha deve ter no mínimo 8 caracteres</span>
+                <span *ngIf="hasFieldError('senha', 'maxlength')">Senha deve ter no máximo 16 caracteres</span>
+            </div>
+        </tui-textfield>
+
+        <!-- Role -->
+         <div class="radiobox-group">
+            <label>Tipo de usuário</label>
+            <div class="radiobox-options">
+                <tui-chip *ngFor="let option of roleOptions"
+                    [appearance]="usuarioForm.get('role')?.value === option.value ? option.appearance : 'outline'"
+                    (click)="usuarioForm.get('role')?.setValue(option.value)" class="role-chip">
+                    <tui-icon [icon]="option.icon" [style.height.rem]="1"></tui-icon>
+                    {{ option.label }}
+                </tui-chip>
+            </div>
+        </div>
+
+        <!-- Status Ativo (apenas para edição) -->
+        <div class="form-group" *ngIf="usuario">
+            <label class="form-label">Status</label>
+            <label class="switch-container">
+                <input type="checkbox" formControlName="ativo" />
+                <span class="switch-slider"></span>
+                <span class="switch-label">{{ usuarioForm.get('ativo')?.value ? 'Ativo' : 'Inativo' }}</span>
+            </label>
+        </div>
+
+    <!-- Botões -->
+    <div class="form-actions">
+        <button tuiButton type="button" appearance="outline" size="m" (click)="onClose()">
+            Cancelar
+        </button>
+        <button tuiButton type="submit" appearance="primary" size="m" [disabled]="usuarioForm.invalid">
+            {{ usuario ? 'Atualizar' : 'Criar' }} Usuário
+        </button>
+    </div>
+</form>

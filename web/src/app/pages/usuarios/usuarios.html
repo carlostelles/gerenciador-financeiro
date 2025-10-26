@@ -1,0 +1,65 @@
+<div class="container">
+    <div class="header">
+        <h2>Gerenciar Usuários</h2>
+        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
+            Novo Usuário
+        </app-button-float>
+    </div>
+
+    <div class="content" *ngIf="!isLoading()">
+        <div class="table-container">
+            <table tuiTable size="l">
+                <thead>
+                    <tr>
+                        <th tuiTh>Nome</th>
+                        <th tuiTh>Email</th>
+                        <th tuiTh>Telefone</th>
+                        <th tuiTh>Role</th>
+                        <th tuiTh>Status</th>
+                        <th tuiTh>Criado em</th>
+                        <th tuiTh>Ações</th>
+                    </tr>
+                </thead>
+                <tbody tuiTbody>
+                    <tr *ngFor="let usuario of usuarios; trackBy: trackByFn">
+                        <td tuiTd>{{ usuario.nome }}</td>
+                        <td tuiTd>{{ usuario.email }}</td>
+                        <td tuiTd>{{ usuario.telefone | phone }}</td>
+                        <td tuiTd>
+                            <tui-badge [appearance]="getRoleBadge(usuario.role).appearance">
+                                <tui-icon [icon]="getRoleBadge(usuario.role).icon" [style.height.rem]="1"></tui-icon>
+                                {{ getRoleBadge(usuario.role).label }}
+                            </tui-badge>
+                        </td>
+                        <td tuiTd>
+                            <tui-badge [appearance]="getStatusBadge(usuario.ativo).appearance">
+                                <tui-icon [icon]="getStatusBadge(usuario.ativo).icon" [style.height.rem]="1"></tui-icon>
+                                {{ getStatusBadge(usuario.ativo).label }}
+                            </tui-badge>
+                        </td>
+                        <td tuiTd>{{ usuario.createdAt | date: 'dd/MM/yyyy'}}</td>
+                        <td tuiTd class="actions">
+                            <button tuiButton appearance="secondary" size="s" (click)="openFormModal(usuario)">
+                                <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary" tuiTooltip="Editar usuário"
+                                    aria-label="Editar usuário" />
+                            </button>
+                            <button tuiButton appearance="destructive" size="s" (click)="confirmDelete(usuario)" *ngIf="usuario.ativo">
+                                <tui-icon icon="@tui.user-minus" [style.height.rem]="1" appearance="danger" tuiTooltip="Desativar usuário"
+                                    aria-label="Desativar usuário" />
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div *ngIf="usuarios.length === 0" class="empty-state">
+                <p>Nenhum usuário encontrado.</p>
+                <p>Clique em "Novo Usuário" para adicionar o primeiro usuário.</p>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="isLoading()" class="loading">
+        <p>Carregando usuários...</p>
+    </div>
+</div>

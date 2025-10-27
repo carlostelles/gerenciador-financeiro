@@ -31,9 +31,12 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make ssl-init-staging           # Certificado de teste primeiro"
 	@echo "  make ssl-test                   # Testa se HTTPS está funcionando"
 	@echo "  make ssl-status                 # Status completo do SSL"
+	@echo "🔧 SSL - Correção:"
+	@echo "  make ssl-quick-fix              # 🚀 CORREÇÃO RÁPIDA - Use este!"
 	@echo "  make ssl-finish                 # Finaliza configuração SSL"
 	@echo "  make ssl-config-check           # Verifica configuração atual"
 	@echo "  make ssl-config-fix             # Corrige configuração SSL"
+	@echo "  make ssl-fix-cert-paths         # Corrige paths do certificado"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
@@ -290,25 +293,37 @@ ssl-status: ## Ver status completo do SSL
 ssl-finish: ## Finalizar configuração SSL (ativar HTTPS)
 	@echo "🎯 Finalizando configuração SSL..."
 	@echo "🔄 Ativando configuração HTTPS..."
-	@# Verificar se o certificado existe
-	@if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem || test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem"; then \
-		echo "✅ Certificado encontrado"; \
-	else \
+	@# Verificar se o certificado existe (com ou sem sufixo -0001)
+	@CERT_FOUND=false; \
+	if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem" 2>/dev/null; then \
+		echo "✅ Certificado encontrado em $(DOMAIN)"; \
+		CERT_FOUND=true; \
+	elif $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem" 2>/dev/null; then \
+		echo "✅ Certificado encontrado em $(DOMAIN)-0001"; \
+		echo "🔧 Corrigindo paths do certificado no default.conf..."; \
+		sed -i.bak 's|/etc/letsencrypt/live/$(DOMAIN)/|/etc/letsencrypt/live/$(DOMAIN)-0001/|g' ./nginx/conf.d/default.conf; \
+		CERT_FOUND=true; \
+	fi; \
+	if [ "$$CERT_FOUND" = "false" ]; then \
 		echo "❌ Certificado não encontrado. Execute: make ssl-init-prod"; \
 		exit 1; \
 	fi
-	@# Desativar HTTP e ativar HTTPS diretamente
+	@# Garantir que o arquivo default.conf existe
+	@if [ ! -f ./nginx/conf.d/default.conf ]; then \
+		echo "❌ Arquivo default.conf não encontrado"; \
+		echo "🔧 Tentando recriar a partir do repositório..."; \
+		git checkout HEAD -- ./nginx/conf.d/default.conf 2>/dev/null || echo "❌ Não foi possível restaurar default.conf"; \
+		exit 1; \
+	fi
+	@# Desativar HTTP e ativar HTTPS
 	@echo "🔧 Alternando configurações..."
 	@if [ -f ./nginx/conf.d/http-only.conf ]; then \
-		mv ./nginx/conf.d/http-only.conf ./nginx/conf.d/http-only.conf.disabled || rm ./nginx/conf.d/http-only.conf; \
+		mv ./nginx/conf.d/http-only.conf ./nginx/conf.d/http-only.conf.disabled 2>/dev/null || rm ./nginx/conf.d/http-only.conf; \
 		echo "✅ Configuração HTTP desativada"; \
 	fi
 	@if [ -f ./nginx/conf.d/default.conf.disabled ]; then \
-		mv ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf || cp ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf; \
+		mv ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf; \
 		echo "✅ Configuração HTTPS ativada"; \
-	elif [ ! -f ./nginx/conf.d/default.conf ]; then \
-		echo "❌ Arquivo default.conf não encontrado"; \
-		exit 1; \
 	else \
 		echo "✅ Configuração HTTPS já ativa"; \
 	fi
@@ -318,6 +333,30 @@ ssl-finish: ## Finalizar configuração SSL (ativar HTTPS)
 	@echo "✅ SSL finalizado! Testando..."
 	@sleep 3
 	@make ssl-test
+
+ssl-fix-cert-paths: ## Corrigir paths do certificado no default.conf
+	@echo "🔧 Verificando e corrigindo paths do certificado..."
+	@# Verificar qual certificado existe
+	@CERT_DIR=""; \
+	if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem" 2>/dev/null; then \
+		CERT_DIR="$(DOMAIN)"; \
+		echo "✅ Certificado encontrado em: $(DOMAIN)"; \
+	elif $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem" 2>/dev/null; then \
+		CERT_DIR="$(DOMAIN)-0001"; \
+		echo "✅ Certificado encontrado em: $(DOMAIN)-0001"; \
+	else \
+		echo "❌ Nenhum certificado encontrado"; \
+		exit 1; \
+	fi; \
+	echo "🔧 Atualizando default.conf para usar $$CERT_DIR..."; \
+	if [ -f ./nginx/conf.d/default.conf ]; then \
+		sed -i.bak "s|/etc/letsencrypt/live/$(DOMAIN)[^/]*/|/etc/letsencrypt/live/$$CERT_DIR/|g" ./nginx/conf.d/default.conf; \
+		echo "✅ Paths atualizados no default.conf"; \
+	else \
+		echo "❌ Arquivo default.conf não encontrado"; \
+		exit 1; \
+	fi
+	@echo "✅ Paths do certificado corrigidos!"
 
 ssl-config-check: ## Verificar e mostrar configuração atual do nginx
 	@echo "📋 Verificando configuração atual do nginx..."
@@ -333,12 +372,36 @@ ssl-config-check: ## Verificar e mostrar configuração atual do nginx
 	fi
 	@if [ -f ./nginx/conf.d/default.conf ]; then \
 		echo "🔒 HTTPS: ✅ Ativo (default.conf)"; \
+		echo "📜 Paths do certificado no default.conf:"; \
+		grep -n "ssl_certificate" ./nginx/conf.d/default.conf || echo "   Não encontrado"; \
 	else \
 		echo "🔒 HTTPS: ❌ Inativo"; \
 	fi
 	@echo ""
-	@echo "📜 Certificados:"
+	@echo "📜 Certificados disponíveis:"
 	@$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "ls -la /etc/letsencrypt/live/ 2>/dev/null || echo 'Nenhum certificado encontrado'"
+
+ssl-quick-fix: ## Correção rápida e simples para ativar SSL
+	@echo "⚡ Correção rápida para ativar SSL..."
+	@echo "🔍 Verificando certificados..."
+	@# Primeiro garantir que temos o arquivo default.conf
+	@if [ ! -f ./nginx/conf.d/default.conf ]; then \
+		echo "🔧 Restaurando default.conf..."; \
+		git checkout HEAD -- ./nginx/conf.d/default.conf 2>/dev/null && echo "✅ Arquivo restaurado" || echo "❌ Falha ao restaurar"; \
+	fi
+	@# Identificar qual certificado temos e ajustar
+	@if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem" 2>/dev/null; then \
+		echo "🔧 Ajustando para certificado -0001..."; \
+		sed -i.bak 's|$(DOMAIN)/|$(DOMAIN)-0001/|g' ./nginx/conf.d/default.conf; \
+	fi
+	@# Limpar configurações conflitantes
+	@rm -f ./nginx/conf.d/http-only.conf ./nginx/conf.d/default.conf.disabled 2>/dev/null
+	@echo "✅ Configuração limpa!"
+	@echo "🔄 Reiniciando nginx..."
+	@$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+	@sleep 3
+	@echo "🧪 Testando HTTPS..."
+	@make ssl-test
 
 ssl-config-fix: ## Corrigir configuração SSL manualmente
 	@echo "🔧 Corrigindo configuração SSL..."

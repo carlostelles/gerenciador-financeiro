@@ -65,11 +65,15 @@ echo ""
 # 4. Verificar diretório ACME
 echo "4️⃣ Verificando diretório ACME..."
 ACME_DIR="/var/www/certbot/.well-known/acme-challenge"
-if $COMPOSE_CMD exec nginx test -d "$ACME_DIR" 2>/dev/null; then
+if $COMPOSE_CMD run --rm --entrypoint /bin/sh certbot -c "test -d '$ACME_DIR'" 2>/dev/null; then
     printf "${GREEN}✅ Diretório ACME existe: $ACME_DIR${NC}\n"
 else
     printf "${YELLOW}⚠️  Criando diretório ACME...${NC}\n"
-    $COMPOSE_CMD exec nginx mkdir -p "$ACME_DIR" 2>/dev/null || printf "${RED}❌ Falha ao criar diretório ACME${NC}\n"
+    if $COMPOSE_CMD run --rm --entrypoint /bin/sh certbot -c "mkdir -p '$ACME_DIR'" 2>/dev/null; then
+        printf "${GREEN}✅ Diretório ACME criado${NC}\n"
+    else
+        printf "${RED}❌ Falha ao criar diretório ACME${NC}\n"
+    fi
 fi
 echo ""
 

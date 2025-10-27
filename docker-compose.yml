@@ -130,7 +130,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:rw
       - nginx_logs:/var/log/nginx
       - certbot_certs:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
+      - certbot_www:/var/www/certbot:rw
       - ./scripts:/scripts:ro
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]

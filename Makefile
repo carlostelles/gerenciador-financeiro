@@ -21,6 +21,7 @@ help: ## Mostra esta mensagem de ajuda
 	@echo ""
 	@echo "🔧 Correções Rápidas:"
 	@echo "  make ssl-fix-duplicate-upstream  # Corrige erro de upstream duplicado"
+	@echo "  make ssl-fix-acme-permissions    # Corrige permissões diretório ACME"
 	@echo "  make ssl-restart-http           # Reinicia nginx apenas HTTP"
 	@echo "  make ssl-fix-permissions        # Corrige permissões SSL"
 	@echo ""
@@ -163,6 +164,14 @@ ssl-check: ## Verificar status do certificado SSL
 ssl-fix-permissions: ## Corrigir permissões dos certificados SSL
 	@echo "🔧 Corrigindo permissões SSL..."
 	@sudo ./scripts/fix-ssl-permissions.sh
+
+ssl-fix-acme-permissions: ## Corrigir permissões do diretório ACME
+	@echo "🔧 Corrigindo permissões ACME..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) stop nginx
+	@echo "📁 Criando diretório ACME..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "mkdir -p /var/www/certbot/.well-known/acme-challenge && chmod 755 /var/www/certbot/.well-known/acme-challenge"
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) up -d nginx
+	@echo "✅ Permissões ACME corrigidas!"
 
 ssl-fix-duplicate-upstream: ## Corrigir erro de upstream duplicado
 	@echo "🔧 Corrigindo erro de upstream duplicado..."

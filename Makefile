@@ -19,6 +19,11 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "🚀 Deploy Rápido:"
 	@echo "  make ssl-deploy     # Deploy completo com HTTPS automático"
 	@echo ""
+	@echo "🔧 Correções Rápidas:"
+	@echo "  make ssl-fix-duplicate-upstream  # Corrige erro de upstream duplicado"
+	@echo "  make ssl-restart-http           # Reinicia nginx apenas HTTP"
+	@echo "  make ssl-fix-permissions        # Corrige permissões SSL"
+	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ## Desenvolvimento
@@ -158,6 +163,16 @@ ssl-check: ## Verificar status do certificado SSL
 ssl-fix-permissions: ## Corrigir permissões dos certificados SSL
 	@echo "🔧 Corrigindo permissões SSL..."
 	@sudo ./scripts/fix-ssl-permissions.sh
+
+ssl-fix-duplicate-upstream: ## Corrigir erro de upstream duplicado
+	@echo "🔧 Corrigindo erro de upstream duplicado..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) stop nginx
+	@echo "📝 Removendo arquivos de configuração conflitantes..."
+	@rm -f ./nginx/conf.d/http-only.conf ./nginx/conf.d/default.conf.disabled
+	@echo "📋 Copiando configuração HTTP corrigida..."
+	@cp ./nginx/conf.d/http-only.conf.template ./nginx/conf.d/http-only.conf
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) up -d nginx
+	@echo "✅ Configuração corrigida! Nginx iniciado com HTTP."
 
 ssl-restart-http: ## Reiniciar nginx apenas com HTTP (para debug SSL)
 	@echo "🔄 Reiniciando nginx com configuração HTTP apenas..."

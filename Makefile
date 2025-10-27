@@ -25,6 +25,11 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make ssl-restart-http           # Reinicia nginx apenas HTTP"
 	@echo "  make ssl-fix-permissions        # Corrige permissões SSL"
 	@echo ""
+	@echo "🧪 Debug SSL:"
+	@echo "  make ssl-test-acme              # Testa acesso ao endpoint ACME"
+	@echo "  make ssl-debug                  # Ver logs detalhados Let's Encrypt"
+	@echo "  make ssl-init-staging           # Certificado de teste primeiro"
+	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ## Desenvolvimento
@@ -131,6 +136,22 @@ nginx-rebuild: ## Reconstruir container nginx com health check corrigido
 	@sleep 30
 	$(DOCKER_COMPOSE_CMD) ps nginx
 
+ssl-init-staging: ## Obter certificado SSL de teste (staging)
+	@echo "🧪 Obtendo certificado SSL de teste (staging)..."
+	@echo "⚠️  Este é um certificado de TESTE - não será reconhecido pelos navegadores"
+	@echo "🔄 Configurando Nginx para HTTP apenas..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+	@sleep 5
+	@echo "🔒 Solicitando certificado SSL de teste..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "SSL_STAGING=true sh /scripts/init-ssl.sh"
+	@if [ $$? -eq 0 ]; then \
+		echo "✅ Certificado de teste obtido com sucesso!"; \
+		echo "🔧 Para obter certificado de produção: make ssl-init-prod"; \
+	else \
+		echo "❌ Erro ao obter certificado de teste"; \
+	fi
+
 ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 	@echo "🔒 Obtendo certificado SSL para $(DOMAIN)..."
 	@echo "⚠️  IMPORTANTE: Certifique-se de que:"
@@ -151,6 +172,9 @@ ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 		echo "✅ SSL configurado com sucesso!"; \
 	else \
 		echo "❌ Erro ao obter certificado SSL"; \
+		echo "📋 Verificando logs..."; \
+		$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "if [ -f /var/log/letsencrypt/letsencrypt.log ]; then echo '=== ÚLTIMAS 20 LINHAS DO LOG ==='; tail -20 /var/log/letsencrypt/letsencrypt.log; fi"; \
+		echo "🔧 Para debug: make ssl-debug ou make ssl-test-acme"; \
 	fi
 
 ssl-renew: ## Renovar certificado SSL
@@ -205,6 +229,25 @@ ssl-config-http: ## Configurar nginx para HTTP via script interno
 ssl-config-https: ## Configurar nginx para HTTPS via script interno  
 	@echo "🔧 Configurando nginx para HTTPS via script..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh https
+
+ssl-debug: ## Ver logs detalhados do Let's Encrypt
+	@echo "📋 Logs detalhados do Let's Encrypt..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "if [ -f /var/log/letsencrypt/letsencrypt.log ]; then tail -50 /var/log/letsencrypt/letsencrypt.log; else echo 'Log não encontrado'; fi"
+
+ssl-test-acme: ## Testar acesso ao endpoint ACME challenge
+	@echo "🧪 Testando acesso ACME challenge..."
+	@echo "📝 Criando arquivo de teste..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "echo 'test-$(shell date +%s)' > /var/www/certbot/.well-known/acme-challenge/test.txt"
+	@echo "🌐 Testando acesso via HTTP..."
+	@sleep 2
+	@if command -v curl >/dev/null 2>&1; then \
+		echo "URL: http://$(DOMAIN)/.well-known/acme-challenge/test.txt"; \
+		curl -v "http://$(DOMAIN)/.well-known/acme-challenge/test.txt" || echo "❌ Falha no acesso"; \
+	else \
+		echo "curl não disponível. Teste manualmente: http://$(DOMAIN)/.well-known/acme-challenge/test.txt"; \
+	fi
+	@echo "🧹 Limpando arquivo de teste..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "rm -f /var/www/certbot/.well-known/acme-challenge/test.txt"
 
 ssl-force-renew: ## Forçar renovação do certificado SSL
 	@echo "🔄 Forçando renovação do certificado SSL..."

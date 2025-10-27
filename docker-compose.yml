@@ -150,6 +150,9 @@ services:
     command: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
     depends_on:
       - nginx
+    environment:
+      - PUID=1000
+      - PGID=1000
 
   # Cron para auto-renovação de certificados
   certbot-cron:

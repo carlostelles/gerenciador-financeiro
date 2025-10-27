@@ -155,6 +155,17 @@ ssl-check: ## Verificar status do certificado SSL
 	@echo "🔍 Verificando status SSL para $(DOMAIN)..."
 	@./scripts/check-ssl.sh
 
+ssl-fix-permissions: ## Corrigir permissões dos certificados SSL
+	@echo "🔧 Corrigindo permissões SSL..."
+	@sudo ./scripts/fix-ssl-permissions.sh
+
+ssl-restart-http: ## Reiniciar nginx apenas com HTTP (para debug SSL)
+	@echo "🔄 Reiniciando nginx com configuração HTTP apenas..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) stop nginx
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) up -d nginx
+	@echo "✅ Nginx reiniciado com HTTP. Use ssl-init-prod para configurar SSL."
+
 ssl-force-renew: ## Forçar renovação do certificado SSL
 	@echo "🔄 Forçando renovação do certificado SSL..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm certbot certbot renew --force-renewal

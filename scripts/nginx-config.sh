@@ -34,8 +34,15 @@ switch_to_http() {
         mv "$NGINX_CONF_DIR/$HTTP_CONF.disabled" "$NGINX_CONF_DIR/$HTTP_CONF"
         echo "✅ Configuração HTTP ativada"
     elif [ ! -f "$NGINX_CONF_DIR/$HTTP_CONF" ]; then
-        echo "❌ Arquivo $HTTP_CONF não encontrado"
-        exit 1
+        echo "📝 Criando configuração HTTP..."
+        # Copiar do template se existir
+        if [ -f "$NGINX_CONF_DIR/$HTTP_CONF.template" ]; then
+            cp "$NGINX_CONF_DIR/$HTTP_CONF.template" "$NGINX_CONF_DIR/$HTTP_CONF"
+            echo "✅ Configuração HTTP criada a partir do template"
+        else
+            echo "❌ Arquivo $HTTP_CONF e template não encontrados"
+            exit 1
+        fi
     else
         echo "✅ Configuração HTTP já ativa"
     fi

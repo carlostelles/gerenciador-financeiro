@@ -55,22 +55,30 @@ switch_to_https() {
     
     # Verificar se certificados existem
     CERT_PATH="/etc/letsencrypt/live/controle-financeiro.gaius.digital"
-    if [ ! -f "$CERT_PATH/fullchain.pem" ]; then
+    if [ ! -f "$CERT_PATH/fullchain.pem" ] && [ ! -f "$CERT_PATH-0001/fullchain.pem" ]; then
         echo "❌ Certificados SSL não encontrados em $CERT_PATH"
         echo "🔧 Execute primeiro: make ssl-init"
         exit 1
     fi
     
-    # Desativar configuração HTTP
+    # Desativar configuração HTTP com tratamento de erro
     if [ -f "$NGINX_CONF_DIR/$HTTP_CONF" ]; then
-        mv "$NGINX_CONF_DIR/$HTTP_CONF" "$NGINX_CONF_DIR/$HTTP_CONF.disabled"
-        echo "✅ Configuração HTTP desativada"
+        if mv "$NGINX_CONF_DIR/$HTTP_CONF" "$NGINX_CONF_DIR/$HTTP_CONF.disabled" 2>/dev/null; then
+            echo "✅ Configuração HTTP desativada"
+        else
+            echo "⚠️  Erro ao desativar HTTP - tentando remover"
+            rm -f "$NGINX_CONF_DIR/$HTTP_CONF" 2>/dev/null || echo "🔄 HTTP mantido ativo"
+        fi
     fi
     
     # Ativar configuração HTTPS
     if [ -f "$NGINX_CONF_DIR/$HTTPS_CONF.disabled" ]; then
-        mv "$NGINX_CONF_DIR/$HTTPS_CONF.disabled" "$NGINX_CONF_DIR/$HTTPS_CONF"
-        echo "✅ Configuração HTTPS ativada"
+        if mv "$NGINX_CONF_DIR/$HTTPS_CONF.disabled" "$NGINX_CONF_DIR/$HTTPS_CONF" 2>/dev/null; then
+            echo "✅ Configuração HTTPS ativada"
+        else
+            echo "⚠️  Erro ao ativar HTTPS - tentando copiar"
+            cp "$NGINX_CONF_DIR/$HTTPS_CONF.disabled" "$NGINX_CONF_DIR/$HTTPS_CONF" 2>/dev/null || echo "❌ Falha ao ativar HTTPS"
+        fi
     elif [ ! -f "$NGINX_CONF_DIR/$HTTPS_CONF" ]; then
         echo "❌ Arquivo $HTTPS_CONF não encontrado"
         exit 1

@@ -29,6 +29,9 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make ssl-test-acme              # Testa acesso ao endpoint ACME"
 	@echo "  make ssl-debug                  # Ver logs detalhados Let's Encrypt"
 	@echo "  make ssl-init-staging           # Certificado de teste primeiro"
+	@echo "  make ssl-test                   # Testa se HTTPS está funcionando"
+	@echo "  make ssl-status                 # Status completo do SSL"
+	@echo "  make ssl-finish                 # Finaliza configuração SSL"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
@@ -253,6 +256,45 @@ ssl-force-renew: ## Forçar renovação do certificado SSL
 	@echo "🔄 Forçando renovação do certificado SSL..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm certbot certbot renew --force-renewal
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+
+ssl-test: ## Testar se o SSL está funcionando corretamente
+	@echo "🧪 Testando SSL/HTTPS..."
+	@echo "📋 Verificando status do nginx..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) exec nginx nginx -t || echo "❌ Configuração nginx inválida"
+	@echo ""
+	@echo "🔒 Testando acesso HTTPS..."
+	@if command -v curl >/dev/null 2>&1; then \
+		echo "URL: https://$(DOMAIN)/health"; \
+		curl -I "https://$(DOMAIN)/health" 2>/dev/null | head -5 || echo "❌ Falha no acesso HTTPS"; \
+		echo ""; \
+		echo "📜 Verificando certificado..."; \
+		curl -I "https://$(DOMAIN)" 2>&1 | grep -E "(HTTP|Server|SSL|TLS)" || echo "ℹ️  Informações SSL não disponíveis"; \
+	else \
+		echo "curl não disponível. Teste manualmente: https://$(DOMAIN)"; \
+	fi
+	@echo ""
+	@echo "📊 Status dos containers..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) ps nginx
+
+ssl-status: ## Ver status completo do SSL
+	@echo "📊 Status completo do SSL..."
+	@echo ""
+	@echo "🔍 Verificando configuração nginx..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "/scripts/nginx-config.sh status"
+	@echo ""
+	@echo "📜 Informações do certificado..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "if [ -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem ]; then openssl x509 -in /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem -text -noout | grep -E '(Subject:|Not After)'; elif [ -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem ]; then openssl x509 -in /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem -text -noout | grep -E '(Subject:|Not After)'; else echo 'Certificado não encontrado'; fi"
+
+ssl-finish: ## Finalizar configuração SSL (ativar HTTPS)
+	@echo "🎯 Finalizando configuração SSL..."
+	@echo "🔄 Configurando Nginx para HTTPS..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "/scripts/nginx-config.sh https" || echo "⚠️  Erro na troca de configuração - nginx mantido ativo"
+	@echo "🔄 Reiniciando Nginx..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+	@echo ""
+	@echo "✅ SSL finalizado! Testando..."
+	@sleep 3
+	@make ssl-test
 
 ## Produção
 prod-up: ## Iniciar ambiente de produção

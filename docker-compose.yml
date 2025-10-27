@@ -127,10 +127,11 @@ services:
       - gf-network
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:rw
       - nginx_logs:/var/log/nginx
       - certbot_certs:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
+      - ./scripts:/scripts:ro
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 30s

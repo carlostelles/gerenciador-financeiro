@@ -162,9 +162,25 @@ ssl-fix-permissions: ## Corrigir permissões dos certificados SSL
 ssl-restart-http: ## Reiniciar nginx apenas com HTTP (para debug SSL)
 	@echo "🔄 Reiniciando nginx com configuração HTTP apenas..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) stop nginx
-	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"
+	@./scripts/nginx-switch.sh http
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) up -d nginx
 	@echo "✅ Nginx reiniciado com HTTP. Use ssl-init-prod para configurar SSL."
+
+ssl-switch-http: ## Alternar nginx para HTTP sem reiniciar
+	@./scripts/nginx-switch.sh http
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) reload nginx 2>/dev/null || $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+
+ssl-switch-https: ## Alternar nginx para HTTPS sem reiniciar
+	@./scripts/nginx-switch.sh https
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) reload nginx 2>/dev/null || $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+
+ssl-config-http: ## Configurar nginx para HTTP via script interno
+	@echo "🔧 Configurando nginx para HTTP via script..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh http
+
+ssl-config-https: ## Configurar nginx para HTTPS via script interno  
+	@echo "🔧 Configurando nginx para HTTPS via script..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) exec nginx /scripts/nginx-config.sh https
 
 ssl-force-renew: ## Forçar renovação do certificado SSL
 	@echo "🔄 Forçando renovação do certificado SSL..."

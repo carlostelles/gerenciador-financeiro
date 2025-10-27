@@ -32,6 +32,8 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make ssl-test                   # Testa se HTTPS está funcionando"
 	@echo "  make ssl-status                 # Status completo do SSL"
 	@echo "  make ssl-finish                 # Finaliza configuração SSL"
+	@echo "  make ssl-config-check           # Verifica configuração atual"
+	@echo "  make ssl-config-fix             # Corrige configuração SSL"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
@@ -287,14 +289,90 @@ ssl-status: ## Ver status completo do SSL
 
 ssl-finish: ## Finalizar configuração SSL (ativar HTTPS)
 	@echo "🎯 Finalizando configuração SSL..."
-	@echo "🔄 Configurando Nginx para HTTPS..."
-	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "/scripts/nginx-config.sh https" || echo "⚠️  Erro na troca de configuração - nginx mantido ativo"
+	@echo "🔄 Ativando configuração HTTPS..."
+	@# Verificar se o certificado existe
+	@if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem || test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem"; then \
+		echo "✅ Certificado encontrado"; \
+	else \
+		echo "❌ Certificado não encontrado. Execute: make ssl-init-prod"; \
+		exit 1; \
+	fi
+	@# Desativar HTTP e ativar HTTPS diretamente
+	@echo "🔧 Alternando configurações..."
+	@if [ -f ./nginx/conf.d/http-only.conf ]; then \
+		mv ./nginx/conf.d/http-only.conf ./nginx/conf.d/http-only.conf.disabled || rm ./nginx/conf.d/http-only.conf; \
+		echo "✅ Configuração HTTP desativada"; \
+	fi
+	@if [ -f ./nginx/conf.d/default.conf.disabled ]; then \
+		mv ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf || cp ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf; \
+		echo "✅ Configuração HTTPS ativada"; \
+	elif [ ! -f ./nginx/conf.d/default.conf ]; then \
+		echo "❌ Arquivo default.conf não encontrado"; \
+		exit 1; \
+	else \
+		echo "✅ Configuração HTTPS já ativa"; \
+	fi
 	@echo "🔄 Reiniciando Nginx..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
 	@echo ""
 	@echo "✅ SSL finalizado! Testando..."
 	@sleep 3
 	@make ssl-test
+
+ssl-config-check: ## Verificar e mostrar configuração atual do nginx
+	@echo "📋 Verificando configuração atual do nginx..."
+	@echo ""
+	@echo "📁 Arquivos em nginx/conf.d/:"
+	@ls -la ./nginx/conf.d/ || echo "❌ Diretório não encontrado"
+	@echo ""
+	@echo "🔍 Configurações ativas:"
+	@if [ -f ./nginx/conf.d/http-only.conf ]; then \
+		echo "🌐 HTTP: ✅ Ativo (http-only.conf)"; \
+	else \
+		echo "🌐 HTTP: ❌ Inativo"; \
+	fi
+	@if [ -f ./nginx/conf.d/default.conf ]; then \
+		echo "🔒 HTTPS: ✅ Ativo (default.conf)"; \
+	else \
+		echo "🔒 HTTPS: ❌ Inativo"; \
+	fi
+	@echo ""
+	@echo "📜 Certificados:"
+	@$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "ls -la /etc/letsencrypt/live/ 2>/dev/null || echo 'Nenhum certificado encontrado'"
+
+ssl-config-fix: ## Corrigir configuração SSL manualmente
+	@echo "🔧 Corrigindo configuração SSL..."
+	@echo "📋 Estado atual dos arquivos:"
+	@ls -la ./nginx/conf.d/
+	@echo ""
+	@echo "🔄 Organizando configurações..."
+	@# Garantir que apenas uma configuração esteja ativa
+	@if [ -f ./nginx/conf.d/http-only.conf ] && [ -f ./nginx/conf.d/default.conf ]; then \
+		echo "⚠️  Ambas configurações ativas - desativando HTTP"; \
+		mv ./nginx/conf.d/http-only.conf ./nginx/conf.d/http-only.conf.disabled 2>/dev/null || rm ./nginx/conf.d/http-only.conf; \
+	fi
+	@# Verificar se temos certificado para ativar HTTPS
+	@if $(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "test -f /etc/letsencrypt/live/$(DOMAIN)/fullchain.pem || test -f /etc/letsencrypt/live/$(DOMAIN)-0001/fullchain.pem" 2>/dev/null; then \
+		echo "✅ Certificado encontrado - ativando HTTPS"; \
+		if [ -f ./nginx/conf.d/default.conf.disabled ]; then \
+			mv ./nginx/conf.d/default.conf.disabled ./nginx/conf.d/default.conf; \
+		fi; \
+		if [ -f ./nginx/conf.d/http-only.conf ]; then \
+			mv ./nginx/conf.d/http-only.conf ./nginx/conf.d/http-only.conf.disabled; \
+		fi; \
+	else \
+		echo "❌ Certificado não encontrado - mantendo HTTP"; \
+		if [ ! -f ./nginx/conf.d/http-only.conf ]; then \
+			cp ./nginx/conf.d/http-only.conf.template ./nginx/conf.d/http-only.conf 2>/dev/null || echo "Template não encontrado"; \
+		fi; \
+	fi
+	@echo "✅ Configuração corrigida!"
+	@echo ""
+	@echo "📋 Estado final:"
+	@ls -la ./nginx/conf.d/
+	@echo ""
+	@echo "🔄 Reiniciando nginx..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
 
 ## Produção
 prod-up: ## Iniciar ambiente de produção

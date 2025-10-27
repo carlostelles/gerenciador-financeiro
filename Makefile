@@ -29,6 +29,7 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make ssl-test-acme              # Testa acesso ao endpoint ACME"
 	@echo "  make ssl-debug                  # Ver logs detalhados Let's Encrypt"
 	@echo "  make ssl-init-staging           # Certificado de teste primeiro"
+	@echo "  make ssl-init-prod-force        # Forçar novo certificado SSL"
 	@echo "  make ssl-test                   # Testa se HTTPS está funcionando"
 	@echo "  make ssl-status                 # Status completo do SSL"
 	@echo "🔧 SSL - Correção:"
@@ -148,13 +149,24 @@ ssl-init-staging: ## Obter certificado SSL de teste (staging)
 	@echo "🧪 Obtendo certificado SSL de teste (staging)..."
 	@echo "⚠️  Este é um certificado de TESTE - não será reconhecido pelos navegadores"
 	@echo "🔄 Configurando Nginx para HTTP apenas..."
-	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"
+	@# Configurar para HTTP diretamente no host
+	@if [ -f ./nginx/conf.d/default.conf ]; then \
+		mv ./nginx/conf.d/default.conf ./nginx/conf.d/default.conf.disabled 2>/dev/null || rm ./nginx/conf.d/default.conf; \
+		echo "✅ Configuração HTTPS desativada"; \
+	fi
+	@if [ ! -f ./nginx/conf.d/http-only.conf ]; then \
+		cp ./nginx/conf.d/http-only.conf.template ./nginx/conf.d/http-only.conf 2>/dev/null || echo "⚠️  Template não encontrado"; \
+		echo "✅ Configuração HTTP ativada"; \
+	else \
+		echo "✅ Configuração HTTP já ativa"; \
+	fi
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
 	@sleep 5
 	@echo "🔒 Solicitando certificado SSL de teste..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "SSL_STAGING=true sh /scripts/init-ssl.sh"
 	@if [ $$? -eq 0 ]; then \
 		echo "✅ Certificado de teste obtido com sucesso!"; \
+		echo "🔧 Para testar HTTPS: make ssl-quick-fix"; \
 		echo "🔧 Para obter certificado de produção: make ssl-init-prod"; \
 	else \
 		echo "❌ Erro ao obter certificado de teste"; \
@@ -168,21 +180,62 @@ ssl-init-prod: ## Obter certificado SSL para produção (Let's Encrypt)
 	@echo "   3. O nginx está configurado corretamente"
 	@read -p "Continuar? (y/N) " confirm && [ "$$confirm" = "y" ]
 	@echo "🔄 Configurando Nginx para HTTP apenas..."
-	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh http"
-	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+	@# Configurar para HTTP diretamente no host
+	@if [ -f ./nginx/conf.d/default.conf ]; then \
+		mv ./nginx/conf.d/default.conf ./nginx/conf.d/default.conf.disabled 2>/dev/null || rm ./nginx/conf.d/default.conf; \
+		echo "✅ Configuração HTTPS desativada"; \
+	fi
+	@if [ ! -f ./nginx/conf.d/http-only.conf ]; then \
+		cp ./nginx/conf.d/http-only.conf.template ./nginx/conf.d/http-only.conf 2>/dev/null || echo "⚠️  Template não encontrado"; \
+		echo "✅ Configuração HTTP ativada"; \
+	else \
+		echo "✅ Configuração HTTP já ativa"; \
+	fi
+	@$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
 	@sleep 5
 	@echo "🔒 Solicitando certificado SSL..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "sh /scripts/init-ssl.sh"
 	@if [ $$? -eq 0 ]; then \
-		echo "🔄 Configurando Nginx para HTTPS..."; \
-		$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh nginx -c "sh /scripts/nginx-config.sh https"; \
-		$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx; \
-		echo "✅ SSL configurado com sucesso!"; \
+		echo "✅ Certificado SSL obtido com sucesso!"; \
+		echo "🔧 Para ativar HTTPS: make ssl-quick-fix"; \
 	else \
 		echo "❌ Erro ao obter certificado SSL"; \
 		echo "📋 Verificando logs..."; \
 		$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "if [ -f /var/log/letsencrypt/letsencrypt.log ]; then echo '=== ÚLTIMAS 20 LINHAS DO LOG ==='; tail -20 /var/log/letsencrypt/letsencrypt.log; fi"; \
 		echo "🔧 Para debug: make ssl-debug ou make ssl-test-acme"; \
+	fi
+
+ssl-init-prod-force: ## Forçar obtenção de certificado SSL mesmo se já existir
+	@echo "🔒 Forçando obtenção de certificado SSL para $(DOMAIN)..."
+	@echo "⚠️  IMPORTANTE: Certifique-se de que:"
+	@echo "   1. O DNS está apontando para este servidor"
+	@echo "   2. As portas 80 e 443 estão abertas"
+	@echo "   3. O nginx está configurado corretamente"
+	@read -p "Continuar? (y/N) " confirm && [ "$$confirm" = "y" ]
+	@echo "🔄 Configurando Nginx para HTTP apenas..."
+	@# Configurar para HTTP diretamente no host
+	@if [ -f ./nginx/conf.d/default.conf ]; then \
+		mv ./nginx/conf.d/default.conf ./nginx/conf.d/default.conf.disabled 2>/dev/null || rm ./nginx/conf.d/default.conf; \
+		echo "✅ Configuração HTTPS desativada"; \
+	fi
+	@if [ ! -f ./nginx/conf.d/http-only.conf ]; then \
+		cp ./nginx/conf.d/http-only.conf.template ./nginx/conf.d/http-only.conf 2>/dev/null || echo "⚠️  Template não encontrado"; \
+		echo "✅ Configuração HTTP ativada"; \
+	else \
+		echo "✅ Configuração HTTP já ativa"; \
+	fi
+	@$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) restart nginx
+	@sleep 5
+	@echo "🔒 Forçando renovação do certificado SSL..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_PROD) run --rm --entrypoint /bin/sh certbot -c "SSL_FORCE_RENEW=true sh /scripts/init-ssl.sh"
+	@if [ $$? -eq 0 ]; then \
+		echo "✅ Certificado SSL obtido com sucesso!"; \
+		echo "🔧 Para ativar HTTPS: make ssl-quick-fix"; \
+	else \
+		echo "❌ Erro ao obter certificado SSL"; \
+		echo "📋 Verificando logs..."; \
+		make ssl-debug; \
+		echo "🔧 Para debug: make ssl-test-acme"; \
 	fi
 
 ssl-renew: ## Renovar certificado SSL

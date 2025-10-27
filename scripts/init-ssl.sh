@@ -17,12 +17,17 @@ echo "=== Inicializando configuração SSL para $DOMAIN ==="
 if [ -d "$CERT_PATH" ]; then
     echo "Certificado encontrado em $CERT_PATH"
     
-    # Verificar se o certificado ainda é válido (mais de 30 dias)
-    if openssl x509 -checkend 2592000 -noout -in "$CERT_PATH/fullchain.pem" 2>/dev/null; then
-        echo "Certificado ainda é válido por mais de 30 dias. Usando certificado existente."
-        exit 0
+    # Se forçando renovação, pular verificação de validade
+    if [ "$SSL_FORCE_RENEW" = "true" ]; then
+        echo "Forçando renovação do certificado..."
     else
-        echo "Certificado expira em menos de 30 dias ou é inválido. Renovando..."
+        # Verificar se o certificado ainda é válido (mais de 30 dias)
+        if openssl x509 -checkend 2592000 -noout -in "$CERT_PATH/fullchain.pem" 2>/dev/null; then
+            echo "Certificado ainda é válido por mais de 30 dias. Usando certificado existente."
+            exit 0
+        else
+            echo "Certificado expira em menos de 30 dias ou é inválido. Renovando..."
+        fi
     fi
 else
     echo "Certificado não encontrado. Criando novo certificado..."

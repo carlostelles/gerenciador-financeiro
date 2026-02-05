@@ -8,13 +8,21 @@ set -e
 
 DOMAIN="controle-financeiro.gaius.digital"
 EMAIL="ola@carlostelles.com.br"  # Altere para seu email
-CERT_PATH="/etc/letsencrypt/live/$DOMAIN"
 WWW_PATH="/var/www/certbot"
 
 echo "=== Inicializando configuração SSL para $DOMAIN ==="
 
+# Encontrar o path correto do certificado (pode ter sufixo -0001, -0002, etc.)
+CERT_PATH=""
+for dir in /etc/letsencrypt/live/${DOMAIN}*; do
+    if [ -f "$dir/fullchain.pem" ]; then
+        CERT_PATH="$dir"
+        break
+    fi
+done
+
 # Verificar se o certificado já existe e é válido
-if [ -d "$CERT_PATH" ]; then
+if [ -n "$CERT_PATH" ]; then
     echo "Certificado encontrado em $CERT_PATH"
     
     # Se forçando renovação, pular verificação de validade
@@ -65,6 +73,14 @@ else
     STAGING_FLAG=""
 fi
 
+# Verificar se deve forçar renovação
+if [ "$SSL_FORCE_RENEW" = "true" ]; then
+    FORCE_FLAG="--force-renewal"
+    echo "Forçando renovação do certificado..."
+else
+    FORCE_FLAG=""
+fi
+
 certbot certonly \
     --webroot \
     --webroot-path="$WWW_PATH" \
@@ -73,16 +89,28 @@ certbot certonly \
     --no-eff-email \
     --verbose \
     $STAGING_FLAG \
+    $FORCE_FLAG \
     -d "$DOMAIN"
 
 if [ $? -eq 0 ]; then
     echo "✅ Certificado SSL obtido com sucesso!"
+
+    # Re-detectar o path do certificado (pode ter sido criado com sufixo)
+    CERT_PATH=""
+    for dir in /etc/letsencrypt/live/${DOMAIN}*; do
+        if [ -f "$dir/fullchain.pem" ]; then
+            CERT_PATH="$dir"
+        fi
+    done
+
     echo "Certificado salvo em: $CERT_PATH"
     
     # Verificar informações do certificado
     echo ""
     echo "=== Informações do Certificado ==="
-    openssl x509 -in "$CERT_PATH/fullchain.pem" -text -noout | grep -E "(Subject:|Not After:|DNS:)"
+    if [ -n "$CERT_PATH" ]; then
+        openssl x509 -in "$CERT_PATH/fullchain.pem" -text -noout | grep -E "(Subject:|Not After:|DNS:)"
+    fi
     
     # Testar configuração do nginx
     echo ""

@@ -139,7 +139,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # Certbot para SSL/TLS certificates
+  # Certbot para SSL/TLS certificates (usado sob demanda via make)
   certbot:
     image: certbot/certbot:latest
     container_name: gf-certbot
@@ -148,7 +148,6 @@ services:
       - certbot_certs:/etc/letsencrypt
       - certbot_www:/var/www/certbot
       - ./scripts:/scripts:ro
-    command: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
     depends_on:
       - nginx
     environment:
@@ -157,20 +156,20 @@ services:
 
   # Cron para auto-renovação de certificados
   certbot-cron:
-    image: alpine:latest
+    image: certbot/certbot:latest
     container_name: gf-certbot-cron
     restart: unless-stopped
     volumes:
       - certbot_certs:/etc/letsencrypt
       - certbot_www:/var/www/certbot
       - ./scripts:/scripts:ro
-    command: /bin/sh -c "
-      apk add --no-cache dcron &&
-      echo '0 2 * * * /scripts/renew-cert.sh >> /var/log/cron.log 2>&1' | crontab - &&
-      echo 'Starting cron daemon...' &&
+    entrypoint: /bin/sh
+    command: -c "
+      echo '0 2 * * * certbot renew --webroot --webroot-path=/var/www/certbot >> /var/log/certbot-renewal.log 2>&1' | crontab - &&
+      echo 'Starting certbot-cron daemon...' &&
       crond -f"
     depends_on:
-      - certbot
+      - nginx
 
 networks:
   gf-network:

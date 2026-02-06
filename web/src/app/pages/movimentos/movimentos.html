@@ -6,61 +6,67 @@
         </app-button-float>
     </div>
 
-    <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" *ngIf="periodos().length">
-        <ng-container *ngFor="let periodo of periodos()">
-            <button *tuiItem tuiTab type="button" (click)="loadMovimentos(periodo)">
-                <tui-badge appearance="neutral" iconStart="@tui.calendar">
-                    {{ periodo | formatPeriod }}
-                </tui-badge>
-            </button>
-        </ng-container>
-    </tui-tabs-with-more>
+    @if (periodos().length) {
+        <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" [itemsLimit]="5">
+            @for (periodo of periodos(); track periodo) {
+                <button *tuiItem tuiTab type="button" (click)="loadMovimentos(periodo)">
+                    <tui-badge appearance="neutral" iconStart="@tui.calendar">
+                        {{ periodo | formatPeriod }}
+                    </tui-badge>
+                </button>
+            }
+        </tui-tabs-with-more>
+    }
 
-    <div class="content" *ngIf="!isLoading()">
-        <div class="summary">
-            <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="receitasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
-                <tui-avatar appearance="info" src="@tui.banknote-arrow-up" />
-                <div tuiTitle>
-                    <strong [class.positive]="true">{{ totalReceitas | currency }}</strong>
-                    <div tuiSubtitle>Receitas do mês</div>
+    @if (!isLoading()) {
+        <div class="content">
+            <div class="summary">
+                <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="receitasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
+                    <tui-avatar appearance="info" src="@tui.banknote-arrow-up" />
+                    <div tuiTitle>
+                        <strong [class.positive]="true">{{ totalReceitas | currency }}</strong>
+                        <div tuiSubtitle>Receitas do mês</div>
+                    </div>
+                </div>
+                <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="despesasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
+                    <tui-avatar appearance="accent" src="@tui.banknote-arrow-down" />
+                    <div tuiTitle>
+                        <strong [class.negative]="true">{{ totalDespesas * -1 | currency }}</strong>
+                        <div tuiSubtitle>Despesas do mês</div>
+                    </div>
+                </div>
+                <div tuiAppearance="floating" tuiCardLarge tuiCell>
+                    <tui-avatar [appearance]="saldo >= 0 ? 'positive' : 'negative'" src="@tui.dollar-sign" />
+                    <div tuiTitle>
+                        <strong [class.negative]="saldo < 0" [class.positive]="saldo >= 0">{{ saldo | currency }}</strong>
+                        <div tuiSubtitle>Saldo</div>
+                    </div>
+                </div>
+                <div tuiAppearance="floating" tuiCardLarge tuiCell>
+                    <tui-avatar [appearance]="saldoOrcamento >= 0 ? 'positive' : 'negative'" src="@tui.banknote" />
+                    <div tuiTitle>
+                        <strong [class.negative]="saldoOrcamento < 0" [class.positive]="saldoOrcamento >= 0">{{
+                            saldoOrcamento | currency }}</strong>
+                        <div tuiSubtitle>Orçamento disponível</div>
+                    </div>
                 </div>
             </div>
-            <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="despesasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
-                <tui-avatar appearance="accent" src="@tui.banknote-arrow-down" />
-                <div tuiTitle>
-                    <strong [class.negative]="true">{{ totalDespesas * -1 | currency }}</strong>
-                    <div tuiSubtitle>Despesas do mês</div>
-                </div>
-            </div>
-            <div tuiAppearance="floating" tuiCardLarge tuiCell>
-                <tui-avatar [appearance]="saldo >= 0 ? 'positive' : 'negative'" src="@tui.dollar-sign" />
-                <div tuiTitle>
-                    <strong [class.negative]="saldo < 0" [class.positive]="saldo >= 0">{{ saldo | currency }}</strong>
-                    <div tuiSubtitle>Saldo</div>
-                </div>
-            </div>
-            <div tuiAppearance="floating" tuiCardLarge tuiCell>
-                <tui-avatar [appearance]="saldoOrcamento >= 0 ? 'positive' : 'negative'" src="@tui.banknote" />
-                <div tuiTitle>
-                    <strong [class.negative]="saldoOrcamento < 0" [class.positive]="saldoOrcamento >= 0">{{
-                        saldoOrcamento | currency }}</strong>
-                    <div tuiSubtitle>Orçamento disponível</div>
-                </div>
+
+            <div class="timeline-container">
+                <app-timeline
+                    [items]="timelineItems()"
+                    (edit)="openFormModal($event)"
+                    (delete)="confirmDelete($event)">
+                </app-timeline>
             </div>
         </div>
+    }
 
-        <div class="timeline-container">
-            <app-timeline
-                [items]="timelineItems()"
-                (edit)="openFormModal($event)"
-                (delete)="confirmDelete($event)">
-            </app-timeline>
+    @if (isLoading()) {
+        <div class="loading">
+            <p>Carregando movimentações...</p>
         </div>
-    </div>
-
-    <div *ngIf="isLoading()" class="loading">
-        <p>Carregando movimentações...</p>
-    </div>
+    }
 </div>
 
 <ng-template #receitasTooltip>

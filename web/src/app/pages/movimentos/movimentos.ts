@@ -1,21 +1,19 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiIcon, TuiTitle } from '@taiga-ui/core';
-import { TuiAvatar, TuiBadge, TuiConfirmService, TuiFloatingContainer, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
+import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
 
 import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { forkJoin, finalize, map } from 'rxjs';
-import { TuiBlockDetails, TuiCardLarge, TuiCell } from '@taiga-ui/layout';
+import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
 
 @Component({
     selector: 'app-movimentos',
     standalone: true,
     imports: [
-    CommonModule,
     TuiButton,
     TuiBadge,
     TuiIcon,

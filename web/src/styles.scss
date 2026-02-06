@@ -51,6 +51,12 @@
     }
 }
 
+@media (max-width: 768px) {
+    .container {
+        padding: 1.5rem 0;
+    }
+}
+
 .table-container {
     overflow-x: auto;
 

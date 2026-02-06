@@ -3,13 +3,11 @@ import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { tuiAsPortal, TuiPortals } from '@taiga-ui/cdk';
 import {
   TuiAppearance,
   TuiButton,
   TuiDataList,
   TuiDropdown,
-  TuiDropdownService,
   TuiIcon,
   TuiLink,
   TuiTextfield,
@@ -49,9 +47,8 @@ import { filter } from 'rxjs/operators';
   templateUrl: './template.html',
   styleUrls: ['./template.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [TuiDropdownService, tuiAsPortal(TuiDropdownService)],
 })
-export class TemplateComponent extends TuiPortals implements OnInit {
+export class TemplateComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -63,7 +60,6 @@ export class TemplateComponent extends TuiPortals implements OnInit {
   protected readonly userName = signal('Usuário'); // Será implementado com dados reais do usuário
 
   constructor() {
-    super();
     // Monitora mudanças de rota para atualizar o título da página
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)

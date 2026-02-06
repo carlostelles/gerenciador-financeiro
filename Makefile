@@ -40,11 +40,42 @@ help: ## Mostra esta mensagem de ajuda
 dev-up: ## Iniciar ambiente de desenvolvimento
 	@echo "🚀 Iniciando ambiente de desenvolvimento..."
 	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_DEV) up -d
-	
-	@echo "✅ Ambiente iniciado!"
+	@echo "⏳ Aguardando bancos de dados ficarem prontos..."
+	@sleep 5
+	@echo "✅ Bancos de dados iniciados!"
+	@echo "📊 MySQL: localhost:3306"
+	@echo "🍃 MongoDB: localhost:27017"
+	@echo ""
+	@echo "🔗 Para iniciar a API:  cd api && npm run start:local"
+	@echo "🌐 Para iniciar o Web:  cd web && npm start"
+	@echo "📚 Swagger: http://localhost:3000/api/docs (após iniciar a API)"
+
+dev-api: ## Iniciar API em modo desenvolvimento (watch)
+	@echo "🔗 Iniciando API em modo desenvolvimento..."
+	@cd api && npm run start:local
+
+dev-web: ## Iniciar frontend Web em modo desenvolvimento
+	@echo "🌐 Iniciando frontend Web..."
+	@cd web && npm start
+
+dev-all: ## Iniciar bancos + API + Web (tudo junto)
+	@echo "🚀 Iniciando ambiente completo de desenvolvimento..."
+	$(DOCKER_COMPOSE_CMD) -f $(COMPOSE_FILE_DEV) up -d
+	@echo "⏳ Aguardando bancos de dados ficarem prontos..."
+	@sleep 5
+	@echo "✅ Bancos de dados iniciados!"
+	@echo "🔗 Iniciando API..."
+	@cd api && npm run start:local &
+	@echo "⏳ Aguardando API iniciar..."
+	@sleep 8
+	@echo "🌐 Iniciando Web..."
+	@cd web && npm start &
+	@echo ""
+	@echo "✅ Ambiente completo iniciado!"
 	@echo "📊 MySQL: localhost:3306"
 	@echo "🍃 MongoDB: localhost:27017"
 	@echo "🔗 API: http://localhost:3000"
+	@echo "🌐 Web: http://localhost:4200"
 	@echo "📚 Swagger: http://localhost:3000/api/docs"
 
 dev-down: ## Parar ambiente de desenvolvimento

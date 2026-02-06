@@ -18,14 +18,19 @@
   </div>
 
   <tui-textfield #textfield tuiChevron [stringify]="stringify" [identityMatcher]="identityMatcher"
-    [content]="movimentoForm.get('orcamentoItem')?.value && !textfield.focused() ? categoriasContent : ''">
+    [content]="movimentoForm.get('categoriaOption')?.value && !textfield.focused() ? categoriasContent : ''">
     <label tuiLabel for="categoria">Categoria *</label>
-    <input tuiComboBox formControlName="orcamentoItem" />
-    <tui-data-list-wrapper *tuiTextfieldDropdown new [itemContent]="categoriasContent" [items]="orcamentoItens() | tuiFilterByInput: matcher">
+    <input tuiComboBox formControlName="categoriaOption" />
+    <tui-data-list-wrapper *tuiTextfieldDropdown new [itemContent]="categoriasContent" [items]="categoriaOptions() | tuiFilterByInput: matcher">
     </tui-data-list-wrapper>
     <ng-template #categoriasContent let-item>
-      {{ item.descricao }}
-      <app-categoria-badge [tipo]="item.categoria?.tipo"></app-categoria-badge>
+      <ng-container *ngIf="item.source === 'orcamento'">
+        {{ item.descricao ? item.descricao + ' - ' : '' }}{{ item.categoriaNome }}
+      </ng-container>
+      <ng-container *ngIf="item.source === 'categoria'">
+        {{ item.categoriaNome }}
+      </ng-container>
+      <app-categoria-badge [tipo]="item.categoriaTipo"></app-categoria-badge>
     </ng-template>
   </tui-textfield>
 

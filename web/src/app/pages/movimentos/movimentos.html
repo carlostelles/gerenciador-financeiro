@@ -49,52 +49,12 @@
             </div>
         </div>
 
-        <div class="table-container">
-            <table tuiTable size="l">
-                <thead>
-                    <tr>
-                        <th tuiTh>Data</th>
-                        <th tuiTh>Categoria</th>
-                        <th tuiTh>Valor</th>
-                        <th tuiTh>Ações</th>
-                    </tr>
-                </thead>
-                <tbody tuiTbody>
-                    <tr *ngFor="let movimento of movimentos(); trackBy: trackByFn">
-                        <td tuiTd>
-                            <tui-badge appearance="secondary" iconStart="@tui.calendar">
-                                {{ movimento.data | date:'dd/MM/yyyy' }}
-                            </tui-badge>
-                        </td>
-                        <td tuiTd>
-                            <app-categoria-badge [tipo]="movimento.orcamentoItem.categoria.tipo"></app-categoria-badge>
-                            {{ movimento.orcamentoItem.categoria.nome }} {{ movimento.orcamentoItem.descricao ? '
-                            - ' + movimento.orcamentoItem.descricao : ''}}
-                            @if(movimento.descricao) {
-                            <tui-icon icon="@tui.info" [tuiTooltip]="movimento.descricao"></tui-icon>
-                            }
-                        </td>
-                        <td tuiTd>{{ (movimento.orcamentoItem.categoria.tipo === 'DESPESA' ? movimento.valor * -1 :
-                            movimento.valor) | currency }}</td>
-                        <td tuiTd class="actions">
-                            <button tuiButton appearance="secondary" size="s" (click)="openFormModal(movimento)">
-                                <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary"
-                                    tuiTooltip="Editar movimentação" aria-label="Editar movimentação" />
-                            </button>
-                            <button tuiButton appearance="destructive" size="s" (click)="confirmDelete(movimento)">
-                                <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger"
-                                    tuiTooltip="Excluir movimentação" aria-label="Excluir movimentação" />
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div *ngIf="!movimentos().length" class="empty-state">
-                <tui-icon icon="@tui.chart-bar" [style.height.rem]="4" class="empty-icon" />
-                <p>Nenhuma movimentação encontrada.</p>
-                <p>Clique em "Nova Movimentação" para criar sua primeira movimentação.</p>
-            </div>
+        <div class="timeline-container">
+            <app-timeline
+                [items]="timelineItems()"
+                (edit)="openFormModal($event)"
+                (delete)="confirmDelete($event)">
+            </app-timeline>
         </div>
     </div>
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -30,5 +30,13 @@ export class MovimentoService {
 
   delete(periodo: string, id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/movimentacoes/${periodo}/${id}`);
+  }
+
+  findPeriodos(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/movimentacoes/periodos`);
+  }
+
+  findCategoriasForPeriodo(periodo: string): Observable<CategoriasForPeriodoResponse> {
+    return this.http.get<CategoriasForPeriodoResponse>(`${this.baseUrl}/movimentacoes/${periodo}/categorias`);
   }
 }

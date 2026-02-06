@@ -1,15 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiIcon, TuiTitle } from '@taiga-ui/core';
 import { TuiAvatar, TuiBadge, TuiConfirmService, TuiFloatingContainer, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
-import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 
-import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento, ButtonFloatComponent } from '../../shared';
+import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
-import { finalize, map } from 'rxjs';
+import { forkJoin, finalize, map } from 'rxjs';
 import { TuiBlockDetails, TuiCardLarge, TuiCell } from '@taiga-ui/layout';
 
 @Component({
@@ -21,9 +20,6 @@ import { TuiBlockDetails, TuiCardLarge, TuiCell } from '@taiga-ui/layout';
     TuiBadge,
     TuiIcon,
     TuiTooltip,
-    TuiTable,
-    TuiTableControl,
-    TuiCell,
     TuiAvatar,
     CurrencyPipe,
     FormatPeriodPipe,
@@ -32,9 +28,10 @@ import { TuiBlockDetails, TuiCardLarge, TuiCell } from '@taiga-ui/layout';
     TuiTitle,
     TuiCardLarge,
     TuiAppearance,
-    CurrencyPipe,
     TuiHint,
-    ButtonFloatComponent
+    ButtonFloatComponent,
+    TimelineComponent,
+    TuiCell,
 ],
     providers: [TuiConfirmService],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,15 +60,30 @@ export class MovimentosComponent implements OnInit {
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     }
 
+    /** Resolve o tipo da categoria a partir do orcamentoItem ou da categoria direta */
+    getCategoriaTipo(mov: Movimento): CategoriaTipo | undefined {
+        return mov.orcamentoItem?.categoria?.tipo || mov.categoria?.tipo || undefined;
+    }
+
+    /** Resolve o nome da categoria */
+    getCategoriaNome(mov: Movimento): string {
+        return mov.orcamentoItem?.categoria?.nome || mov.categoria?.nome || '';
+    }
+
+    /** Resolve a descrição do item de orçamento (se existir) */
+    getOrcamentoItemDescricao(mov: Movimento): string {
+        return mov.orcamentoItem?.descricao || '';
+    }
+
     get totalReceitas(): number {
         return this.movimentos()
-            .filter(mov => mov.orcamentoItem.categoria.tipo === 'RECEITA')
+            .filter(mov => this.getCategoriaTipo(mov) === 'RECEITA')
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }
 
     get totalDespesas(): number {
         return this.movimentos()
-            .filter(mov => mov.orcamentoItem.categoria.tipo === 'DESPESA')
+            .filter(mov => this.getCategoriaTipo(mov) === 'DESPESA')
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }
 
@@ -97,14 +109,20 @@ export class MovimentosComponent implements OnInit {
 
     loadPeriodos() {
         this.isLoading.set(true);
-        this.orcamentoService.findPeriodos()
+
+        // Buscar períodos de orçamentos E de movimentações, mesclar e deduplificar
+        forkJoin([
+            this.orcamentoService.findPeriodos(),
+            this.movimentoService.findPeriodos(),
+        ])
             .pipe(
                 finalize(() => this.isLoading.set(false)),
-                map((periodos) => {
-                    if (!periodos.includes(this.currentPeriodo)) {
-                        periodos.push(this.currentPeriodo);
+                map(([periodosOrcamento, periodosMovimento]) => {
+                    const allPeriodos = new Set([...periodosOrcamento, ...periodosMovimento]);
+                    if (!allPeriodos.has(this.currentPeriodo)) {
+                        allPeriodos.add(this.currentPeriodo);
                     }
-                    return periodos.sort();
+                    return Array.from(allPeriodos).sort();
                 })
             )
             .subscribe({
@@ -125,30 +143,29 @@ export class MovimentosComponent implements OnInit {
     }
 
     loadOrcamento(periodo: string) {
-        this.isLoading.set(true);
         this.orcamentoService.findByPeriodo(periodo).subscribe({
             next: (orcamento) => {
                 this.orcamento.set(orcamento);
             },
             error: (error) => {
-                console.error('Erro ao carregar orçamentos:', error);
-                this.isLoading.set(false);
-            },
-            complete: () => {
-                this.isLoading.set(false);
+                // Se não encontrou orçamento, apenas setar null
+                this.orcamento.set(null);
+                console.error('Erro ao carregar orçamento:', error);
             }
         });
     }
 
     loadMovimentos(periodo: string) {
         this.isLoading.set(true);
+        this.chosedPeriodo.set(periodo);
+        this.loadOrcamento(periodo);
         this.movimentoService.getAll(periodo).subscribe({
             next: (movimentos) => {
                 this.movimentos.set(movimentos);
                 this.isLoading.set(false);
             },
             error: (error) => {
-                console.error('Erro ao carregar orçamentos:', error);
+                console.error('Erro ao carregar movimentações:', error);
                 this.isLoading.set(false);
             }
         });
@@ -166,7 +183,7 @@ export class MovimentosComponent implements OnInit {
                     this.loadMovimentos(movimento?.periodo ?? this.chosedPeriodo()!);
                 },
                 error: (error) => {
-                    console.error('Erro ao salvar orçamento:', error);
+                    console.error('Erro ao salvar movimento:', error);
                 }
             });
     }
@@ -193,6 +210,20 @@ export class MovimentosComponent implements OnInit {
                 }
             });
     }
+
+    readonly timelineItems = computed<TimelineItem[]>(() => {
+        return this.movimentos().map(mov => ({
+            id: mov.id,
+            data: mov.data,
+            categoriaTipo: this.getCategoriaTipo(mov) || '',
+            categoriaNome: this.getCategoriaNome(mov),
+            descricao: (this.getOrcamentoItemDescricao(mov)
+                ? this.getOrcamentoItemDescricao(mov) + (mov.descricao ? ' - ' + mov.descricao : '')
+                : mov.descricao) || '',
+            valor: Number(mov.valor),
+            raw: mov,
+        }));
+    });
 
     trackByFn(index: number, item: Movimento): string {
         return item.data;

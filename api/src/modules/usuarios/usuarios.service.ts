@@ -13,6 +13,7 @@ import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
+import { CategoriasService } from '../categorias/categorias.service';
 
 @Injectable()
 export class UsuariosService {
@@ -20,6 +21,7 @@ export class UsuariosService {
     @InjectRepository(Usuario)
     private usuariosRepository: Repository<Usuario>,
     private logsService: LogsService,
+    private categoriasService: CategoriasService,
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto): Promise<Usuario> {
@@ -60,6 +62,9 @@ export class UsuariosService {
       entidadeId: savedUsuario.id.toString(),
       dadosNovos: { ...savedUsuario, senha: '[HIDDEN]' },
     });
+
+    // Criar categorias padrões para o novo usuário
+    await this.categoriasService.createDefaultCategories(savedUsuario.id);
 
     return savedUsuario;
   }

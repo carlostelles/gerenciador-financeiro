@@ -87,16 +87,14 @@ export class OrcamentosService {
   async findByPeriodo(
     periodo: string,
     usuarioId: number,
-  ): Promise<OrcamentoByPeriodoResponseDto> {
+  ): Promise<OrcamentoByPeriodoResponseDto | null> {
     const orcamento = await this.orcamentoRepository.findOne({
       where: { periodo, usuarioId },
       relations: ['items', 'items.categoria'],
     });
 
     if (!orcamento) {
-      throw new NotFoundException(
-        `Orçamento não encontrado para o período ${periodo}`,
-      );
+      return null;
     }
 
     // Mapear a resposta para incluir apenas id e descricao da categoria

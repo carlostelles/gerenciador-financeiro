@@ -30,6 +30,16 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class MovimentacoesController {
   constructor(private readonly movimentacoesService: MovimentacoesService) {}
 
+  @Get('periodos')
+  @ApiOperation({ summary: 'Listar períodos com movimentações' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de períodos retornada com sucesso',
+  })
+  findPeriodos(@CurrentUser() user: any) {
+    return this.movimentacoesService.findPeriodos(user.sub);
+  }
+
   @Post(':periodo')
   @ApiOperation({ summary: 'Criar uma nova movimentação' })
   @ApiParam({
@@ -54,6 +64,23 @@ export class MovimentacoesController {
       createMovimentoDto,
       user.sub,
     );
+  }
+
+  @Get(':periodo/categorias')
+  @ApiOperation({ summary: 'Listar categorias disponíveis para o período (orçamento + categorias do usuário)' })
+  @ApiParam({
+    name: 'periodo',
+    description: 'Período das movimentações (yyyy-mm)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categorias mescladas retornadas com sucesso',
+  })
+  findCategoriasForPeriodo(
+    @Param('periodo') periodo: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.findCategoriasForPeriodo(periodo, user.sub);
   }
 
   @Get(':periodo')

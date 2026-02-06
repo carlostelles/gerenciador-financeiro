@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
+import { Categoria } from '../../categorias/entities/categoria.entity';
 
 @Entity('movimentos')
 export class Movimento {
@@ -30,8 +31,11 @@ export class Movimento {
   @Column('decimal', { precision: 10, scale: 2 })
   valor: number;
 
-  @Column()
+  @Column({ nullable: true })
   orcamentoItemId: number;
+
+  @Column({ nullable: true })
+  categoriaId: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -43,7 +47,11 @@ export class Movimento {
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
 
-  @ManyToOne(() => OrcamentoItem, (item) => item.movimentos)
+  @ManyToOne(() => OrcamentoItem, (item) => item.movimentos, { nullable: true })
   @JoinColumn({ name: 'orcamentoItemId' })
   orcamentoItem: OrcamentoItem;
+
+  @ManyToOne(() => Categoria, { nullable: true })
+  @JoinColumn({ name: 'categoriaId' })
+  categoria: Categoria;
 }

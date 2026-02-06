@@ -1,10 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
   IsNumber,
   IsPositive,
   IsDateString,
+  IsOptional,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateMovimentoDto {
@@ -32,11 +34,19 @@ export class CreateMovimentoDto {
   @IsPositive({ message: 'O valor deve ser um número positivo' })
   valor: number;
 
-  @ApiProperty({
-    description: 'ID do item de orçamento',
+  @ApiPropertyOptional({
+    description: 'ID do item de orçamento (opcional se categoriaId for informado)',
     example: 1,
   })
-  @IsNotEmpty({ message: 'O campo orcamentoItemId é obrigatório' })
+  @IsOptional()
   @IsNumber({}, { message: 'O orcamentoItemId deve ser um número' })
-  orcamentoItemId: number;
+  orcamentoItemId?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID da categoria (opcional se orcamentoItemId for informado)',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'O categoriaId deve ser um número' })
+  categoriaId?: number;
 }

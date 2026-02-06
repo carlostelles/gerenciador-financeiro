@@ -10,12 +10,21 @@ import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
+import { Categoria } from '../categorias/entities/categoria.entity';
+import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
+import { Orcamento } from '../orcamentos/entities/orcamento.entity';
 
 @Injectable()
 export class MovimentacoesService {
   constructor(
     @InjectRepository(Movimento)
     private movimentoRepository: Repository<Movimento>,
+    @InjectRepository(Categoria)
+    private categoriaRepository: Repository<Categoria>,
+    @InjectRepository(OrcamentoItem)
+    private orcamentoItemRepository: Repository<OrcamentoItem>,
+    @InjectRepository(Orcamento)
+    private orcamentoRepository: Repository<Orcamento>,
     private logsService: LogsService,
   ) {}
 
@@ -24,6 +33,13 @@ export class MovimentacoesService {
     createMovimentoDto: CreateMovimentoDto,
     usuarioId: number,
   ): Promise<Movimento> {
+    // Validar se pelo menos orcamentoItemId ou categoriaId foi informado
+    if (!createMovimentoDto.orcamentoItemId && !createMovimentoDto.categoriaId) {
+      throw new BadRequestException(
+        'É necessário informar o item de orçamento ou a categoria',
+      );
+    }
+
     // Validar se a data está dentro do período
     const dataMovimento = new Date(createMovimentoDto.data);
     const [ano, mes] = periodo.split('-');
@@ -36,8 +52,20 @@ export class MovimentacoesService {
       );
     }
 
+    // Se orcamentoItemId informado e categoriaId não, resolver categoriaId a partir do item
+    let categoriaId = createMovimentoDto.categoriaId;
+    if (createMovimentoDto.orcamentoItemId && !categoriaId) {
+      const orcamentoItem = await this.orcamentoItemRepository.findOne({
+        where: { id: createMovimentoDto.orcamentoItemId },
+      });
+      if (orcamentoItem) {
+        categoriaId = orcamentoItem.categoriaId;
+      }
+    }
+
     const movimento = this.movimentoRepository.create({
       ...createMovimentoDto,
+      categoriaId,
       periodo,
       usuarioId,
     });
@@ -61,7 +89,7 @@ export class MovimentacoesService {
   async findAll(periodo: string, usuarioId: number): Promise<Movimento[]> {
     return this.movimentoRepository.find({
       where: { periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria'],
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
       order: { data: 'DESC' },
     });
   }
@@ -73,7 +101,7 @@ export class MovimentacoesService {
   ): Promise<Movimento> {
     const movimento = await this.movimentoRepository.findOne({
       where: { id, periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria'],
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
     });
 
     if (!movimento) {
@@ -81,6 +109,81 @@ export class MovimentacoesService {
     }
 
     return movimento;
+  }
+
+  /**
+   * Retorna as categorias disponíveis para um período, mesclando:
+   * 1. Itens do orçamento existente para o período (com dados do item)
+   * 2. Categorias cadastradas pelo usuário que NÃO estejam no orçamento
+   */
+  async findCategoriasForPeriodo(
+    periodo: string,
+    usuarioId: number,
+  ): Promise<{
+    orcamentoItens: Array<{
+      orcamentoItemId: number;
+      descricao: string;
+      valor: number;
+      categoriaId: number;
+      categoriaNome: string;
+      categoriaTipo: string;
+      source: 'orcamento';
+    }>;
+    categorias: Array<{
+      categoriaId: number;
+      categoriaNome: string;
+      categoriaTipo: string;
+      source: 'categoria';
+    }>;
+  }> {
+    // Buscar orçamento do período (se existir)
+    const orcamento = await this.orcamentoRepository.findOne({
+      where: { periodo, usuarioId },
+      relations: ['items', 'items.categoria'],
+    });
+
+    const orcamentoItens = (orcamento?.items || []).map((item) => ({
+      orcamentoItemId: item.id,
+      descricao: item.descricao,
+      valor: Number(item.valor),
+      categoriaId: item.categoriaId,
+      categoriaNome: item.categoria.nome,
+      categoriaTipo: item.categoria.tipo,
+      source: 'orcamento' as const,
+    }));
+
+    // IDs das categorias já presentes no orçamento
+    const categoriaIdsNoOrcamento = new Set(
+      orcamentoItens.map((item) => item.categoriaId),
+    );
+
+    // Buscar categorias do usuário que NÃO estejam no orçamento
+    const todasCategorias = await this.categoriaRepository.find({
+      where: { usuarioId },
+      order: { nome: 'ASC' },
+    });
+
+    const categorias = todasCategorias
+      .filter((cat) => !categoriaIdsNoOrcamento.has(cat.id))
+      .map((cat) => ({
+        categoriaId: cat.id,
+        categoriaNome: cat.nome,
+        categoriaTipo: cat.tipo,
+        source: 'categoria' as const,
+      }));
+
+    return { orcamentoItens, categorias };
+  }
+
+  async findPeriodos(usuarioId: number): Promise<string[]> {
+    const result = await this.movimentoRepository
+      .createQueryBuilder('movimento')
+      .select('DISTINCT movimento.periodo', 'periodo')
+      .where('movimento.usuarioId = :usuarioId', { usuarioId })
+      .orderBy('movimento.periodo', 'DESC')
+      .getRawMany();
+
+    return result.map((r) => r.periodo);
   }
 
   async update(
@@ -105,8 +208,18 @@ export class MovimentacoesService {
       }
     }
 
+    // Se orcamentoItemId informado, resolver categoriaId a partir do item
+    if (updateMovimentoDto.orcamentoItemId && !updateMovimentoDto.categoriaId) {
+      const orcamentoItem = await this.orcamentoItemRepository.findOne({
+        where: { id: updateMovimentoDto.orcamentoItemId },
+      });
+      if (orcamentoItem) {
+        updateMovimentoDto.categoriaId = orcamentoItem.categoriaId;
+      }
+    }
+
     const dadosAnteriores = JSON.parse(JSON.stringify(movimento));
-    const { orcamentoItem, ...movimentoData } = movimento;
+    const { orcamentoItem, categoria, ...movimentoData } = movimento;
     Object.assign(movimentoData, updateMovimentoDto);
     
     const movimentoAtualizado = await this.movimentoRepository.save(movimentoData);

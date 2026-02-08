@@ -42,14 +42,16 @@
                         <div tuiSubtitle>Saldo</div>
                     </div>
                 </div>
-                <div tuiAppearance="floating" tuiCardLarge tuiCell>
-                    <tui-avatar [appearance]="saldoOrcamento >= 0 ? 'positive' : 'negative'" src="@tui.banknote" />
-                    <div tuiTitle>
-                        <strong [class.negative]="saldoOrcamento < 0" [class.positive]="saldoOrcamento >= 0">{{
-                            saldoOrcamento | currency }}</strong>
-                        <div tuiSubtitle>Orçamento disponível</div>
+                @if (hasOrcamento) {
+                    <div tuiAppearance="floating" tuiCardLarge tuiCell>
+                        <tui-avatar [appearance]="saldoOrcamento >= 0 ? 'positive' : 'negative'" src="@tui.banknote" />
+                        <div tuiTitle>
+                            <strong [class.negative]="saldoOrcamento < 0" [class.positive]="saldoOrcamento >= 0">{{
+                                saldoOrcamento | currency }}</strong>
+                            <div tuiSubtitle>Orçamento disponível</div>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
 
             <div class="timeline-container">

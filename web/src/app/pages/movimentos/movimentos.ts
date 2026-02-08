@@ -105,6 +105,10 @@ export class MovimentosComponent implements OnInit {
         return this.totalOrcamentoDespesa - this.totalDespesas;
     }
 
+    get hasOrcamento(): boolean {
+        return this.orcamento() !== null;
+    }
+
     loadPeriodos() {
         this.isLoading.set(true);
 

@@ -15,4 +15,29 @@
             color: var(--tui-text-negative);
         }
     }
+
+    .accordion {
+        inline-size: 100%;
+        border-radius: 0;
+    
+        [tuiAccordion] {
+            border-block-start: 1px solid var(--tui-border-normal);
+            background: transparent !important;
+            mask: none;
+
+            [tuiTitle] {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-direction: row;
+                width: 100%;
+            }
+        }
+    
+        tui-expand,
+        [tuiCell] {
+            padding: 0;
+            box-shadow: none;
+        }
+    }
 }

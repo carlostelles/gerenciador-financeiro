@@ -10,6 +10,7 @@ import { TuiForm } from '@taiga-ui/layout';
 
 import { MovimentoService } from '../../../../core/services/movimento.service';
 import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, CategoriaBadgeComponent, CategoriaOption } from '../../../../shared';
+import { toUTCDate } from '../../../../shared/helpers/date';
 
 @Component({
     selector: 'app-orcamentos-cadastro',
@@ -91,8 +92,8 @@ export class OrcamentosCadastroComponent implements OnInit {
 
         if (this.movimentacao()) {
             const dataString = this.movimentacao()!.data;
-            const [year, month, day] = dataString.split('-').map(Number);
-            const tuiDay = new TuiDay(year, month - 1, day);
+            const date = toUTCDate(dataString);
+            const tuiDay = new TuiDay(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 
             this.movimentoForm.patchValue({
                 data: tuiDay,

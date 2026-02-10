@@ -54,14 +54,87 @@
                 }
             </div>
 
-            <div class="timeline-container">
-                <app-timeline
-                    [items]="timelineItems()"
-                    (edit)="openFormModal($event)"
-                    (delete)="confirmDelete($event)"
-                    (duplicate)="duplicateItem($event)">
-                </app-timeline>
-            </div>
+            <tui-accordion class="accordion" [closeOthers]="false">
+                @if (timelineFutureItems().length) {
+                    <ng-container>
+                        <button
+                            appearance=""
+                            [tuiAccordion]="showFutureItens()"
+                            tuiCell="l"
+                            (tuiAccordionChange)="onClickFutureItens()"
+                        >
+                            <span tuiTitle>
+                                <strong>Lançamentos Futuros</strong>
+                                <span tuiSubtitle>
+                                    <tui-badge iconStart="@tui.banknote-arrow-up" appearance="info" size="s">
+                                        {{ somaValores(timelineFutureItems(), CATEGORIA_TIPO.RECEITA) | currency }}
+                                    </tui-badge>
+                                    <tui-badge iconStart="@tui.banknote-arrow-down" appearance="negative" size="s">
+                                        {{ somaValores(timelineFutureItems(), CATEGORIA_TIPO.DESPESA) | currency }}
+                                    </tui-badge>
+                                </span>
+                            </span>
+                        </button>
+                        <tui-expand [expanded]="showFutureItens()">
+                            <ng-container *ngTemplateOutlet="timelineFutureItemsTemplate"></ng-container>
+                        </tui-expand>
+                    </ng-container>
+                }
+                @if (timelineTodayItems().length) {
+                    <ng-container>
+                        <button
+                            appearance=""
+                            [tuiAccordion]="showTodayItens()"
+                            tuiCell="l"
+                            (tuiAccordionChange)="onClickTodayItens()"
+                        >
+                            <span tuiTitle>
+                                <strong>Hoje</strong>
+                                <span tuiSubtitle>
+                                    <tui-badge iconStart="@tui.banknote-arrow-up" appearance="info" size="s">
+                                        {{ somaValores(timelineTodayItems(), CATEGORIA_TIPO.RECEITA) | currency }}
+                                    </tui-badge>
+                                    <tui-badge iconStart="@tui.banknote-arrow-down" appearance="negative" size="s">
+                                        {{ somaValores(timelineTodayItems(), CATEGORIA_TIPO.DESPESA) | currency }}
+                                    </tui-badge>
+                                </span>
+                            </span>
+                        </button>
+                        <tui-expand [expanded]="showTodayItens()">
+                            <ng-container *ngTemplateOutlet="timelineTodayItemsTemplate"></ng-container>
+                        </tui-expand>
+                    </ng-container>
+                }
+                @if (timelinePastItems().length && (timelineFutureItems().length || timelineTodayItems().length)) {
+                    <ng-container>
+                        <button
+                            appearance=""
+                            [tuiAccordion]="showPastItens()"
+                            tuiCell="l"
+                            (tuiAccordionChange)="onClickPastItens()"
+                        >
+                            <span tuiTitle>
+                                <strong>Dias anteriores</strong>
+                                <span tuiSubtitle>
+                                    <tui-badge iconStart="@tui.banknote-arrow-up" appearance="info" size="s">
+                                        {{ somaValores(timelinePastItems(), CATEGORIA_TIPO.RECEITA) | currency }}
+                                    </tui-badge>
+                                    <tui-badge iconStart="@tui.banknote-arrow-down" appearance="negative" size="s">
+                                        {{ somaValores(timelinePastItems(), CATEGORIA_TIPO.DESPESA) | currency }}
+                                    </tui-badge>
+                                </span>
+                            </span>
+                        </button>
+                        <tui-expand [expanded]="showPastItens()">
+                            <ng-container *ngTemplateOutlet="timelinePastItemsTemplate"></ng-container>
+                        </tui-expand>
+                    </ng-container>
+                }
+            </tui-accordion>
+
+            @if (!timelineFutureItems().length && !timelineTodayItems().length) {
+                <ng-container *ngTemplateOutlet="timelinePastItemsTemplate"></ng-container>
+            }
         </div>
     }
 
@@ -71,6 +144,39 @@
         </div>
     }
 </div>
+
+<ng-template #timelinePastItemsTemplate>
+    <div class="timeline-container" tuiCell="l">
+        <app-timeline
+            [items]="timelinePastItems()"
+            (edit)="openFormModal($event)"
+            (delete)="confirmDelete($event)"
+            (duplicate)="duplicateItem($event)">
+        </app-timeline>
+    </div> 
+</ng-template>
+
+<ng-template #timelineTodayItemsTemplate>
+    <div class="timeline-container" tuiCell="l">
+        <app-timeline
+            [items]="timelineTodayItems()"
+            (edit)="openFormModal($event)"
+            (delete)="confirmDelete($event)"
+            (duplicate)="duplicateItem($event)">
+        </app-timeline>
+    </div>
+</ng-template>
+
+<ng-template #timelineFutureItemsTemplate>
+    <div class="timeline-container" tuiCell="l">
+        <app-timeline
+            [items]="timelineFutureItems()"
+            (edit)="openFormModal($event)"
+            (delete)="confirmDelete($event)"
+            (duplicate)="duplicateItem($event)">
+        </app-timeline>
+    </div>
+</ng-template>
 
 <ng-template #receitasTooltip>
     <div tuiTitle>

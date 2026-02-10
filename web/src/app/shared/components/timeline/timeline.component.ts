@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, input, output, computed } from '@an
 import { TuiIcon } from '@taiga-ui/core';
 import { CurrencyPipe } from '../../pipes/currency.pipe';
 import { CategoriaTipo } from '../../interfaces';
+import { toUTCDate } from '../../helpers/date';
 
 export interface TimelineItem {
     id: number;
@@ -120,7 +121,10 @@ export class TimelineComponent {
     }
 
     private formatDate(dateStr: string): string {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year.toString().slice(-2)}`;
+        const date = toUTCDate(dateStr);
+        const day = date.getUTCDate().toString().padStart(2, '0');
+        const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+        const year = date.getUTCFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
     }
 }

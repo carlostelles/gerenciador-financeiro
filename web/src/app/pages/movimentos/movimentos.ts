@@ -1,36 +1,38 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
-import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiIcon, TuiTitle } from '@taiga-ui/core';
-import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs, TuiTooltip } from '@taiga-ui/kit';
+import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiTitle } from '@taiga-ui/core';
+import {TuiAccordion} from '@taiga-ui/experimental';
+import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
 
-import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, CategoriaBadgeComponent, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem } from '../../shared';
+import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { forkJoin, finalize, map } from 'rxjs';
 import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
+import { ɵEmptyOutletComponent } from "@angular/router";
+import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
     selector: 'app-movimentos',
     standalone: true,
     imports: [
-    TuiButton,
-    TuiBadge,
-    TuiIcon,
-    TuiTooltip,
-    TuiAvatar,
-    CurrencyPipe,
-    FormatPeriodPipe,
-    TuiTabs,
-    CategoriaBadgeComponent,
-    TuiTitle,
-    TuiCardLarge,
-    TuiAppearance,
-    TuiHint,
-    ButtonFloatComponent,
-    TimelineComponent,
-    TuiCell,
-],
+        TuiButton,
+        TuiBadge,
+        TuiAvatar,
+        CurrencyPipe,
+        FormatPeriodPipe,
+        TuiTabs,
+        TuiTitle,
+        TuiCardLarge,
+        TuiAppearance,
+        TuiHint,
+        ButtonFloatComponent,
+        TimelineComponent,
+        TuiCell,
+        TuiAccordion,
+        NgTemplateOutlet,
+    ],
     providers: [TuiConfirmService],
     changeDetection: ChangeDetectionStrategy.OnPush,
     templateUrl: './movimentos.html',
@@ -49,13 +51,19 @@ export class MovimentosComponent implements OnInit {
     protected readonly movimentos = signal<Movimento[]>([]);
     protected readonly orcamento = signal<Orcamento | null>(null);
 
+    protected readonly showFutureItens = signal<boolean>(false);
+    protected readonly showTodayItens = signal<boolean>(true);
+    protected readonly showPastItens = signal<boolean>(true);
+
+    protected readonly CATEGORIA_TIPO = CategoriaTipo; // Expor enum para template
+
     ngOnInit() {
         this.loadPeriodos();
     }
 
     get currentPeriodo(): string {
-        const now = new Date();
-        return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+        const now = getTodayUTC();
+        return `${now.getUTCFullYear()}-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}`;
     }
 
     /** Resolve o tipo da categoria a partir do orcamentoItem ou da categoria direta */
@@ -164,6 +172,7 @@ export class MovimentosComponent implements OnInit {
         this.movimentoService.getAll(periodo).subscribe({
             next: (movimentos) => {
                 this.movimentos.set(movimentos);
+                this.handleAutoShowFutureItens();
                 this.isLoading.set(false);
             },
             error: (error) => {
@@ -246,6 +255,49 @@ export class MovimentosComponent implements OnInit {
             raw: mov,
         }));
     });
+
+    readonly timelineFutureItems = computed<TimelineItem[]>(() => {
+        return this.timelineItems().filter(item => {
+            return isFutureUTC(item.data);
+        });
+    });
+
+    readonly timelineTodayItems = computed<TimelineItem[]>(() => {
+        return this.timelineItems().filter(item => {
+            return isTodayUTC(item.data);
+        });
+    });
+
+    readonly timelinePastItems = computed<TimelineItem[]>(() => {
+        return this.timelineItems().filter(item => {
+            return isPastUTC(item.data);
+        });
+    });
+
+    somaValores(items: TimelineItem[], tipo: CategoriaTipo): number {
+        return items
+            .filter(item => item.categoriaTipo === tipo)
+            .reduce((sum, item) => sum + item.valor, 0);
+    }
+
+    handleAutoShowFutureItens() {
+        // Se houver itens futuros e eles não estiverem sendo mostrados, mostrar automaticamente
+        if (this.timelineFutureItems().length && !this.timelineTodayItems().length && !this.timelinePastItems().length) {
+            this.showFutureItens.set(true);
+        }
+    }
+
+    onClickFutureItens() {
+        this.showFutureItens.update(value => !value);
+    }
+
+    onClickTodayItens() {
+        this.showTodayItens.update(value => !value);
+    }
+
+    onClickPastItens() {
+        this.showPastItens.update(value => !value);
+    }
 
     trackByFn(index: number, item: Movimento): string {
         return item.data;

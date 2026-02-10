@@ -11,6 +11,7 @@ import { TuiForm } from '@taiga-ui/layout';
 
 import { OrcamentoService } from '../../../../core/services/orcamento.service';
 import { Orcamento, CloneOrcamentoDto, FormatPeriodPipe, ToastService } from '../../../../shared';
+import { getTodayUTC } from '../../../../shared/helpers/date';
 
 @Component({
     selector: 'app-orcamentos-clone',
@@ -35,10 +36,13 @@ export class OrcamentosCloneComponent implements OnInit {
     private readonly context = inject<TuiDialogContext<string, Orcamento | undefined>>(POLYMORPHEUS_CONTEXT);
     private readonly toast = inject(ToastService);
 
-    protected readonly min = TuiMonth.currentLocal();
+    protected readonly min = (() => {
+        const today = getTodayUTC();
+        return new TuiMonth(today.getUTCFullYear(), today.getUTCMonth());
+    })();
     protected readonly disabledItemHandler: TuiBooleanHandler<TuiMonth> = (tuiMonth: TuiMonth) => {
         // Disable months before the current month
-        return tuiMonth.monthBefore(TuiMonth.currentLocal()) || 
+        return tuiMonth.monthBefore(this.min) || 
             this.periodosIndisponiveis().includes(`${tuiMonth.year}-${String(tuiMonth.month + 1).padStart(2, '0')}`);
     };
     protected readonly orcamento = signal<Orcamento>(this.context.data!);

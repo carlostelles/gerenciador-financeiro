@@ -58,7 +58,8 @@
                 <app-timeline
                     [items]="timelineItems()"
                     (edit)="openFormModal($event)"
-                    (delete)="confirmDelete($event)">
+                    (delete)="confirmDelete($event)"
+                    (duplicate)="duplicateItem($event)">
                 </app-timeline>
             </div>
         </div>

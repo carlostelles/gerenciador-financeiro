@@ -24,6 +24,9 @@
                             {{ getDisplayValor(item) | currency }}
                         </span>
                         <div class="action-buttons">
+                            <button class="action-btn duplicate-btn" (click)="onDuplicate(item); $event.stopPropagation()" title="Duplicar">
+                                <tui-icon icon="@tui.copy" />
+                            </button>
                             <button class="action-btn edit-btn" (click)="onEdit(item); $event.stopPropagation()" title="Editar">
                                 <tui-icon icon="@tui.pencil" />
                             </button>

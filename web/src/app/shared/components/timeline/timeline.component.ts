@@ -32,6 +32,7 @@ export class TimelineComponent {
     readonly items = input.required<TimelineItem[]>();
     readonly edit = output<any>();
     readonly delete = output<any>();
+    readonly duplicate = output<any>();
 
     readonly groups = computed<TimelineGroup[]>(() => {
         const items = this.items();
@@ -112,6 +113,10 @@ export class TimelineComponent {
 
     onDelete(item: TimelineItem) {
         this.delete.emit(item.raw);
+    }
+
+    onDuplicate(item: TimelineItem) {
+        this.duplicate.emit(item.raw);
     }
 
     private formatDate(dateStr: string): string {

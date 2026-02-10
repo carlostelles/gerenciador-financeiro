@@ -2,7 +2,7 @@ import { Categoria } from "./categoria.interface";
 import { OrcamentoItem } from "./orcamento.interface";
 
 export interface Movimento {
-  id: number;
+  id?: number;
   usuarioId: number;
   periodo: string;
   data: string;

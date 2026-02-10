@@ -190,6 +190,26 @@ export class MovimentosComponent implements OnInit {
             });
     }
 
+    duplicateItem(movimento: Movimento) {
+        this.dialogs
+            .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
+                label: 'Duplicar movimento',
+                size: 'm',
+                data: {
+                    ...movimento,
+                    id: undefined
+                } as Movimento,
+            })
+            .subscribe({
+                next: () => {
+                    this.loadMovimentos(movimento?.periodo ?? this.chosedPeriodo()!);
+                },
+                error: (error) => {
+                    console.error('Erro ao salvar movimento:', error);
+                }
+            });
+    }
+
     confirmDelete(movimento: Movimento) {
         this.promptService
             .open(`O movimento <strong>${movimento.descricao}</strong> do período <strong>${formatPeriod(movimento.periodo)}</strong> será excluído. Esta ação não pode ser desfeita.`, {
@@ -201,7 +221,7 @@ export class MovimentosComponent implements OnInit {
             })
             .subscribe((result) => {
                 if (result) {
-                    this.movimentoService.delete(movimento.periodo, movimento.id).subscribe({
+                    this.movimentoService.delete(movimento.periodo, movimento.id!).subscribe({
                         next: () => {
                             this.loadMovimentos(movimento.periodo);
                         },
@@ -215,7 +235,7 @@ export class MovimentosComponent implements OnInit {
 
     readonly timelineItems = computed<TimelineItem[]>(() => {
         return this.movimentos().map(mov => ({
-            id: mov.id,
+            id: mov.id!,
             data: mov.data,
             categoriaTipo: this.getCategoriaTipo(mov) || '',
             categoriaNome: this.getCategoriaNome(mov),

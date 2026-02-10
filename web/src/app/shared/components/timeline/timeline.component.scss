@@ -169,6 +169,11 @@
                     color: var(--tui-status-info);
                     background-color: color-mix(in srgb, var(--tui-status-info) 10%, transparent);
                 }
+
+                &.duplicate-btn:hover {
+                    color: var(--tui-status-warning);
+                    background-color: color-mix(in srgb, var(--tui-status-warning) 10%, transparent);
+                }
             }
         }
     }

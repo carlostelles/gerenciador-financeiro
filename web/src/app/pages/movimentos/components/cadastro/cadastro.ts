@@ -16,22 +16,22 @@ import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, Catego
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    TuiButton,
-    TuiTextfield,
-    TuiInputDate,
-    TuiChevron,
-    TuiComboBox,
-    TuiFilterByInputPipe,
-    TuiDataList,
-    TuiDataListWrapper,
-    TuiNumberFormat,
-    TuiCurrencyPipe,
-    TuiInputNumber,
-    TuiForm,
-    CategoriaBadgeComponent
-],
+        CommonModule,
+        ReactiveFormsModule,
+        TuiButton,
+        TuiTextfield,
+        TuiInputDate,
+        TuiChevron,
+        TuiComboBox,
+        TuiFilterByInputPipe,
+        TuiDataList,
+        TuiDataListWrapper,
+        TuiNumberFormat,
+        TuiCurrencyPipe,
+        TuiInputNumber,
+        TuiForm,
+        CategoriaBadgeComponent
+    ],
     templateUrl: './cadastro.html',
     styleUrls: ['./cadastro.scss']
 })
@@ -70,7 +70,8 @@ export class OrcamentosCadastroComponent implements OnInit {
     protected readonly movimentacao = signal<Movimento | undefined>(this.context.data);
 
     get isEditing(): boolean {
-        return !!this.context.data;
+        console.log(this.context.data);
+        return !!this.context.data?.id;
     }
 
     ngOnInit() {
@@ -175,7 +176,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             }
     
             if (this.isEditing && this.context.data) {
-                this.updateMovimento(this.context.data.id, movimentoData);
+                this.updateMovimento(this.context.data.id!, movimentoData);
             } else {
                 this.createMovimento(movimentoData);
             }

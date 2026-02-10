@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsOptional,
   ValidateIf,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateMovimentoDto {
@@ -49,4 +50,21 @@ export class CreateMovimentoDto {
   @IsOptional()
   @IsNumber({}, { message: 'O categoriaId deve ser um número' })
   categoriaId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Indica se a movimentação é parcelada',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo parcelado deve ser um booleano' })
+  parcelado?: boolean;
+
+  @ValidateIf((o) => o.parcelado === true)
+  @ApiPropertyOptional({
+    description: 'Número de parcelas (obrigatório se parcelado for true)',
+    example: 3,
+  })
+  @IsNumber({}, { message: 'O número de parcelas deve ser um número' })
+  @IsPositive({ message: 'O número de parcelas deve ser um número positivo' })
+  parcelas?: number;
 }

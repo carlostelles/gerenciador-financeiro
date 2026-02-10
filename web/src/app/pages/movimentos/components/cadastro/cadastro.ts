@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield } from '@taiga-ui/core';
-import { TuiChevron, TuiComboBox, TuiDataListWrapper, TuiFilterByInputPipe, TuiInputDate, TuiInputNumber, TuiSelect } from '@taiga-ui/kit';
+import { TuiChevron, TuiComboBox, TuiDataListWrapper, TuiFilterByInputPipe, TuiInputDate, TuiInputNumber, TuiSelect, TuiSwitch } from '@taiga-ui/kit';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiDay, TuiIdentityMatcher, TuiMonth, TuiStringHandler, TuiStringMatcher } from '@taiga-ui/cdk';
 import { TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
@@ -21,6 +21,7 @@ import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, Catego
         TuiButton,
         TuiTextfield,
         TuiInputDate,
+        TuiSwitch,
         TuiChevron,
         TuiComboBox,
         TuiFilterByInputPipe,
@@ -83,7 +84,9 @@ export class OrcamentosCadastroComponent implements OnInit {
             data: ['', [Validators.required]],
             categoriaOption: ['', [Validators.required]],
             valor: [null, [Validators.required, Validators.min(0.01)]],
-            descricao: ['', [Validators.maxLength(255)]]
+            descricao: ['', [Validators.maxLength(255)]],
+            parcelado: [false],
+            parcelas: [null, [Validators.min(2), Validators.max(99)]]
         });
 
         if (this.movimentacao()) {
@@ -163,7 +166,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             const { categoriaOption, ...rest } = this.movimentoForm.value;
 
             const movimentoData: CreateMovimentoDto = {
-                ...rest,
+                ...rest
             };
 
             // Se a opção selecionada veio do orçamento, enviar orcamentoItemId

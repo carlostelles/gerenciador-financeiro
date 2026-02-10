@@ -63,27 +63,39 @@ export class MovimentacoesService {
       }
     }
 
-    const movimento = this.movimentoRepository.create({
-      ...createMovimentoDto,
-      categoriaId,
-      periodo,
-      usuarioId,
+    for (let i = 0; i < (createMovimentoDto.parcelas || 1); i++) {
+      const dataParcelada = new Date(dataMovimento);
+      dataParcelada.setMonth(dataParcelada.getMonth() + i);
+
+      const movimento = this.movimentoRepository.create({
+        ...createMovimentoDto,
+        data: dataParcelada,
+        categoriaId,
+        periodo: `${dataParcelada.getFullYear()}-${String(
+          dataParcelada.getMonth() + 1,
+        ).padStart(2, '0')}`,
+        usuarioId,
+        descricao: createMovimentoDto.descricao + (createMovimentoDto.parcelas ? ` (Parcela ${i + 1}/${createMovimentoDto.parcelas})` : ''),
+      });
+
+      await this.movimentoRepository.save(movimento);
+
+      // Log da criação
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Movimentação criada: ${movimento.descricao}`,
+        acao: LogAcao.CREATE,
+        entidade: 'Movimento',
+        entidadeId: movimento.id.toString(),
+        dadosNovos: movimento,
+      });
+    }
+
+    return this.movimentoRepository.findOne({
+      where: { data: dataMovimento, usuarioId },
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
     });
-
-    const savedMovimento = await this.movimentoRepository.save(movimento);
-
-    // Log da criação
-    await this.logsService.create({
-      data: new Date(),
-      usuarioId,
-      descricao: `Movimentação criada: ${savedMovimento.descricao}`,
-      acao: LogAcao.CREATE,
-      entidade: 'Movimento',
-      entidadeId: savedMovimento.id.toString(),
-      dadosNovos: savedMovimento,
-    });
-
-    return savedMovimento;
   }
 
   async findAll(periodo: string, usuarioId: number): Promise<Movimento[]> {

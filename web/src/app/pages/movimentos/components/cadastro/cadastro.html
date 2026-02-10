@@ -39,6 +39,28 @@
     <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a descrição" />
   </tui-textfield>
 
+  @if (!isEditing) {
+    <div class="flex gap-1">
+       <div>
+        <label tuiLabel for="parcelado">Possui parcelamento?</label>
+        <input
+            tuiSwitch
+            type="checkbox"
+            formControlName="parcelado"
+            [showIcons]="true"
+            size="m"
+        />
+      </div>
+
+      @if (movimentoForm.get('parcelado')?.value) {
+        <tui-textfield>
+          <label tuiLabel for="parcelas">Número de parcelas</label>
+          <input tuiInputNumber id="parcelas" formControlName="parcelas" [min]="2" [max]="99" />
+        </tui-textfield>
+      }
+    </div>
+  }
+
   <div class="form-actions">
     <button type="button" tuiButton appearance="secondary" size="m" (click)="onCancel()" [disabled]="isSubmitting()">
       Cancelar

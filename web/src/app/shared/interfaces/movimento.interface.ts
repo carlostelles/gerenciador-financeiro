@@ -20,6 +20,8 @@ export interface CreateMovimentoDto {
   valor: number;
   orcamentoItemId?: number;
   categoriaId?: number;
+  parcelado?: boolean; // Novo campo para indicar se a movimentação é parcelada
+  parcelas?: number; // Novo campo para indicar número de parcelas, se for parcelado
 }
 
 export interface UpdateMovimentoDto {

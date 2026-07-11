@@ -10,12 +10,14 @@ name: Deploy
 #      de produção (docker-compose.yml + Makefile), sem exigir um registry
 #      de imagens externo.
 #
-# Segredos (Settings > Secrets and variables > Actions) necessários:
+# Variáveis (Settings > Secrets and variables > Actions > Variables) necessárias:
 #   SSH_HOST         Endereço/IP do servidor de produção
 #   SSH_PORT         Porta SSH (opcional, padrão 22)
 #   SSH_USERNAME     Usuário utilizado para conectar via SSH
-#   SSH_PRIVATE_KEY  Chave privada SSH (formato PEM) com acesso ao servidor
 #   DEPLOY_PATH      Caminho absoluto do projeto no servidor (ex.: /opt/gerenciador-financeiro)
+#
+# Segredo (Settings > Secrets and variables > Actions > Secrets) necessário:
+#   SSH_PRIVATE_KEY  Chave privada SSH (formato PEM) com acesso ao servidor
 
 on:
   push:
@@ -76,15 +78,15 @@ jobs:
       - name: Deploy no servidor
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          username: ${{ secrets.SSH_USERNAME }}
+          host: ${{ vars.SSH_HOST }}
+          port: ${{ vars.SSH_PORT || 22 }}
+          username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: true
           script: |
             set -e
 
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
             REF="${{ github.event.inputs.ref || github.ref_name }}"
 
             if [ -z "$DEPLOY_PATH" ]; then
@@ -110,9 +112,9 @@ jobs:
       - name: Verificar saúde da aplicação
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          username: ${{ secrets.SSH_USERNAME }}
+          host: ${{ vars.SSH_HOST }}
+          port: ${{ vars.SSH_PORT || 22 }}
+          username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: true
           script: |

@@ -307,7 +307,7 @@ export class MovimentacoesService {
     }
 
     const dadosAnteriores = JSON.parse(JSON.stringify(movimento));
-    const { orcamentoItem, categoria, ...movimentoData } = movimento;
+    const { orcamentoItem, categoria, conta, ...movimentoData } = movimento;
     Object.assign(movimentoData, updateMovimentoDto);
     
     const movimentoAtualizado = await this.movimentoRepository.save(movimentoData);

@@ -14,6 +14,8 @@ import { Categoria } from '../categorias/entities/categoria.entity';
 import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
 import { Conta } from '../contas/entities/conta.entity';
+import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
+import { contemTodasAsPalavras } from '../../common/utils/normalize-text.util';
 
 @Injectable()
 export class MovimentacoesService {
@@ -129,12 +131,50 @@ export class MovimentacoesService {
     });
   }
 
-  async findAll(periodo: string, usuarioId: number): Promise<Movimento[]> {
-    return this.movimentoRepository.find({
-      where: { periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
-      order: { data: 'DESC' },
-    });
+  async findAll(
+    periodo: string,
+    usuarioId: number,
+    filtros?: FindMovimentosQueryDto,
+  ): Promise<Movimento[]> {
+    const categoriaId = filtros?.categoriaId
+      ? parseInt(filtros.categoriaId, 10)
+      : undefined;
+    const contaId = filtros?.contaId
+      ? parseInt(filtros.contaId, 10)
+      : undefined;
+
+    const query = this.movimentoRepository
+      .createQueryBuilder('movimento')
+      .leftJoinAndSelect('movimento.orcamentoItem', 'orcamentoItem')
+      .leftJoinAndSelect('orcamentoItem.categoria', 'orcamentoItemCategoria')
+      .leftJoinAndSelect('movimento.categoria', 'categoria')
+      .leftJoinAndSelect('movimento.conta', 'conta')
+      .where('movimento.periodo = :periodo', { periodo })
+      .andWhere('movimento.usuarioId = :usuarioId', { usuarioId });
+
+    if (categoriaId) {
+      query.andWhere(
+        '(movimento.categoriaId = :categoriaId OR orcamentoItem.categoriaId = :categoriaId)',
+        { categoriaId },
+      );
+    }
+
+    if (contaId) {
+      query.andWhere('movimento.contaId = :contaId', { contaId });
+    }
+
+    query.orderBy('movimento.data', 'DESC');
+
+    const movimentos = await query.getMany();
+
+    if (filtros?.descricao) {
+      return movimentos.filter((movimento) => {
+        const descricaoCompleta = `${movimento.orcamentoItem?.descricao || ''} ${movimento.descricao || ''}`;
+        return contemTodasAsPalavras(descricaoCompleta, filtros.descricao!);
+      });
+    }
+
+    return movimentos;
   }
 
   async findOne(

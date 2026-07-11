@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,10 +16,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { MovimentacoesService } from './movimentacoes.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
+import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -89,12 +92,31 @@ export class MovimentacoesController {
     name: 'periodo',
     description: 'Período das movimentações (yyyy-mm)',
   })
+  @ApiQuery({
+    name: 'categoriaId',
+    required: false,
+    description: 'Filtrar por categoria',
+  })
+  @ApiQuery({
+    name: 'contaId',
+    required: false,
+    description: 'Filtrar por conta',
+  })
+  @ApiQuery({
+    name: 'descricao',
+    required: false,
+    description: 'Filtrar por descrição (busca dinâmica por palavras)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de movimentações retornada com sucesso',
   })
-  findAll(@Param('periodo') periodo: string, @CurrentUser() user: any) {
-    return this.movimentacoesService.findAll(periodo, user.sub);
+  findAll(
+    @Param('periodo') periodo: string,
+    @Query() query: FindMovimentosQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.findAll(periodo, user.sub, query);
   }
 
   @Get(':periodo/:id')

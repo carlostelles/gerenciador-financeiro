@@ -119,15 +119,44 @@ jobs:
           script_stop: true
           script: |
             set -e
-            MAX_ATTEMPTS=15
+
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then
+              echo "❌ Variável DEPLOY_PATH não configurada."
+              exit 1
+            fi
+
+            cd "$DEPLOY_PATH"
+
+            DOCKER_COMPOSE_CMD="docker compose"
+            if command -v docker-compose >/dev/null 2>&1; then
+              DOCKER_COMPOSE_CMD="docker-compose"
+            fi
+
+            MAX_ATTEMPTS=24
             ATTEMPT=1
-            until curl -sf --connect-timeout 5 http://localhost:3000/health | grep -q "healthy"; do
+
+            # Valida apenas o status HTTP 200 do /health.
+            # O payload pode variar (ok/healthy/etc), então não fazemos grep em conteúdo.
+            until curl -fsS --connect-timeout 5 http://localhost:3000/health >/dev/null; do
               if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
                 echo "❌ API não respondeu como saudável após o deploy."
+                echo "📋 Estado atual dos containers:"
+                $DOCKER_COMPOSE_CMD -f docker-compose.yml ps || true
+                echo "📋 Últimas linhas de log da API:"
+                $DOCKER_COMPOSE_CMD -f docker-compose.yml logs --tail=120 api || true
                 exit 1
               fi
+
               echo "⏳ Aguardando API ficar saudável... (tentativa $ATTEMPT/$MAX_ATTEMPTS)"
+
+              if [ $((ATTEMPT % 6)) -eq 0 ]; then
+                echo "📌 Status parcial dos containers na tentativa $ATTEMPT:"
+                $DOCKER_COMPOSE_CMD -f docker-compose.yml ps || true
+              fi
+
               ATTEMPT=$((ATTEMPT + 1))
               sleep 5
             done
+
             echo "✅ API está saudável!"

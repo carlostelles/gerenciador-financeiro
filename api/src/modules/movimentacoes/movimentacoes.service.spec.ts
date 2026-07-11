@@ -257,6 +257,32 @@ describe('MovimentacoesService', () => {
       ).rejects.toThrow(BadRequestException);
       expect(movimentoRepository.save).not.toHaveBeenCalled();
     });
+
+    it('deve atualizar contaId sem manter relação antiga de conta', async () => {
+      const movimentoComContaAntiga = {
+        ...mockMovimento,
+        contaId: 1,
+        conta: { id: 1, nome: 'Conta antiga' },
+      } as unknown as Movimento;
+
+      movimentoRepository.findOne.mockResolvedValue(movimentoComContaAntiga);
+      contaRepository.findOne.mockResolvedValue({ id: 2 } as Conta);
+      movimentoRepository.save.mockImplementation(async (payload) => payload as Movimento);
+
+      await service.update(
+        periodo,
+        1,
+        { contaId: 2 },
+        usuarioId,
+      );
+
+      expect(movimentoRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ contaId: 2 }),
+      );
+      expect(movimentoRepository.save).not.toHaveBeenCalledWith(
+        expect.objectContaining({ conta: expect.anything() }),
+      );
+    });
   });
 
   describe('remove', () => {

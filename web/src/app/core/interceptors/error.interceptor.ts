@@ -37,9 +37,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (error.status === 400) {
-        error.error.message.forEach((msg: string) => {
-          alerts.open(msg, { appearance: 'negative' }).subscribe();
-        });
+        console.log('Erro 400:', error.error);
+        if (error.error && error.error.message) {
+          if (Array.isArray(error.error.message)) {
+            error.error.message.forEach((msg: string) => {
+              alerts.open(msg, { appearance: 'negative' }).subscribe();
+            });
+          } else {
+            alerts.open(error.error.message, { appearance: 'negative' }).subscribe();
+          }
+        } else {
+          alerts.open('Erro de requisição inválida.', { appearance: 'negative' }).subscribe();
+        }
       }
       
       if (error.status > 404 && error.status < 500 || error.status === 401) {

@@ -12,6 +12,11 @@
                         <div class="item-icon" [ngClass]="getIconClass(item.categoriaTipo)">
                             <tui-icon [icon]="getIcon(item.categoriaTipo)" />
                         </div>
+                        @if (item.raw.conta) {
+                            <tui-badge iconStart="@tui.wallet" appearance="warning" size="s">
+                                <b>{{ item.raw.conta.nome }}</b>
+                            </tui-badge>
+                        }
                         <div class="item-content">
                             <span class="item-category">{{ item.categoriaNome }}</span>
                             @if (item.descricao) {

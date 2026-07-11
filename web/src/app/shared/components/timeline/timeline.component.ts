@@ -2,12 +2,14 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output, computed } from '@angular/core';
 import { TuiIcon } from '@taiga-ui/core';
 import { CurrencyPipe } from '../../pipes/currency.pipe';
-import { CategoriaTipo } from '../../interfaces';
+import { CategoriaTipo, Conta } from '../../interfaces';
 import { toUTCDate } from '../../helpers/date';
+import { TuiBadge } from "@taiga-ui/kit";
 
 export interface TimelineItem {
     id: number;
     data: string;
+    conta?: Conta;
     categoriaTipo: CategoriaTipo | string;
     categoriaNome: string;
     descricao: string;
@@ -24,7 +26,7 @@ export interface TimelineGroup {
 @Component({
     selector: 'app-timeline',
     standalone: true,
-    imports: [CommonModule, TuiIcon, CurrencyPipe],
+    imports: [CommonModule, TuiIcon, CurrencyPipe, TuiBadge],
     changeDetection: ChangeDetectionStrategy.OnPush,
     templateUrl: './timeline.component.html',
     styleUrls: ['./timeline.component.scss']
@@ -38,7 +40,6 @@ export class TimelineComponent {
     readonly groups = computed<TimelineGroup[]>(() => {
         const items = this.items();
         const grouped = new Map<string, TimelineItem[]>();
-
         for (const item of items) {
             const key = item.data;
             if (!grouped.has(key)) {

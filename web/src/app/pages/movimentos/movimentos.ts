@@ -10,7 +10,6 @@ import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { forkJoin, finalize, map } from 'rxjs';
 import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
-import { ɵEmptyOutletComponent } from "@angular/router";
 import { NgTemplateOutlet } from '@angular/common';
 
 @Component({

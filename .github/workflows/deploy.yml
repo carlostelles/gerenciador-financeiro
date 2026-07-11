@@ -1,0 +1,131 @@
+name: Deploy
+
+# Pipeline de publicação da API e do Web em servidor via SSH.
+#
+# Fluxo:
+#   1. build-test: valida que API e Web instalam dependências e buildam
+#      corretamente antes de qualquer alteração em produção.
+#   2. deploy: conecta via SSH no servidor de produção, atualiza o código
+#      (git pull) e reconstrói/reinicia os containers com o Docker Compose
+#      de produção (docker-compose.yml + Makefile), sem exigir um registry
+#      de imagens externo.
+#
+# Segredos (Settings > Secrets and variables > Actions) necessários:
+#   SSH_HOST         Endereço/IP do servidor de produção
+#   SSH_PORT         Porta SSH (opcional, padrão 22)
+#   SSH_USERNAME     Usuário utilizado para conectar via SSH
+#   SSH_PRIVATE_KEY  Chave privada SSH (formato PEM) com acesso ao servidor
+#   DEPLOY_PATH      Caminho absoluto do projeto no servidor (ex.: /opt/gerenciador-financeiro)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch ou tag a ser publicada'
+        required: false
+        default: 'main'
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências da API
+        working-directory: api
+        run: npm ci
+
+      - name: Build da API
+        working-directory: api
+        run: npm run build
+
+      - name: Testes unitários da API
+        working-directory: api
+        run: npm run test
+
+      - name: Instalar dependências do Web
+        working-directory: web
+        run: npm ci
+
+      - name: Build do Web
+        working-directory: web
+        run: npm run build
+
+  deploy:
+    name: Deploy via SSH
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy no servidor
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            REF="${{ github.event.inputs.ref || github.ref_name }}"
+
+            if [ -z "$DEPLOY_PATH" ]; then
+              echo "❌ Segredo DEPLOY_PATH não configurado."
+              exit 1
+            fi
+
+            cd "$DEPLOY_PATH"
+
+            echo "🔄 Atualizando código-fonte (branch/ref: $REF)..."
+            git fetch --all --prune
+            git checkout "$REF"
+            git pull origin "$REF"
+
+            echo "🔨 Reconstruindo e reiniciando containers de produção..."
+            make prod-rebuild
+
+            echo "🧹 Removendo imagens antigas não utilizadas..."
+            docker image prune -f
+
+            echo "✅ Deploy concluído com sucesso!"
+
+      - name: Verificar saúde da aplicação
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            MAX_ATTEMPTS=15
+            ATTEMPT=1
+            until curl -sf --connect-timeout 5 http://localhost:3000/health | grep -q "healthy"; do
+              if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+                echo "❌ API não respondeu como saudável após o deploy."
+                exit 1
+              fi
+              echo "⏳ Aguardando API ficar saudável... (tentativa $ATTEMPT/$MAX_ATTEMPTS)"
+              ATTEMPT=$((ATTEMPT + 1))
+              sleep 5
+            done
+            echo "✅ API está saudável!"

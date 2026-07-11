@@ -9,7 +9,8 @@ import { TuiCurrencyPipe } from '@taiga-ui/addon-commerce';
 import { TuiForm } from '@taiga-ui/layout';
 
 import { MovimentoService } from '../../../../core/services/movimento.service';
-import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, CategoriaBadgeComponent, CategoriaOption } from '../../../../shared';
+import { ContaService } from '../../../../core/services/conta.service';
+import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, CategoriaBadgeComponent, CategoriaOption, Conta } from '../../../../shared';
 import { toUTCDate } from '../../../../shared/helpers/date';
 
 @Component({
@@ -40,6 +41,7 @@ import { toUTCDate } from '../../../../shared/helpers/date';
 export class OrcamentosCadastroComponent implements OnInit {
     private readonly fb = inject(FormBuilder);
     private readonly movimentosService = inject(MovimentoService);
+    private readonly contaService = inject(ContaService);
     private readonly context = inject<TuiDialogContext<string, Movimento | undefined>>(POLYMORPHEUS_CONTEXT);
     private readonly toast = inject(ToastService);
 
@@ -48,6 +50,9 @@ export class OrcamentosCadastroComponent implements OnInit {
     protected readonly periodo = signal<string>('');
     protected readonly isSubmitting = signal<boolean>(false);
     protected readonly categoriaOptions = signal<CategoriaOption[]>([]);
+    protected readonly contas = signal<Conta[]>([]);
+    protected readonly contaStringify: TuiStringHandler<number> = (id) =>
+        this.contas().find((conta) => conta.id === id)?.nome ?? '';
     protected readonly stringify: TuiStringHandler<CategoriaOption> = (option) => {
         const item = this.categoriaOptions().find((o) => this.identityMatcher(o, option));
         if (!item) return '';
@@ -86,6 +91,7 @@ export class OrcamentosCadastroComponent implements OnInit {
 
     ngOnInit() {
         this.initializeForm();
+        this.loadContas();
     }
 
     private initializeForm() {
@@ -94,6 +100,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             categoriaOption: ['', [Validators.required]],
             valor: [null, [Validators.required, Validators.min(0.01)]],
             descricao: ['', [Validators.maxLength(255)]],
+            contaId: [null],
             parcelado: [false],
             parcelas: [null, [Validators.min(2), Validators.max(99)]]
         });
@@ -113,6 +120,26 @@ export class OrcamentosCadastroComponent implements OnInit {
         // Subscribe to data field changes
         this.movimentoForm.get('data')?.valueChanges.subscribe((value) => {
             this.onDataChange(value);
+        });
+    }
+
+    private loadContas() {
+        this.contaService.getAll().subscribe({
+            next: (contas) => {
+                this.contas.set(contas);
+
+                const contaId = this.movimentacao()?.contaId;
+                if (contaId) {
+                    // Editando: selecionar a conta vinculada ao movimento
+                    this.movimentoForm.patchValue({ contaId });
+                } else if (!this.context.data?.id && contas.length === 1) {
+                    // Criando: se existir apenas uma conta cadastrada, pré-selecioná-la
+                    this.movimentoForm.patchValue({ contaId: contas[0].id });
+                }
+            },
+            error: (error) => {
+                console.error('Erro ao carregar contas:', error);
+            }
         });
     }
 

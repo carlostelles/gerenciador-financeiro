@@ -43,6 +43,16 @@
     <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a descrição" />
   </tui-textfield>
 
+  <tui-textfield tuiChevron [stringify]="contaStringify">
+    <label tuiLabel for="conta">Conta</label>
+    <input tuiComboBox formControlName="contaId" [strict]="false" />
+    <tui-data-list *tuiTextfieldDropdown>
+      <button *ngFor="let conta of contas()" new tuiOption type="button" [value]="conta.id">
+        {{ conta.nome }}
+      </button>
+    </tui-data-list>
+  </tui-textfield>
+
   @if (!isEditing) {
     <div class="flex gap-1">
        <div>

@@ -1,5 +1,6 @@
 import { Categoria } from "./categoria.interface";
 import { OrcamentoItem } from "./orcamento.interface";
+import { Conta } from "./conta.interface";
 
 export interface Movimento {
   id?: number;
@@ -12,6 +13,8 @@ export interface Movimento {
   orcamentoItem?: OrcamentoItem;
   categoriaId?: number;
   categoria?: Categoria;
+  contaId?: number;
+  conta?: Conta;
 }
 
 export interface CreateMovimentoDto {
@@ -20,6 +23,7 @@ export interface CreateMovimentoDto {
   valor: number;
   orcamentoItemId?: number;
   categoriaId?: number;
+  contaId?: number;
   parcelado?: boolean; // Novo campo para indicar se a movimentação é parcelada
   parcelas?: number; // Novo campo para indicar número de parcelas, se for parcelado
 }
@@ -30,6 +34,7 @@ export interface UpdateMovimentoDto {
   valor?: number;
   orcamentoItemId?: number;
   categoriaId?: number;
+  contaId?: number;
 }
 
 /** Item vindo do orçamento */

@@ -10,6 +10,7 @@ import {
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
 import { Categoria } from '../../categorias/entities/categoria.entity';
+import { Conta } from '../../contas/entities/conta.entity';
 
 @Entity('movimentos')
 export class Movimento {
@@ -37,6 +38,9 @@ export class Movimento {
   @Column({ nullable: true })
   categoriaId: number;
 
+  @Column({ nullable: true })
+  contaId: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -54,4 +58,8 @@ export class Movimento {
   @ManyToOne(() => Categoria, { nullable: true })
   @JoinColumn({ name: 'categoriaId' })
   categoria: Categoria;
+
+  @ManyToOne(() => Conta, (conta) => conta.movimentos, { nullable: true })
+  @JoinColumn({ name: 'contaId' })
+  conta: Conta;
 }

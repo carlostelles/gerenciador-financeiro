@@ -7,11 +7,12 @@ import { Movimento } from './entities/movimento.entity';
 import { Categoria } from '../categorias/entities/categoria.entity';
 import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
+import { Conta } from '../contas/entities/conta.entity';
 import { LogsModule } from '../logs/logs.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Movimento, Categoria, OrcamentoItem, Orcamento]),
+    TypeOrmModule.forFeature([Movimento, Categoria, OrcamentoItem, Orcamento, Conta]),
     JwtModule,
     LogsModule,
   ],

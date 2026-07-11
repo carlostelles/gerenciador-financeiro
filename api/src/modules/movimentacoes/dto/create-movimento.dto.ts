@@ -52,6 +52,14 @@ export class CreateMovimentoDto {
   categoriaId?: number;
 
   @ApiPropertyOptional({
+    description: 'ID da conta (opcional)',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'O contaId deve ser um número' })
+  contaId?: number;
+
+  @ApiPropertyOptional({
     description: 'Indica se a movimentação é parcelada',
     example: false,
   })

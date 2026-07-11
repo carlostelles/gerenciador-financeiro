@@ -13,6 +13,7 @@ import { LogAcao } from '../../common/types';
 import { Categoria } from '../categorias/entities/categoria.entity';
 import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
+import { Conta } from '../contas/entities/conta.entity';
 
 @Injectable()
 export class MovimentacoesService {
@@ -25,8 +26,33 @@ export class MovimentacoesService {
     private orcamentoItemRepository: Repository<OrcamentoItem>,
     @InjectRepository(Orcamento)
     private orcamentoRepository: Repository<Orcamento>,
+    @InjectRepository(Conta)
+    private contaRepository: Repository<Conta>,
     private logsService: LogsService,
   ) {}
+
+  /**
+   * Converte uma string de data (YYYY-MM-DD ou ISO) em um Date local,
+   * ignorando o timezone, para evitar que a data mude de dia/mês
+   * dependendo do fuso horário do servidor.
+   */
+  private parseDataSemTimezone(data: string): Date {
+    const [ano, mes, dia] = data.split('T')[0].split('-').map(Number);
+    return new Date(ano, mes - 1, dia);
+  }
+
+  /**
+   * Valida se a conta informada existe e pertence ao usuário.
+   */
+  private async validarConta(contaId: number, usuarioId: number): Promise<void> {
+    const conta = await this.contaRepository.findOne({
+      where: { id: contaId, usuarioId },
+    });
+
+    if (!conta) {
+      throw new BadRequestException('A conta informada não existe');
+    }
+  }
 
   async create(
     periodo: string,
@@ -40,12 +66,17 @@ export class MovimentacoesService {
       );
     }
 
+    // Validar se a conta informada existe
+    if (createMovimentoDto.contaId) {
+      await this.validarConta(createMovimentoDto.contaId, usuarioId);
+    }
+
     // Validar se a data está dentro do período
-    const dataMovimento = new Date(createMovimentoDto.data);
+    const dataMovimento = this.parseDataSemTimezone(createMovimentoDto.data);
     const [ano, mes] = periodo.split('-');
     const anoData = dataMovimento.getFullYear();
     const mesData = dataMovimento.getMonth() + 1;
-
+    console.log(`Data do movimento: ${dataMovimento}, Ano: ${anoData}, Mês: ${mesData}, Período: ${periodo}`);
     if (anoData !== parseInt(ano) || mesData !== parseInt(mes)) {
       throw new BadRequestException(
         'A data da movimentação deve estar dentro do período especificado',
@@ -208,7 +239,7 @@ export class MovimentacoesService {
 
     // Validar se a nova data está dentro do período
     if (updateMovimentoDto.data) {
-      const dataMovimento = new Date(updateMovimentoDto.data);
+      const dataMovimento = this.parseDataSemTimezone(updateMovimentoDto.data);
       const [ano, mes] = periodo.split('-');
       const anoData = dataMovimento.getFullYear();
       const mesData = dataMovimento.getMonth() + 1;
@@ -218,6 +249,11 @@ export class MovimentacoesService {
           'A data da movimentação deve estar dentro do período especificado',
         );
       }
+    }
+
+    // Validar se a conta informada existe
+    if (updateMovimentoDto.contaId) {
+      await this.validarConta(updateMovimentoDto.contaId, usuarioId);
     }
 
     // Se orcamentoItemId informado, resolver categoriaId a partir do item

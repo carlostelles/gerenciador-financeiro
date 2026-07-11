@@ -194,7 +194,7 @@ if [[ "$ENVIRONMENT" == "prod" ]]; then
     
 else
     log "🚀 Iniciando ambiente de desenvolvimento..."
-    docker compose -f docker compose.dev.yml up -d
+    docker compose -f docker-compose.dev.yml up -d
     
     # Aguardar bancos de dados
     log "⏳ Aguardando bancos de dados..."

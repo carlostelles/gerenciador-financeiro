@@ -1,0 +1,19 @@
+<form tuiForm="l" [formGroup]="contaForm" (ngSubmit)="saveConta()">
+    <tui-textfield>
+        <label tuiLabel for="nome">Nome da Conta *</label>
+        <input tuiTextfield id="nome" formControlName="nome" type="text" placeholder="Digite o nome da conta" />
+        <div *ngIf="contaForm.get('nome')?.invalid && contaForm.get('nome')?.touched" class="error-message">
+            <span *ngIf="contaForm.get('nome')?.errors?.['required']">Nome é obrigatório</span>
+            <span *ngIf="contaForm.get('nome')?.errors?.['minlength']">Nome deve ter pelo menos 2 caracteres</span>
+        </div>
+    </tui-textfield>
+
+    <div class="form-actions">
+        <button type="button" tuiButton appearance="secondary" size="m" (click)="onClose()">
+            Cancelar
+        </button>
+        <button type="submit" tuiButton appearance="primary" size="m" [disabled]="contaForm.invalid">
+            {{ conta ? 'Atualizar' : 'Criar' }}
+        </button>
+    </div>
+</form>

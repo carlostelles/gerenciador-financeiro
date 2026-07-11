@@ -22,6 +22,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/categorias/categorias').then(m => m.CategoriasComponent)
       },
       {
+        path: 'contas',
+        loadComponent: () => import('./pages/contas/contas').then(m => m.ContasComponent)
+      },
+      {
         path: 'usuarios',
         loadComponent: () => import('./pages/usuarios/usuarios').then(m => m.UsuariosComponent),
         canActivate: [AdminGuard]

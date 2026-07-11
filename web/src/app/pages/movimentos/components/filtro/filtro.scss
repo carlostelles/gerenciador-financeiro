@@ -1,0 +1,22 @@
+:host {
+  form {
+    > :first-child {
+      margin-top: 1.5rem;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      align-items: center;
+
+      @media (max-width: 768px) {
+        flex-direction: column-reverse;
+
+        button {
+          width: 100%;
+        }
+      }
+    }
+  }
+}

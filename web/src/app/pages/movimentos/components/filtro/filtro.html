@@ -1,0 +1,40 @@
+<form tuiForm="l" [formGroup]="filtroForm" (ngSubmit)="onSubmit()">
+  <tui-textfield tuiChevron [stringify]="categoriaStringify">
+    <label tuiLabel for="categoriaId">Categoria</label>
+    <input tuiComboBox formControlName="categoriaId" [strict]="false" />
+    <tui-data-list *tuiTextfieldDropdown>
+      <button new tuiOption type="button" [value]="null">Todas as categorias</button>
+      <button *ngFor="let categoria of categorias()" new tuiOption type="button" [value]="categoria.id">
+        {{ categoria.nome }}
+      </button>
+    </tui-data-list>
+  </tui-textfield>
+
+  <tui-textfield tuiChevron [stringify]="contaStringify">
+    <label tuiLabel for="contaId">Conta</label>
+    <input tuiComboBox formControlName="contaId" [strict]="false" />
+    <tui-data-list *tuiTextfieldDropdown>
+      <button new tuiOption type="button" [value]="null">Todas as contas</button>
+      <button *ngFor="let conta of contas()" new tuiOption type="button" [value]="conta.id">
+        {{ conta.nome }}
+      </button>
+    </tui-data-list>
+  </tui-textfield>
+
+  <tui-textfield>
+    <label tuiLabel for="descricao">Descrição</label>
+    <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite uma ou mais palavras" />
+  </tui-textfield>
+
+  <div class="form-actions">
+    <button type="button" tuiButton appearance="outline" size="m" (click)="onClear()">
+      Limpar filtros
+    </button>
+    <button type="button" tuiButton appearance="secondary" size="m" (click)="onCancel()">
+      Cancelar
+    </button>
+    <button type="submit" tuiButton appearance="primary" size="m">
+      Filtrar
+    </button>
+  </div>
+</form>

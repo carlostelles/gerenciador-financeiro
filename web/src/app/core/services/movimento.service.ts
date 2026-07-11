@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -12,8 +12,18 @@ export class MovimentoService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(periodo: string): Observable<Movimento[]> {
-    return this.http.get<Movimento[]>(`${this.baseUrl}/movimentacoes/${periodo}`);
+  getAll(periodo: string, filtro?: MovimentoFiltro): Observable<Movimento[]> {
+    let params = new HttpParams();
+    if (filtro?.categoriaId) {
+      params = params.set('categoriaId', filtro.categoriaId);
+    }
+    if (filtro?.contaId) {
+      params = params.set('contaId', filtro.contaId);
+    }
+    if (filtro?.descricao) {
+      params = params.set('descricao', filtro.descricao);
+    }
+    return this.http.get<Movimento[]>(`${this.baseUrl}/movimentacoes/${periodo}`, { params });
   }
 
   getById(periodo: string, id: number): Observable<Movimento> {

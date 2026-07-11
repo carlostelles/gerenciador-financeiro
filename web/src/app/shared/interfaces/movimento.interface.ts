@@ -37,6 +37,14 @@ export interface UpdateMovimentoDto {
   contaId?: number;
 }
 
+/** Filtros de pesquisa aplicados à listagem de movimentações de um período */
+export interface MovimentoFiltro {
+  categoriaId?: number;
+  contaId?: number;
+  descricao?: string;
+}
+
+
 /** Item vindo do orçamento */
 export interface CategoriaOrcamentoOption {
   orcamentoItemId: number;

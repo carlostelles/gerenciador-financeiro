@@ -4,8 +4,9 @@ import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiTitle } from '@
 import {TuiAccordion} from '@taiga-ui/experimental';
 import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
 
-import { formatPeriod, CurrencyPipe, Movimento, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC } from '../../shared';
+import { formatPeriod, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
+import { MovimentosFiltroComponent } from './components/filtro/filtro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { forkJoin, finalize, map } from 'rxjs';
@@ -53,6 +54,12 @@ export class MovimentosComponent implements OnInit {
     protected readonly showFutureItens = signal<boolean>(false);
     protected readonly showTodayItens = signal<boolean>(true);
     protected readonly showPastItens = signal<boolean>(true);
+
+    protected readonly filtro = signal<MovimentoFiltro | undefined>(undefined);
+    protected readonly hasFiltro = computed<boolean>(() => {
+        const f = this.filtro();
+        return !!f && (!!f.categoriaId || !!f.contaId || !!f.descricao);
+    });
 
     protected readonly CATEGORIA_TIPO = CategoriaTipo; // Expor enum para template
 
@@ -168,7 +175,7 @@ export class MovimentosComponent implements OnInit {
         this.isLoading.set(true);
         this.chosedPeriodo.set(periodo);
         this.loadOrcamento(periodo);
-        this.movimentoService.getAll(periodo).subscribe({
+        this.movimentoService.getAll(periodo, this.filtro()).subscribe({
             next: (movimentos) => {
                 this.movimentos.set(movimentos);
                 this.handleAutoShowFutureItens();
@@ -179,6 +186,24 @@ export class MovimentosComponent implements OnInit {
                 this.isLoading.set(false);
             }
         });
+    }
+
+    openFiltroModal() {
+        this.dialogs
+            .open<MovimentoFiltro | null>(new PolymorpheusComponent(MovimentosFiltroComponent), {
+                label: 'Filtrar movimentações',
+                size: 'm',
+                data: this.filtro(),
+            })
+            .subscribe({
+                next: (resultado) => {
+                    this.filtro.set(resultado ?? undefined);
+                    this.loadMovimentos(this.chosedPeriodo()!);
+                },
+                error: (error) => {
+                    console.error('Erro ao aplicar filtro:', error);
+                }
+            });
     }
 
     openFormModal(movimento?: Movimento) {

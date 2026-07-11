@@ -4,6 +4,14 @@
         <app-button-float appearance="primary" size="l" (click)="openFormModal()">
             Nova Movimentação
         </app-button-float>
+        <app-button-float
+            [appearance]="hasFiltro() ? 'neutral' : 'floating'"
+            size="l"
+            [icon]="hasFiltro() ? '@tui.search-check' : '@tui.search'"
+            [bottomOffset]="72"
+            (click)="openFiltroModal()">
+            Filtrar
+        </app-button-float>
     </div>
 
     @if (periodos().length) {

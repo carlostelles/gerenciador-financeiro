@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 
 import { ReservasService } from './reservas.service';
+import { LogsService } from '../logs/logs.service';
 import { Reserva } from './entities/reserva.entity';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
@@ -11,6 +12,7 @@ import { UpdateReservaDto } from './dto/update-reserva.dto';
 describe('ReservasService', () => {
   let service: ReservasService;
   let repository: jest.Mocked<Repository<Reserva>>;
+  let logsService: { create: jest.Mock };
 
   const mockReserva = {
     id: 1,
@@ -49,6 +51,10 @@ describe('ReservasService', () => {
       remove: jest.fn(),
     };
 
+    const mockLogsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReservasService,
@@ -56,11 +62,16 @@ describe('ReservasService', () => {
           provide: getRepositoryToken(Reserva),
           useValue: mockRepository,
         },
+        {
+          provide: LogsService,
+          useValue: mockLogsService,
+        },
       ],
     }).compile();
 
     service = module.get<ReservasService>(ReservasService);
     repository = module.get(getRepositoryToken(Reserva));
+    logsService = module.get(LogsService);
   });
 
   beforeEach(() => {
@@ -83,6 +94,7 @@ describe('ReservasService', () => {
         usuarioId,
       });
       expect(repository.save).toHaveBeenCalledWith(mockReserva);
+      expect(logsService.create).toHaveBeenCalled();
       expect(result).toEqual(mockReserva);
     });
   });
@@ -138,6 +150,7 @@ describe('ReservasService', () => {
         relations: ['categoria'],
       });
       expect(repository.save).toHaveBeenCalled();
+      expect(logsService.create).toHaveBeenCalled();
       expect(result).toEqual(updatedReserva);
     });
 
@@ -153,7 +166,7 @@ describe('ReservasService', () => {
   describe('remove', () => {
     it('deve remover reserva com sucesso', async () => {
       repository.findOne.mockResolvedValue(mockReserva);
-      repository.remove.mockResolvedValue(undefined);
+      repository.remove.mockResolvedValue(undefined as any);
 
       await service.remove(1, usuarioId);
 
@@ -162,6 +175,7 @@ describe('ReservasService', () => {
         relations: ['categoria'],
       });
       expect(repository.remove).toHaveBeenCalledWith(mockReserva);
+      expect(logsService.create).toHaveBeenCalled();
     });
 
     it('deve lançar NotFoundException quando reserva não for encontrada', async () => {

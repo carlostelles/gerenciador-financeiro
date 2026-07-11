@@ -8,12 +8,20 @@ import {
 
 import { MovimentacoesService } from './movimentacoes.service';
 import { Movimento } from './entities/movimento.entity';
+import { Categoria } from '../categorias/entities/categoria.entity';
+import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
+import { Orcamento } from '../orcamentos/entities/orcamento.entity';
+import { Conta } from '../contas/entities/conta.entity';
+import { LogsService } from '../logs/logs.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 
 describe('MovimentacoesService', () => {
   let service: MovimentacoesService;
-  let repository: jest.Mocked<Repository<Movimento>>;
+  let movimentoRepository: jest.Mocked<Repository<Movimento>>;
+  let orcamentoItemRepository: jest.Mocked<Repository<OrcamentoItem>>;
+  let contaRepository: jest.Mocked<Repository<Conta>>;
+  let logsService: { create: jest.Mock };
 
   const mockMovimento = {
     id: 1,
@@ -45,12 +53,33 @@ describe('MovimentacoesService', () => {
   const periodo = '2024-01';
 
   beforeEach(async () => {
-    const mockRepository = {
+    const mockMovimentoRepository = {
       create: jest.fn(),
       save: jest.fn(),
       find: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    };
+
+    const mockCategoriaRepository = {
+      find: jest.fn(),
+    };
+
+    const mockOrcamentoItemRepository = {
+      findOne: jest.fn(),
+    };
+
+    const mockOrcamentoRepository = {
+      findOne: jest.fn(),
+    };
+
+    const mockContaRepository = {
+      findOne: jest.fn(),
+    };
+
+    const mockLogsService = {
+      create: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -58,13 +87,36 @@ describe('MovimentacoesService', () => {
         MovimentacoesService,
         {
           provide: getRepositoryToken(Movimento),
-          useValue: mockRepository,
+          useValue: mockMovimentoRepository,
+        },
+        {
+          provide: getRepositoryToken(Categoria),
+          useValue: mockCategoriaRepository,
+        },
+        {
+          provide: getRepositoryToken(OrcamentoItem),
+          useValue: mockOrcamentoItemRepository,
+        },
+        {
+          provide: getRepositoryToken(Orcamento),
+          useValue: mockOrcamentoRepository,
+        },
+        {
+          provide: getRepositoryToken(Conta),
+          useValue: mockContaRepository,
+        },
+        {
+          provide: LogsService,
+          useValue: mockLogsService,
         },
       ],
     }).compile();
 
     service = module.get<MovimentacoesService>(MovimentacoesService);
-    repository = module.get(getRepositoryToken(Movimento));
+    movimentoRepository = module.get(getRepositoryToken(Movimento));
+    orcamentoItemRepository = module.get(getRepositoryToken(OrcamentoItem));
+    contaRepository = module.get(getRepositoryToken(Conta));
+    logsService = module.get(LogsService);
   });
 
   beforeEach(() => {
@@ -77,18 +129,28 @@ describe('MovimentacoesService', () => {
 
   describe('create', () => {
     it('deve criar novo movimento com sucesso', async () => {
-      repository.create.mockReturnValue(mockMovimento);
-      repository.save.mockResolvedValue(mockMovimento);
+      const movimentoComCategoria = { ...mockMovimento, categoriaId: 10 } as Movimento;
+      orcamentoItemRepository.findOne.mockResolvedValue({
+        id: 1,
+        categoriaId: 10,
+      } as OrcamentoItem);
+      movimentoRepository.create.mockReturnValue(movimentoComCategoria);
+      movimentoRepository.save.mockResolvedValue(movimentoComCategoria);
+      movimentoRepository.findOne.mockResolvedValue(movimentoComCategoria);
 
       const result = await service.create(periodo, mockCreateMovimentoDto, usuarioId);
 
-      expect(repository.create).toHaveBeenCalledWith({
-        ...mockCreateMovimentoDto,
-        periodo,
+      expect(movimentoRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        periodo: '2024-01',
         usuarioId,
-      });
-      expect(repository.save).toHaveBeenCalledWith(mockMovimento);
-      expect(result).toEqual(mockMovimento);
+        categoriaId: 10,
+      }));
+      expect(movimentoRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.any(Date) }),
+      );
+      expect(movimentoRepository.save).toHaveBeenCalledWith(movimentoComCategoria);
+      expect(logsService.create).toHaveBeenCalled();
+      expect(result).toEqual(movimentoComCategoria);
     });
 
     it('deve lançar BadRequestException quando data estiver fora do período', async () => {
@@ -100,7 +162,7 @@ describe('MovimentacoesService', () => {
       await expect(
         service.create(periodo, invalidDto, usuarioId),
       ).rejects.toThrow(BadRequestException);
-      expect(repository.create).not.toHaveBeenCalled();
+      expect(movimentoRepository.create).not.toHaveBeenCalled();
     });
 
     it('deve lançar BadRequestException quando ano for diferente', async () => {
@@ -112,41 +174,45 @@ describe('MovimentacoesService', () => {
       await expect(
         service.create(periodo, invalidDto, usuarioId),
       ).rejects.toThrow(BadRequestException);
-      expect(repository.create).not.toHaveBeenCalled();
+      expect(movimentoRepository.create).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
     it('deve retornar todos os movimentos para período e usuário', async () => {
       const mockMovimentos = [mockMovimento];
-      repository.find.mockResolvedValue(mockMovimentos);
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockMovimentos),
+      };
+      movimentoRepository.createQueryBuilder.mockReturnValue(qb as any);
 
       const result = await service.findAll(periodo, usuarioId);
 
-      expect(repository.find).toHaveBeenCalledWith({
-        where: { periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria'],
-        order: { data: 'DESC' },
-      });
+      expect(movimentoRepository.createQueryBuilder).toHaveBeenCalledWith('movimento');
+      expect(qb.getMany).toHaveBeenCalled();
       expect(result).toEqual(mockMovimentos);
     });
   });
 
   describe('findOne', () => {
     it('deve retornar movimento quando encontrado', async () => {
-      repository.findOne.mockResolvedValue(mockMovimento);
+      movimentoRepository.findOne.mockResolvedValue(mockMovimento);
 
       const result = await service.findOne(periodo, 1, usuarioId);
 
-      expect(repository.findOne).toHaveBeenCalledWith({
+      expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria'],
+        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
       });
       expect(result).toEqual(mockMovimento);
     });
 
     it('deve lançar NotFoundException quando movimento não for encontrado', async () => {
-      repository.findOne.mockResolvedValue(null);
+      movimentoRepository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(periodo, 1, usuarioId)).rejects.toThrow(
         NotFoundException,
@@ -156,22 +222,23 @@ describe('MovimentacoesService', () => {
 
   describe('update', () => {
     it('deve atualizar movimento com sucesso', async () => {
-      repository.findOne.mockResolvedValue(mockMovimento);
+      movimentoRepository.findOne.mockResolvedValue(mockMovimento);
       const updatedMovimento = { ...mockMovimento, ...mockUpdateMovimentoDto };
-      repository.save.mockResolvedValue(updatedMovimento as Movimento);
+      movimentoRepository.save.mockResolvedValue(updatedMovimento as Movimento);
 
       const result = await service.update(periodo, 1, mockUpdateMovimentoDto, usuarioId);
 
-      expect(repository.findOne).toHaveBeenCalledWith({
+      expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria'],
+        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
       });
-      expect(repository.save).toHaveBeenCalled();
+      expect(movimentoRepository.save).toHaveBeenCalled();
+      expect(logsService.create).toHaveBeenCalled();
       expect(result).toEqual(updatedMovimento);
     });
 
     it('deve lançar NotFoundException quando movimento não for encontrado', async () => {
-      repository.findOne.mockResolvedValue(null);
+      movimentoRepository.findOne.mockResolvedValue(null);
 
       await expect(
         service.update(periodo, 1, mockUpdateMovimentoDto, usuarioId),
@@ -179,7 +246,7 @@ describe('MovimentacoesService', () => {
     });
 
     it('deve lançar BadRequestException quando nova data estiver fora do período', async () => {
-      repository.findOne.mockResolvedValue(mockMovimento);
+      movimentoRepository.findOne.mockResolvedValue(mockMovimento);
       const invalidUpdateDto = {
         ...mockUpdateMovimentoDto,
         data: '2024-02-15', // Different month
@@ -188,31 +255,32 @@ describe('MovimentacoesService', () => {
       await expect(
         service.update(periodo, 1, invalidUpdateDto, usuarioId),
       ).rejects.toThrow(BadRequestException);
-      expect(repository.save).not.toHaveBeenCalled();
+      expect(movimentoRepository.save).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
     it('deve remover movimento com sucesso', async () => {
-      repository.findOne.mockResolvedValue(mockMovimento);
-      repository.remove.mockResolvedValue(undefined);
+      movimentoRepository.findOne.mockResolvedValue(mockMovimento);
+      movimentoRepository.remove.mockResolvedValue(undefined as any);
 
       await service.remove(periodo, 1, usuarioId);
 
-      expect(repository.findOne).toHaveBeenCalledWith({
+      expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria'],
+        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
       });
-      expect(repository.remove).toHaveBeenCalledWith(mockMovimento);
+      expect(movimentoRepository.remove).toHaveBeenCalledWith(mockMovimento);
+      expect(logsService.create).toHaveBeenCalled();
     });
 
     it('deve lançar NotFoundException quando movimento não for encontrado', async () => {
-      repository.findOne.mockResolvedValue(null);
+      movimentoRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove(periodo, 1, usuarioId)).rejects.toThrow(
         NotFoundException,
       );
-      expect(repository.remove).not.toHaveBeenCalled();
+      expect(movimentoRepository.remove).not.toHaveBeenCalled();
     });
   });
 });

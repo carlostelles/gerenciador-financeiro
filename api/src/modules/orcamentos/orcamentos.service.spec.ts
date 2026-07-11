@@ -13,11 +13,13 @@ import { CreateOrcamentoDto } from './dto/create-orcamento.dto';
 import { UpdateOrcamentoDto } from './dto/update-orcamento.dto';
 import { CreateOrcamentoItemDto } from './dto/create-orcamento-item.dto';
 import { Categoria } from '../categorias/entities/categoria.entity';
+import { LogsService } from '../logs/logs.service';
 
 describe('OrcamentosService', () => {
   let service: OrcamentosService;
   let orcamentoRepository: jest.Mocked<Repository<Orcamento>>;
   let orcamentoItemRepository: jest.Mocked<Repository<OrcamentoItem>>;
+  let logsService: { create: jest.Mock };
 
   const mockOrcamento = {
     id: 1,
@@ -87,6 +89,10 @@ describe('OrcamentosService', () => {
       remove: jest.fn(),
     };
 
+    const mockLogsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrcamentosService,
@@ -98,12 +104,17 @@ describe('OrcamentosService', () => {
           provide: getRepositoryToken(OrcamentoItem),
           useValue: mockOrcamentoItemRepository,
         },
+        {
+          provide: LogsService,
+          useValue: mockLogsService,
+        },
       ],
     }).compile();
 
     service = module.get<OrcamentosService>(OrcamentosService);
     orcamentoRepository = module.get(getRepositoryToken(Orcamento));
     orcamentoItemRepository = module.get(getRepositoryToken(OrcamentoItem));
+    logsService = module.get(LogsService);
   });
 
   beforeEach(() => {
@@ -130,6 +141,7 @@ describe('OrcamentosService', () => {
         usuarioId,
       });
       expect(orcamentoRepository.save).toHaveBeenCalledWith(mockOrcamento);
+      expect(logsService.create).toHaveBeenCalled();
       expect(result).toEqual(mockOrcamento);
     });
 
@@ -152,7 +164,7 @@ describe('OrcamentosService', () => {
 
       expect(orcamentoRepository.find).toHaveBeenCalledWith({
         where: { usuarioId },
-        relations: ['items'],
+        relations: ['items', 'items.categoria'],
         order: { periodo: 'DESC' },
       });
       expect(result).toEqual(mockOrcamentos);
@@ -389,15 +401,10 @@ describe('OrcamentosService', () => {
       expect(result.items[0].categoria).not.toHaveProperty('usuarioId');
     });
 
-    it('deve lançar NotFoundException quando orçamento não for encontrado para o período', async () => {
+    it('deve retornar null quando orçamento não for encontrado para o período', async () => {
       orcamentoRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByPeriodo('2024-01', usuarioId)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.findByPeriodo('2024-01', usuarioId)).rejects.toThrow(
-        'Orçamento não encontrado para o período 2024-01',
-      );
+      await expect(service.findByPeriodo('2024-01', usuarioId)).resolves.toBeNull();
     });
 
     it('deve buscar orçamento apenas do usuário autenticado', async () => {

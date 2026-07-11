@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { UsuariosService } from './usuarios.service';
 import { Usuario } from './entities/usuario.entity';
 import { LogsService } from '../logs/logs.service';
+import { CategoriasService } from '../categorias/categorias.service';
 import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
 
@@ -22,6 +23,7 @@ describe('UsuariosService', () => {
   let service: UsuariosService;
   let repository: jest.Mocked<Repository<Usuario>>;
   let logsService: jest.Mocked<LogsService>;
+  let categoriasService: { createDefaultCategories: jest.Mock };
 
   const mockUsuario = {
     id: 1,
@@ -66,6 +68,10 @@ describe('UsuariosService', () => {
       create: jest.fn(),
     };
 
+    const mockCategoriasService = {
+      createDefaultCategories: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsuariosService,
@@ -77,12 +83,17 @@ describe('UsuariosService', () => {
           provide: LogsService,
           useValue: mockLogsService,
         },
+        {
+          provide: CategoriasService,
+          useValue: mockCategoriasService,
+        },
       ],
     }).compile();
 
     service = module.get<UsuariosService>(UsuariosService);
     repository = module.get(getRepositoryToken(Usuario));
     logsService = module.get(LogsService);
+    categoriasService = module.get(CategoriasService);
   });
 
   beforeEach(() => {
@@ -112,6 +123,9 @@ describe('UsuariosService', () => {
       });
       expect(repository.save).toHaveBeenCalledWith(mockUsuario);
       expect(logsService.create).toHaveBeenCalled();
+      expect(categoriasService.createDefaultCategories).toHaveBeenCalledWith(
+        mockUsuario.id,
+      );
       expect(result).toEqual(mockUsuario);
     });
 

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TuiButton, TuiDataList, TuiDialogContext, TuiNumberFormat, TuiTextfield } from '@taiga-ui/core';
 import { TuiChevron, TuiComboBox, TuiDataListWrapper, TuiFilterByInputPipe, TuiInputDate, TuiInputNumber, TuiSelect, TuiSwitch } from '@taiga-ui/kit';
@@ -72,8 +72,16 @@ export class OrcamentosCadastroComponent implements OnInit {
     protected readonly movimentacao = signal<Movimento | undefined>(this.context.data);
 
     get isEditing(): boolean {
-        console.log(this.context.data);
         return !!this.context.data?.id;
+    }
+
+    constructor() {
+        effect(() => {
+            const data = this.movimentoForm.get('data')?.value;
+            if (data) {
+                this.onDataChange(data);
+            }
+        });
     }
 
     ngOnInit() {

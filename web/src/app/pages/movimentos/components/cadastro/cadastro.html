@@ -4,9 +4,13 @@
       <label tuiLabel for="periodo">Data *</label>
       <input placeholder="Selecione o dia" tuiInputDate formControlName="data" />
       <tui-calendar *tuiTextfieldDropdown />
-      <div *ngIf="movimentoForm.get('periodo')?.invalid && movimentoForm.get('periodo')?.touched" class="error-message">
-        <span *ngIf="movimentoForm.get('periodo')?.errors?.['required']">Data é obrigatória</span>
-      </div>
+      @if (movimentoForm.get('periodo')?.invalid && movimentoForm.get('periodo')?.touched) {
+        <div class="error-message">
+          @if (movimentoForm.get('periodo')?.errors?.['required']) {
+            <span>Data é obrigatória</span>
+          }
+        </div>
+      }
     </tui-textfield>
 
     <tui-textfield>
@@ -24,12 +28,12 @@
     <tui-data-list-wrapper *tuiTextfieldDropdown new [itemContent]="categoriasContent" [items]="categoriaOptions() | tuiFilterByInput: matcher">
     </tui-data-list-wrapper>
     <ng-template #categoriasContent let-item>
-      <ng-container *ngIf="item.source === 'orcamento'">
+      @if (item.source === 'orcamento') {
         {{ item.descricao ? item.descricao + ' - ' : '' }}{{ item.categoriaNome }}
-      </ng-container>
-      <ng-container *ngIf="item.source === 'categoria'">
+      }
+      @if (item.source === 'categoria') {
         {{ item.categoriaNome }}
-      </ng-container>
+      }
       <app-categoria-badge [tipo]="item.categoriaTipo"></app-categoria-badge>
     </ng-template>
   </tui-textfield>

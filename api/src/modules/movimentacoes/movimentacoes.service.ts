@@ -132,7 +132,7 @@ export class MovimentacoesService {
   async findAll(periodo: string, usuarioId: number): Promise<Movimento[]> {
     return this.movimentoRepository.find({
       where: { periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
       order: { data: 'DESC' },
     });
   }
@@ -144,7 +144,7 @@ export class MovimentacoesService {
   ): Promise<Movimento> {
     const movimento = await this.movimentoRepository.findOne({
       where: { id, periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
     });
 
     if (!movimento) {

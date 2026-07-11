@@ -13,6 +13,7 @@ import { LogsModule } from './modules/logs/logs.module';
 import { OrcamentosModule } from './modules/orcamentos/orcamentos.module';
 import { MovimentacoesModule } from './modules/movimentacoes/movimentacoes.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
+import { ContasModule } from './modules/contas/contas.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ReservasModule } from './modules/reservas/reservas.module';
     OrcamentosModule,
     MovimentacoesModule,
     ReservasModule,
+    ContasModule,
   ],
   controllers: [HealthController],
 })

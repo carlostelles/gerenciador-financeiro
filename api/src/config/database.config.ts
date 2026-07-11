@@ -8,6 +8,7 @@ import { Orcamento } from '../modules/orcamentos/entities/orcamento.entity';
 import { OrcamentoItem } from '../modules/orcamentos/entities/orcamento-item.entity';
 import { Movimento } from '../modules/movimentacoes/entities/movimento.entity';
 import { Reserva } from '../modules/reservas/entities/reserva.entity';
+import { Conta } from '../modules/contas/entities/conta.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -28,6 +29,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         OrcamentoItem,
         Movimento,
         Reserva,
+        Conta,
       ],
       synchronize: true, // Desabilitado em produção por segurança
       logging: this.configService.get('NODE_ENV') === 'development',

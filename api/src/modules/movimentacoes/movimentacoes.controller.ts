@@ -22,6 +22,7 @@ import { MovimentacoesService } from './movimentacoes.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
+import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -84,6 +85,32 @@ export class MovimentacoesController {
     @CurrentUser() user: any,
   ) {
     return this.movimentacoesService.findCategoriasForPeriodo(periodo, user.sub);
+  }
+
+  @Get(':periodo/resumo')
+  @ApiOperation({
+    summary:
+      'Obter resumo das movimentações do período, somadas por categoria e agrupadas por tipo (receita, despesa, reserva)',
+  })
+  @ApiParam({
+    name: 'periodo',
+    description: 'Período das movimentações (yyyy-mm)',
+  })
+  @ApiQuery({
+    name: 'contaId',
+    required: false,
+    description: 'Filtrar resumo por conta',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumo por categoria retornado com sucesso',
+  })
+  findResumoPorCategoria(
+    @Param('periodo') periodo: string,
+    @Query() query: FindResumoQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.findResumoPorCategoria(periodo, user.sub, query);
   }
 
   @Get(':periodo')

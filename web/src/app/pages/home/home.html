@@ -1,3 +1,115 @@
-<h2>Dashboard</h2>
-<p>Bem-vindo ao Gerenciador Financeiro!</p>
-<p>Use o menu lateral para navegar pelas funcionalidades do sistema.</p>
+<div class="container">
+    <div class="header">
+        <h2>Dashboard</h2>
+    </div>
+
+    <div class="filters">
+        @if (periodos().length) {
+            <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" [itemsLimit]="5">
+                @for (periodo of periodos(); track periodo) {
+                    <button *tuiItem tuiTab type="button" (click)="loadResumo(periodo)">
+                        <tui-badge appearance="neutral" iconStart="@tui.calendar">
+                            {{ periodo | formatPeriod }}
+                        </tui-badge>
+                    </button>
+                }
+            </tui-tabs-with-more>
+        }
+
+        <tui-textfield tuiChevron [stringify]="contaStringify" class="conta-filter">
+            <label tuiLabel for="contaId">Conta</label>
+            <input
+                tuiComboBox
+                id="contaId"
+                [strict]="false"
+                [ngModel]="contaId()"
+                (ngModelChange)="onContaChange($event)"
+            />
+            <tui-data-list *tuiTextfieldDropdown>
+                <button new tuiOption type="button" [value]="null">Todas as contas</button>
+                @for (conta of contas(); track conta.id) {
+                    <button new tuiOption type="button" [value]="conta.id">{{ conta.nome }}</button>
+                }
+            </tui-data-list>
+        </tui-textfield>
+    </div>
+
+    @if (!isLoading()) {
+        <div class="charts">
+            <div class="chart-card">
+                <h3>Receitas</h3>
+                <div class="chart-wrapper">
+                    <tui-ring-chart class="chart" [value]="valoresReceitas()">
+                        <span>{{ totalReceitas() | currency }}</span>
+                        <div>Total</div>
+                    </tui-ring-chart>
+                    <div class="legend">
+                        @for (item of resumo().receitas; track item.categoriaId) {
+                            <tui-legend-item
+                                size="s"
+                                class="item"
+                                [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
+                                [text]="item.categoriaNome"
+                            >
+                                <span>{{ item.total | currency }}</span>
+                            </tui-legend-item>
+                        }
+                        @if (!resumo().receitas.length) {
+                            <p class="empty">Nenhuma receita no período</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3>Despesas</h3>
+                <div class="chart-wrapper">
+                    <tui-ring-chart class="chart" [value]="valoresDespesas()">
+                        <span>{{ totalDespesas() | currency }}</span>
+                        <div>Total</div>
+                    </tui-ring-chart>
+                    <div class="legend">
+                        @for (item of resumo().despesas; track item.categoriaId) {
+                            <tui-legend-item
+                                size="s"
+                                class="item"
+                                [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
+                                [text]="item.categoriaNome"
+                            >
+                                <span>{{ item.total | currency }}</span>
+                            </tui-legend-item>
+                        }
+                        @if (!resumo().despesas.length) {
+                            <p class="empty">Nenhuma despesa no período</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3>Reservas</h3>
+                <div class="chart-wrapper">
+                    <tui-ring-chart class="chart" [value]="valoresReservas()">
+                        <span>{{ totalReservas() | currency }}</span>
+                        <div>Total</div>
+                    </tui-ring-chart>
+                    <div class="legend">
+                        @for (item of resumo().reservas; track item.categoriaId) {
+                            <tui-legend-item
+                                size="s"
+                                class="item"
+                                [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
+                                [text]="item.categoriaNome"
+                            >
+                                <span>{{ item.total | currency }}</span>
+                            </tui-legend-item>
+                        }
+                        @if (!resumo().reservas.length) {
+                            <p class="empty">Nenhuma reserva no período</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

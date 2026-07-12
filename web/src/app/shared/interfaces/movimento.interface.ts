@@ -44,6 +44,20 @@ export interface MovimentoFiltro {
   descricao?: string;
 }
 
+/** Item de resumo de uma categoria (soma das movimentações) */
+export interface ResumoCategoriaItem {
+  categoriaId: number;
+  categoriaNome: string;
+  total: number;
+}
+
+/** Resumo das movimentações de um período, agrupado por tipo de categoria */
+export interface ResumoPorCategoriaResponse {
+  receitas: ResumoCategoriaItem[];
+  despesas: ResumoCategoriaItem[];
+  reservas: ResumoCategoriaItem[];
+}
+
 
 /** Item vindo do orçamento */
 export interface CategoriaOrcamentoOption {

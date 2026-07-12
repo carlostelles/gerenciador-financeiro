@@ -9,13 +9,26 @@ import { Movimento } from './entities/movimento.entity';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { LogsService } from '../logs/logs.service';
-import { LogAcao } from '../../common/types';
+import { LogAcao, CategoriaTipo } from '../../common/types';
 import { Categoria } from '../categorias/entities/categoria.entity';
 import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
 import { Conta } from '../contas/entities/conta.entity';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
+import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
 import { contemTodasAsPalavras } from '../../common/utils/normalize-text.util';
+
+export interface ResumoCategoriaItem {
+  categoriaId: number;
+  categoriaNome: string;
+  total: number;
+}
+
+export interface ResumoPorCategoriaResponse {
+  receitas: ResumoCategoriaItem[];
+  despesas: ResumoCategoriaItem[];
+  reservas: ResumoCategoriaItem[];
+}
 
 @Injectable()
 export class MovimentacoesService {
@@ -175,6 +188,59 @@ export class MovimentacoesService {
     }
 
     return movimentos;
+  }
+
+  /**
+   * Retorna a soma das movimentações de um período, agrupadas por categoria
+   * e separadas por tipo de categoria (receita, despesa, reserva).
+   * Considera os filtros de conta informados.
+   */
+  async findResumoPorCategoria(
+    periodo: string,
+    usuarioId: number,
+    filtros?: FindResumoQueryDto,
+  ): Promise<ResumoPorCategoriaResponse> {
+    const movimentos = await this.findAll(periodo, usuarioId, {
+      contaId: filtros?.contaId,
+    });
+
+    const grupos: Record<CategoriaTipo, Map<number, ResumoCategoriaItem>> = {
+      [CategoriaTipo.RECEITA]: new Map(),
+      [CategoriaTipo.DESPESA]: new Map(),
+      [CategoriaTipo.RESERVA]: new Map(),
+    };
+
+    for (const movimento of movimentos) {
+      const categoria = movimento.orcamentoItem?.categoria || movimento.categoria;
+
+      if (!categoria) {
+        continue;
+      }
+
+      const grupo = grupos[categoria.tipo];
+
+      if (!grupo) {
+        continue;
+      }
+
+      const atual = grupo.get(categoria.id) || {
+        categoriaId: categoria.id,
+        categoriaNome: categoria.nome,
+        total: 0,
+      };
+
+      atual.total += Number(movimento.valor);
+      grupo.set(categoria.id, atual);
+    }
+
+    const toSortedArray = (grupo: Map<number, ResumoCategoriaItem>) =>
+      Array.from(grupo.values()).sort((a, b) => b.total - a.total);
+
+    return {
+      receitas: toSortedArray(grupos[CategoriaTipo.RECEITA]),
+      despesas: toSortedArray(grupos[CategoriaTipo.DESPESA]),
+      reservas: toSortedArray(grupos[CategoriaTipo.RESERVA]),
+    };
   }
 
   async findOne(

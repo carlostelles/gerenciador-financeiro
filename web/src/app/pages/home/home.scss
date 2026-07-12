@@ -1,1 +1,73 @@
-/* Home component styles */
+:host {
+    display: block;
+
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .filters {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-block: 1rem;
+
+        .conta-filter {
+            inline-size: 16rem;
+        }
+    }
+
+    .charts {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 2rem;
+        padding-block: 1.5rem;
+    }
+
+    .chart-card {
+        flex: 1 1 20rem;
+        min-inline-size: 18rem;
+        padding: 1.5rem;
+        border-radius: var(--tui-radius-l);
+        background: var(--tui-background-base);
+        box-shadow: var(--tui-shadow-medium);
+
+        h3 {
+            margin-block-end: 1rem;
+        }
+    }
+
+    .chart-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+
+        .chart {
+            inline-size: 10rem;
+            block-size: 10rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            inline-size: 100%;
+
+            .item {
+                inline-size: 100%;
+                justify-content: space-between;
+            }
+
+            .empty {
+                color: var(--tui-text-secondary);
+                text-align: center;
+            }
+        }
+    }
+}

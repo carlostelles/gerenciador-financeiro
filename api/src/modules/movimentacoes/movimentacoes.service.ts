@@ -30,6 +30,13 @@ export interface ResumoPorCategoriaResponse {
   reservas: ResumoCategoriaItem[];
 }
 
+export interface ComparativoPorTipoResponse {
+  periodos: string[];
+  receitas: number[];
+  despesas: number[];
+  reservas: number[];
+}
+
 @Injectable()
 export class MovimentacoesService {
   constructor(
@@ -333,6 +340,78 @@ export class MovimentacoesService {
       .getRawMany();
 
     return result.map((r) => r.periodo);
+  }
+
+  /**
+   * Retorna o comparativo de receitas, despesas e reservas por período,
+   * considerando o mês atual, os últimos 5 meses e os próximos 6 meses
+   * (quando existirem movimentações nos períodos correspondentes).
+   * Caso não existam períodos anteriores suficientes, a quantidade faltante
+   * é compensada com períodos seguintes adicionais.
+   */
+  async findComparativoPorTipo(
+    usuarioId: number,
+  ): Promise<ComparativoPorTipoResponse> {
+    const periodosExistentes = await this.findPeriodos(usuarioId);
+    const ordenados = [...periodosExistentes].sort();
+
+    const agora = new Date();
+    const periodoAtual = `${agora.getFullYear()}-${(agora.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}`;
+
+    const anteriores = ordenados.filter((p) => p < periodoAtual).slice(-5);
+    const faltantesAnteriores = 5 - anteriores.length;
+    const seguintes = ordenados
+      .filter((p) => p > periodoAtual)
+      .slice(0, 6 + faltantesAnteriores);
+
+    const periodos = [...anteriores, periodoAtual, ...seguintes];
+
+    const movimentos = periodos.length
+      ? await this.movimentoRepository
+          .createQueryBuilder('movimento')
+          .leftJoinAndSelect('movimento.orcamentoItem', 'orcamentoItem')
+          .leftJoinAndSelect(
+            'orcamentoItem.categoria',
+            'orcamentoItemCategoria',
+          )
+          .leftJoinAndSelect('movimento.categoria', 'categoria')
+          .where('movimento.usuarioId = :usuarioId', { usuarioId })
+          .andWhere('movimento.periodo IN (:...periodos)', { periodos })
+          .getMany()
+      : [];
+
+    const totais: Record<CategoriaTipo, Map<string, number>> = {
+      [CategoriaTipo.RECEITA]: new Map(),
+      [CategoriaTipo.DESPESA]: new Map(),
+      [CategoriaTipo.RESERVA]: new Map(),
+    };
+
+    for (const movimento of movimentos) {
+      const categoria =
+        movimento.orcamentoItem?.categoria || movimento.categoria;
+
+      if (!categoria || !totais[categoria.tipo]) {
+        continue;
+      }
+
+      const grupo = totais[categoria.tipo];
+      grupo.set(
+        movimento.periodo,
+        (grupo.get(movimento.periodo) || 0) + Number(movimento.valor),
+      );
+    }
+
+    const toSeries = (grupo: Map<string, number>) =>
+      periodos.map((periodo) => grupo.get(periodo) || 0);
+
+    return {
+      periodos,
+      receitas: toSeries(totais[CategoriaTipo.RECEITA]),
+      despesas: toSeries(totais[CategoriaTipo.DESPESA]),
+      reservas: toSeries(totais[CategoriaTipo.RESERVA]),
+    };
   }
 
   async update(

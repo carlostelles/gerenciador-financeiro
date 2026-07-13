@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -56,5 +56,9 @@ export class MovimentoService {
       params = params.set('contaId', contaId);
     }
     return this.http.get<ResumoPorCategoriaResponse>(`${this.baseUrl}/movimentacoes/${periodo}/resumo`, { params });
+  }
+
+  findComparativoPorTipo(): Observable<ComparativoPorTipoResponse> {
+    return this.http.get<ComparativoPorTipoResponse>(`${this.baseUrl}/movimentacoes/comparativo`);
   }
 }

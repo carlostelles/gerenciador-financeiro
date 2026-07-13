@@ -44,6 +44,19 @@ export class MovimentacoesController {
     return this.movimentacoesService.findPeriodos(user.sub);
   }
 
+  @Get('comparativo')
+  @ApiOperation({
+    summary:
+      'Obter comparativo de receitas, despesas e reservas por período (mês atual, últimos 5 meses e próximos 6 meses existentes)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Comparativo por tipo retornado com sucesso',
+  })
+  findComparativoPorTipo(@CurrentUser() user: any) {
+    return this.movimentacoesService.findComparativoPorTipo(user.sub);
+  }
+
   @Post(':periodo')
   @ApiOperation({ summary: 'Criar uma nova movimentação' })
   @ApiParam({

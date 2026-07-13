@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TuiTextfield } from '@taiga-ui/core';
-import { TuiBadge, TuiChevron, TuiComboBox, TuiTabs } from '@taiga-ui/kit';
+import { TuiChevron, TuiComboBox } from '@taiga-ui/kit';
 import { TuiDataList } from '@taiga-ui/core';
 import { TuiLegendItem, TuiRingChart } from '@taiga-ui/addon-charts';
-import { TuiStringHandler } from '@taiga-ui/cdk';
+import { TuiHovered, TuiStringHandler } from '@taiga-ui/cdk';
 import { forkJoin, finalize, map } from 'rxjs';
 
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
-import { Conta, CurrencyPipe, FormatPeriodPipe, ResumoCategoriaItem, ResumoPorCategoriaResponse, getTodayUTC } from '../../shared';
+import { Conta, CurrencyPipe, FormatPeriodPipe, ResumoCategoriaItem, ResumoPorCategoriaResponse, formatPeriod, getTodayUTC } from '../../shared';
 
 const RESUMO_VAZIO: ResumoPorCategoriaResponse = {
   receitas: [],
@@ -27,10 +27,9 @@ const RESUMO_VAZIO: ResumoPorCategoriaResponse = {
     TuiChevron,
     TuiComboBox,
     TuiDataList,
-    TuiBadge,
-    TuiTabs,
     TuiLegendItem,
     TuiRingChart,
+    TuiHovered,
     CurrencyPipe,
     FormatPeriodPipe,
   ],
@@ -43,13 +42,19 @@ export class HomeComponent implements OnInit {
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly contaService = inject(ContaService);
 
-  protected activeItemIndex = 0;
   protected readonly isLoading = signal<boolean>(false);
   protected readonly periodos = signal<string[]>([]);
   protected readonly contas = signal<Conta[]>([]);
   protected readonly chosedPeriodo = signal<string | undefined>(undefined);
   protected readonly contaId = signal<number | null>(null);
   protected readonly resumo = signal<ResumoPorCategoriaResponse>(RESUMO_VAZIO);
+
+  protected readonly activeReceita = signal<number>(Number.NaN);
+  protected readonly activeDespesa = signal<number>(Number.NaN);
+  protected readonly activeReserva = signal<number>(Number.NaN);
+
+  protected readonly periodoStringify: TuiStringHandler<string> = (periodo) =>
+    periodo ? formatPeriod(periodo) : '';
 
   protected readonly contaStringify: TuiStringHandler<number | null> = (id) => {
     if (id === null) {
@@ -109,7 +114,6 @@ export class HomeComponent implements OnInit {
           this.periodos.set(periodos);
 
           if (periodos.length > 0) {
-            this.activeItemIndex = periodos.indexOf(this.currentPeriodo);
             this.loadResumo(this.currentPeriodo);
           }
         },
@@ -133,11 +137,21 @@ export class HomeComponent implements OnInit {
       });
   }
 
+  onPeriodoChange(periodo: string | null) {
+    if (periodo) {
+      this.loadResumo(periodo);
+    }
+  }
+
   onContaChange(contaId: number | null) {
     this.contaId.set(contaId);
 
     if (this.chosedPeriodo()) {
       this.loadResumo(this.chosedPeriodo()!);
     }
+  }
+
+  onHover(active: WritableSignal<number>, index: number, isHovered: boolean) {
+    active.set(isHovered ? index : Number.NaN);
   }
 }

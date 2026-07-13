@@ -12,10 +12,11 @@
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 1rem;
         padding-block: 1rem;
 
+        .periodo-filter,
         .conta-filter {
             inline-size: 16rem;
         }
@@ -36,6 +37,7 @@
         border-radius: var(--tui-radius-l);
         background: var(--tui-background-base);
         box-shadow: var(--tui-shadow-medium);
+        container-type: inline-size;
 
         h3 {
             margin-block-end: 1rem;
@@ -44,13 +46,17 @@
 
     .chart-wrapper {
         display: flex;
-        flex-direction: column;
         align-items: center;
+        flex-direction: row;
         gap: 1.5rem;
 
+        @container (max-width: 24rem) {
+            flex-direction: column;
+        }
+
         .chart {
-            inline-size: 10rem;
-            block-size: 10rem;
+            inline-size: 50%;
+            block-size: 50%;
         }
 
         .legend {

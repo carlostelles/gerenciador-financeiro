@@ -4,17 +4,21 @@
     </div>
 
     <div class="filters">
-        @if (periodos().length) {
-            <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" [itemsLimit]="5">
+        <tui-textfield tuiChevron [stringify]="periodoStringify" class="periodo-filter">
+            <label tuiLabel for="periodo">Período</label>
+            <input
+                tuiComboBox
+                id="periodo"
+                [strict]="false"
+                [ngModel]="chosedPeriodo()"
+                (ngModelChange)="onPeriodoChange($event)"
+            />
+            <tui-data-list *tuiTextfieldDropdown>
                 @for (periodo of periodos(); track periodo) {
-                    <button *tuiItem tuiTab type="button" (click)="loadResumo(periodo)">
-                        <tui-badge appearance="neutral" iconStart="@tui.calendar">
-                            {{ periodo | formatPeriod }}
-                        </tui-badge>
-                    </button>
+                    <button new tuiOption type="button" [value]="periodo">{{ periodo | formatPeriod }}</button>
                 }
-            </tui-tabs-with-more>
-        }
+            </tui-data-list>
+        </tui-textfield>
 
         <tui-textfield tuiChevron [stringify]="contaStringify" class="conta-filter">
             <label tuiLabel for="contaId">Conta</label>
@@ -39,7 +43,7 @@
             <div class="chart-card">
                 <h3>Receitas</h3>
                 <div class="chart-wrapper">
-                    <tui-ring-chart class="chart" [value]="valoresReceitas()">
+                    <tui-ring-chart class="chart" [value]="valoresReceitas()" [activeItemIndex]="activeReceita()">
                         <span>{{ totalReceitas() | currency }}</span>
                         <div>Total</div>
                     </tui-ring-chart>
@@ -48,8 +52,10 @@
                             <tui-legend-item
                                 size="s"
                                 class="item"
+                                [active]="activeReceita() === $index"
                                 [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
                                 [text]="item.categoriaNome"
+                                (tuiHoveredChange)="onHover(activeReceita, $index, $event)"
                             >
                                 <span>{{ item.total | currency }}</span>
                             </tui-legend-item>
@@ -62,9 +68,36 @@
             </div>
 
             <div class="chart-card">
+                <h3>Reservas</h3>
+                <div class="chart-wrapper">
+                    <tui-ring-chart class="chart" [value]="valoresReservas()" [activeItemIndex]="activeReserva()">
+                        <span>{{ totalReservas() | currency }}</span>
+                        <div>Total</div>
+                    </tui-ring-chart>
+                    <div class="legend">
+                        @for (item of resumo().reservas; track item.categoriaId) {
+                            <tui-legend-item
+                                size="s"
+                                class="item"
+                                [active]="activeReserva() === $index"
+                                [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
+                                [text]="item.categoriaNome"
+                                (tuiHoveredChange)="onHover(activeReserva, $index, $event)"
+                            >
+                                <span>{{ item.total | currency }}</span>
+                            </tui-legend-item>
+                        }
+                        @if (!resumo().reservas.length) {
+                            <p class="empty">Nenhuma reserva no período</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
                 <h3>Despesas</h3>
                 <div class="chart-wrapper">
-                    <tui-ring-chart class="chart" [value]="valoresDespesas()">
+                    <tui-ring-chart class="chart" [value]="valoresDespesas()" [activeItemIndex]="activeDespesa()">
                         <span>{{ totalDespesas() | currency }}</span>
                         <div>Total</div>
                     </tui-ring-chart>
@@ -73,8 +106,10 @@
                             <tui-legend-item
                                 size="s"
                                 class="item"
+                                [active]="activeDespesa() === $index"
                                 [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
                                 [text]="item.categoriaNome"
+                                (tuiHoveredChange)="onHover(activeDespesa, $index, $event)"
                             >
                                 <span>{{ item.total | currency }}</span>
                             </tui-legend-item>
@@ -86,30 +121,6 @@
                 </div>
             </div>
 
-            <div class="chart-card">
-                <h3>Reservas</h3>
-                <div class="chart-wrapper">
-                    <tui-ring-chart class="chart" [value]="valoresReservas()">
-                        <span>{{ totalReservas() | currency }}</span>
-                        <div>Total</div>
-                    </tui-ring-chart>
-                    <div class="legend">
-                        @for (item of resumo().reservas; track item.categoriaId) {
-                            <tui-legend-item
-                                size="s"
-                                class="item"
-                                [color]="'var(--tui-chart-categorical-' + ($index % 13).toString().padStart(2, '0') + ')'"
-                                [text]="item.categoriaNome"
-                            >
-                                <span>{{ item.total | currency }}</span>
-                            </tui-legend-item>
-                        }
-                        @if (!resumo().reservas.length) {
-                            <p class="empty">Nenhuma reserva no período</p>
-                        }
-                    </div>
-                </div>
-            </div>
         </div>
     }
 </div>

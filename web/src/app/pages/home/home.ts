@@ -1,18 +1,25 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TuiTextfield } from '@taiga-ui/core';
+import { TuiHint, TuiTextfield } from '@taiga-ui/core';
 import { TuiChevron, TuiComboBox } from '@taiga-ui/kit';
 import { TuiDataList } from '@taiga-ui/core';
-import { TuiLegendItem, TuiRingChart } from '@taiga-ui/addon-charts';
+import { TuiAxes, TuiBarChart, TuiLegendItem, TuiRingChart } from '@taiga-ui/addon-charts';
 import { TuiHovered, TuiStringHandler } from '@taiga-ui/cdk';
 import { forkJoin, finalize, map } from 'rxjs';
 
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
-import { Conta, CurrencyPipe, FormatPeriodPipe, ResumoCategoriaItem, ResumoPorCategoriaResponse, formatPeriod, getTodayUTC } from '../../shared';
+import { Conta, CurrencyPipe, FormatPeriodPipe, ResumoCategoriaItem, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, formatPeriod, getTodayUTC } from '../../shared';
 
 const RESUMO_VAZIO: ResumoPorCategoriaResponse = {
+  receitas: [],
+  despesas: [],
+  reservas: [],
+};
+
+const COMPARATIVO_VAZIO: ComparativoPorTipoResponse = {
+  periodos: [],
   receitas: [],
   despesas: [],
   reservas: [],
@@ -27,8 +34,11 @@ const RESUMO_VAZIO: ResumoPorCategoriaResponse = {
     TuiChevron,
     TuiComboBox,
     TuiDataList,
+    TuiHint,
     TuiLegendItem,
     TuiRingChart,
+    TuiAxes,
+    TuiBarChart,
     TuiHovered,
     CurrencyPipe,
     FormatPeriodPipe,
@@ -48,6 +58,23 @@ export class HomeComponent implements OnInit {
   protected readonly chosedPeriodo = signal<string | undefined>(undefined);
   protected readonly contaId = signal<number | null>(null);
   protected readonly resumo = signal<ResumoPorCategoriaResponse>(RESUMO_VAZIO);
+  protected readonly comparativo = signal<ComparativoPorTipoResponse>(COMPARATIVO_VAZIO);
+
+  protected readonly comparativoLabels = ['Receitas', 'Despesas', 'Reservas'];
+
+  protected readonly comparativoValue = computed<number[][]>(() => {
+    const { receitas, despesas, reservas } = this.comparativo();
+    return [receitas, despesas, reservas];
+  });
+
+  protected readonly comparativoMax = computed<number>(() => {
+    const max = Math.max(0, ...this.comparativoValue().flat());
+    return max || 1;
+  });
+
+  protected readonly comparativoAxisXLabels = computed<string[]>(() =>
+    this.comparativo().periodos.map((periodo) => formatPeriod(periodo)),
+  );
 
   protected readonly activeReceita = signal<number>(Number.NaN);
   protected readonly activeDespesa = signal<number>(Number.NaN);
@@ -83,6 +110,17 @@ export class HomeComponent implements OnInit {
   ngOnInit() {
     this.loadContas();
     this.loadPeriodos();
+    this.loadComparativo();
+  }
+
+  loadComparativo() {
+    this.movimentoService.findComparativoPorTipo().subscribe({
+      next: (comparativo) => this.comparativo.set(comparativo),
+      error: (error) => {
+        console.error('Erro ao carregar comparativo de movimentações:', error);
+        this.comparativo.set(COMPARATIVO_VAZIO);
+      },
+    });
   }
 
   loadContas() {

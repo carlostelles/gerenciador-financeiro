@@ -44,6 +44,34 @@
         }
     }
 
+    .comparativo-card {
+        margin-block-start: 1rem;
+
+        .comparativo-axes {
+            block-size: 12.5rem;
+        }
+
+        .comparativo-chart {
+            color: var(--tui-chart-categorical-00);
+        }
+
+        .comparativo-legend {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            padding-block-start: 1rem;
+        }
+
+        .comparativo-hint {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            min-inline-size: 10rem;
+        }
+    }
+
     .chart-wrapper {
         display: flex;
         align-items: center;

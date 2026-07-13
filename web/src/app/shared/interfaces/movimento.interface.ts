@@ -58,6 +58,14 @@ export interface ResumoPorCategoriaResponse {
   reservas: ResumoCategoriaItem[];
 }
 
+/** Comparativo de receitas, despesas e reservas por período */
+export interface ComparativoPorTipoResponse {
+  periodos: string[];
+  receitas: number[];
+  despesas: number[];
+  reservas: number[];
+}
+
 
 /** Item vindo do orçamento */
 export interface CategoriaOrcamentoOption {

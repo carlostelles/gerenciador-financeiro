@@ -47,7 +47,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Instalar dependências da API
         working-directory: api
@@ -75,6 +75,32 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Validar variáveis obrigatórias de deploy
+        run: |
+          set -e
+
+          missing=0
+          if [ -z "${{ vars.SSH_HOST }}" ]; then
+            echo "❌ Variável SSH_HOST não configurada.";
+            missing=1
+          fi
+          if [ -z "${{ vars.SSH_USERNAME }}" ]; then
+            echo "❌ Variável SSH_USERNAME não configurada.";
+            missing=1
+          fi
+          if [ -z "${{ vars.DEPLOY_PATH }}" ]; then
+            echo "❌ Variável DEPLOY_PATH não configurada.";
+            missing=1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Segredo SSH_PRIVATE_KEY não configurado.";
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Deploy no servidor
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -90,19 +116,35 @@ jobs:
             REF="${{ github.event.inputs.ref || github.ref_name }}"
 
             if [ -z "$DEPLOY_PATH" ]; then
-              echo "❌ Segredo DEPLOY_PATH não configurado."
+              echo "❌ Variável DEPLOY_PATH não configurada."
               exit 1
             fi
 
             cd "$DEPLOY_PATH"
 
             echo "🔄 Atualizando código-fonte (branch/ref: $REF)..."
-            git fetch --all --prune
-            git checkout "$REF"
-            git pull origin "$REF"
+            git fetch --all --prune --tags
+
+            if git show-ref --verify --quiet "refs/tags/$REF"; then
+              echo "🏷️ Ref '$REF' identificado como tag."
+              git checkout --detach "tags/$REF"
+            else
+              echo "🌿 Ref '$REF' identificado como branch."
+              git checkout "$REF" || git checkout -b "$REF" "origin/$REF"
+              git pull --ff-only origin "$REF"
+            fi
 
             echo "🔨 Reconstruindo e reiniciando containers de produção..."
-            make prod-rebuild
+            if command -v make >/dev/null 2>&1; then
+              make prod-rebuild
+            else
+              echo "⚠️ 'make' não encontrado no servidor; usando docker compose diretamente."
+              DOCKER_COMPOSE_CMD="docker compose"
+              if command -v docker-compose >/dev/null 2>&1; then
+                DOCKER_COMPOSE_CMD="docker-compose"
+              fi
+              $DOCKER_COMPOSE_CMD -f docker-compose.yml up --build -d
+            fi
 
             echo "🧹 Removendo imagens antigas não utilizadas..."
             docker image prune -f
@@ -138,7 +180,9 @@ jobs:
 
             # Valida apenas o status HTTP 200 do /health.
             # O payload pode variar (ok/healthy/etc), então não fazemos grep em conteúdo.
-            until curl -fsS --connect-timeout 5 http://localhost:3000/health >/dev/null; do
+            # Tenta tanto a API direta na porta 3000 quanto via nginx na porta 80,
+            # pois alguns servidores podem expor apenas uma dessas rotas.
+            until curl -fsS --connect-timeout 5 http://localhost:3000/health >/dev/null || curl -fsS --connect-timeout 5 http://localhost/health >/dev/null; do
               if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
                 echo "❌ API não respondeu como saudável após o deploy."
                 echo "📋 Estado atual dos containers:"

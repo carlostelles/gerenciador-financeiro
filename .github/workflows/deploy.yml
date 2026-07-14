@@ -65,7 +65,7 @@ jobs:
 
       - name: Instalar dependências do Web
         working-directory: web
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build do Web
         working-directory: web

@@ -51,7 +51,7 @@ jobs:
 
       - name: Instalar dependências da API
         working-directory: api
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build da API
         working-directory: api

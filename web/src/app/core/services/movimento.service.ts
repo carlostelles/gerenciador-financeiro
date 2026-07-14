@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse } from '../../shared';
 import { environment } from '../../../environments/environment';
@@ -62,12 +62,25 @@ export class MovimentoService {
     return this.http.get<ComparativoPorTipoResponse>(`${this.baseUrl}/movimentacoes/comparativo`);
   }
 
-  analisarComprovante(arquivo: File): Observable<AnalisarComprovanteResponse> {
+  analisarComprovante(
+    arquivo: File,
+    options?: { periodo?: string; movimentoId?: number },
+  ): Observable<HttpResponse<AnalisarComprovanteResponse>> {
     const formData = new FormData();
     formData.append('arquivo', arquivo);
+
+    if (options?.periodo) {
+      formData.append('periodo', options.periodo);
+    }
+
+    if (options?.movimentoId) {
+      formData.append('movimentoId', String(options.movimentoId));
+    }
+
     return this.http.post<AnalisarComprovanteResponse>(
       `${this.baseUrl}/movimentacoes/comprovantes/analisar`,
       formData,
+      { observe: 'response' },
     );
   }
 }

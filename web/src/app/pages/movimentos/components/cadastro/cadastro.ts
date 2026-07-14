@@ -213,6 +213,10 @@ export class OrcamentosCadastroComponent implements OnInit {
     }
 
     onSubmit() {
+        if (this.isSubmitting() || this.isAnalyzingReceipt()) {
+            return;
+        }
+
         if (this.movimentoForm.valid) {
             this.isSubmitting.set(true);
             const { categoriaOption, ...rest } = this.movimentoForm.value;
@@ -248,9 +252,28 @@ export class OrcamentosCadastroComponent implements OnInit {
         }
 
         this.isAnalyzingReceipt.set(true);
-        this.movimentosService.analisarComprovante(arquivo).subscribe({
+        this.movimentosService.analisarComprovante(arquivo, {
+            periodo: this.periodo() || undefined,
+            movimentoId: this.movimentacao()?.id,
+        }).subscribe({
             next: (response) => {
-                this.applyReceiptAnalysis(response);
+                if (!response.body) {
+                    this.toast.error('Resposta inválida ao analisar comprovante.');
+                    return;
+                }
+
+                if (response.status === 201 || response.status === 200) {
+                    this.toast.success(
+                        response.status === 201
+                            ? 'Movimento cadastrado com sucesso!'
+                            : 'Movimento atualizado com sucesso!',
+                    );
+                    this.context.completeWith('success');
+                    input.value = '';
+                    return;
+                }
+
+                this.applyReceiptAnalysis(response.body);
                 input.value = '';
             },
             error: (error) => {
@@ -294,6 +317,7 @@ export class OrcamentosCadastroComponent implements OnInit {
         }
 
         this.applyRequiredFieldFeedback(camposObrigatoriosFaltantes);
+
     }
 
     private applyRequiredFieldFeedback(camposObrigatoriosFaltantes: string[]) {

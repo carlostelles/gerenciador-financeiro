@@ -25,7 +25,8 @@ describe('MovimentoService', () => {
     const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' });
 
     service.analisarComprovante(file).subscribe((response) => {
-      expect(response.comprovanteId).toBe(1);
+      expect(response.status).toBe(202);
+      expect(response.body?.comprovanteId).toBe(1);
     });
 
     const req = httpMock.expectOne('http://localhost:3000/movimentacoes/comprovantes/analisar');
@@ -49,6 +50,9 @@ describe('MovimentoService', () => {
         contaNome: 'Carteira',
       },
       camposObrigatoriosFaltantes: [],
-    });
+      salvamento: {
+        status: 'pendente',
+      },
+    }, { status: 202, statusText: 'Accepted' });
   });
 });

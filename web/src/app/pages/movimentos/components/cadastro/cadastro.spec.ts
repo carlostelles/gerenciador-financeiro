@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { HttpResponse } from '@angular/common/http';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiDay } from '@taiga-ui/cdk';
 
@@ -12,6 +13,7 @@ describe('OrcamentosCadastroComponent', () => {
   let component: OrcamentosCadastroComponent;
   let fixture: ComponentFixture<OrcamentosCadastroComponent>;
   let movimentoService: jest.Mocked<MovimentoService>;
+  let contextMock: { data: undefined; completeWith: jest.Mock; $implicit: { complete: jest.Mock } };
 
   beforeEach(async () => {
     movimentoService = {
@@ -26,7 +28,9 @@ describe('OrcamentosCadastroComponent', () => {
           },
         ],
       })),
-      analisarComprovante: jest.fn().mockReturnValue(of({
+      analisarComprovante: jest.fn().mockReturnValue(of(new HttpResponse({
+        status: 202,
+        body: {
         comprovanteId: 11,
         nomeArquivo: 'receipt.pdf',
         tipoArquivo: 'application/pdf',
@@ -43,10 +47,20 @@ describe('OrcamentosCadastroComponent', () => {
           contaNome: 'Conta Corrente',
         },
         camposObrigatoriosFaltantes: [],
-      })),
+        salvamento: {
+          status: 'pendente',
+        },
+      },
+      }))),
       create: jest.fn().mockReturnValue(of({} as any)),
       update: jest.fn().mockReturnValue(of({} as any)),
     } as any;
+
+    contextMock = {
+      data: undefined,
+      completeWith: jest.fn(),
+      $implicit: { complete: jest.fn() },
+    };
 
     await TestBed.configureTestingModule({
       imports: [OrcamentosCadastroComponent],
@@ -70,11 +84,7 @@ describe('OrcamentosCadastroComponent', () => {
         },
         {
           provide: POLYMORPHEUS_CONTEXT,
-          useValue: {
-            data: undefined,
-            completeWith: jest.fn(),
-            $implicit: { complete: jest.fn() },
-          },
+          useValue: contextMock,
         },
       ],
     }).compileComponents();
@@ -101,6 +111,45 @@ describe('OrcamentosCadastroComponent', () => {
       expect.objectContaining({ categoriaId: 7 }),
     );
     expect(component.movimentoForm.get('data')?.value).toEqual(new TuiDay(2026, 6, 13));
+  });
+
+  it('should auto save and close modal when receipt analysis fills required fields', () => {
+    movimentoService.analisarComprovante.mockReturnValueOnce(of(new HttpResponse({
+      status: 201,
+      body: {
+        comprovanteId: 11,
+        nomeArquivo: 'receipt.pdf',
+        tipoArquivo: 'application/pdf',
+        tamanhoArquivo: 100,
+        caminhoArquivo: 's3://bucket/receipt.pdf',
+        sugestao: {
+          data: '2026-07-13',
+          periodo: '2026-07',
+          valor: 59.9,
+          descricao: 'Pagamento via PIX',
+          categoriaId: 7,
+          categoriaNome: 'Alimentação',
+          contaId: 2,
+          contaNome: 'Conta Corrente',
+        },
+        camposObrigatoriosFaltantes: [],
+        salvamento: {
+          status: 'criado',
+          movimentoId: 99,
+        },
+      },
+    })));
+
+    const file = new File(['pdf'], 'receipt.pdf', { type: 'application/pdf' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', {
+      value: [file],
+    });
+
+    component.onReceiptSelected({ target: input } as unknown as Event);
+
+    expect(movimentoService.create).not.toHaveBeenCalled();
+    expect(contextMock.completeWith).toHaveBeenCalledWith('success');
   });
 
   it('should send comprovanteId when creating movement after analysis', () => {

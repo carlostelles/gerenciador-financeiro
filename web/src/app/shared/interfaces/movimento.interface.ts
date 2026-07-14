@@ -97,6 +97,10 @@ export interface AnalisarComprovanteResponse {
   caminhoArquivo: string;
   sugestao: AnaliseComprovanteSugestao;
   camposObrigatoriosFaltantes: string[];
+  salvamento: {
+    status: 'pendente' | 'criado' | 'atualizado';
+    movimentoId?: number;
+  };
 }
 
 

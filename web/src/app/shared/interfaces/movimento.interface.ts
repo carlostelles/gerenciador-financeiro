@@ -15,6 +15,17 @@ export interface Movimento {
   categoria?: Categoria;
   contaId?: number;
   conta?: Conta;
+  comprovante?: MovimentoComprovante;
+}
+
+export interface MovimentoComprovante {
+  id: number;
+  movimentoId: number | null;
+  usuarioId: number;
+  caminhoArquivo: string;
+  nomeArquivo: string;
+  tipoArquivo: string;
+  tamanhoArquivo: number;
 }
 
 export interface CreateMovimentoDto {
@@ -26,6 +37,7 @@ export interface CreateMovimentoDto {
   contaId?: number;
   parcelado?: boolean; // Novo campo para indicar se a movimentação é parcelada
   parcelas?: number; // Novo campo para indicar número de parcelas, se for parcelado
+  comprovanteId?: number;
 }
 
 export interface UpdateMovimentoDto {
@@ -64,6 +76,27 @@ export interface ComparativoPorTipoResponse {
   receitas: number[];
   despesas: number[];
   reservas: number[];
+}
+
+export interface AnaliseComprovanteSugestao {
+  data: string | null;
+  periodo: string | null;
+  valor: number | null;
+  descricao: string | null;
+  categoriaId: number | null;
+  categoriaNome: string | null;
+  contaId: number | null;
+  contaNome: string | null;
+}
+
+export interface AnalisarComprovanteResponse {
+  comprovanteId: number;
+  nomeArquivo: string;
+  tipoArquivo: string;
+  tamanhoArquivo: number;
+  caminhoArquivo: string;
+  sugestao: AnaliseComprovanteSugestao;
+  camposObrigatoriosFaltantes: string[];
 }
 
 

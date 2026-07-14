@@ -210,7 +210,7 @@ export class MovimentosComponent implements OnInit {
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
                 label: movimento ? 'Editar movimento' : 'Cadastrar movimento',
-                size: 'm',
+                size: 'l',
                 data: movimento,
             })
             .subscribe({
@@ -227,7 +227,7 @@ export class MovimentosComponent implements OnInit {
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
                 label: 'Duplicar movimento',
-                size: 'm',
+                size: 'l',
                 data: {
                     ...movimento,
                     id: undefined

@@ -1,12 +1,38 @@
 <form tuiForm="l" [formGroup]="movimentoForm" (ngSubmit)="onSubmit()">
+  @if (isAnalyzingReceipt()) {
+    <div class="analysis-overlay">
+      <div class="analysis-card">
+        <div class="analysis-spinner"></div>
+        <strong>Analisando comprovante</strong>
+        <span>Aguarde enquanto os dados do arquivo enviado são processados.</span>
+      </div>
+    </div>
+  }
+
+  <div class="upload-field">
+    <label class="upload-label" for="comprovante">Comprovante (imagem ou PDF)</label>
+    <input
+      id="comprovante"
+      type="file"
+      accept="image/*,application/pdf"
+      capture="environment"
+      (change)="onReceiptSelected($event)"
+      [disabled]="isSubmitting() || isAnalyzingReceipt()"
+    />
+    <small>Ao anexar um comprovante, o arquivo será enviado imediatamente para análise e o formulário será preenchido automaticamente.</small>
+    @if (uploadedReceiptName()) {
+      <small>Arquivo analisado: {{ uploadedReceiptName() }}</small>
+    }
+  </div>
+
   <div class="flex gap-1">
     <tui-textfield>
       <label tuiLabel for="periodo">Data *</label>
       <input placeholder="Selecione o dia" tuiInputDate formControlName="data" />
       <tui-calendar *tuiTextfieldDropdown />
-      @if (movimentoForm.get('periodo')?.invalid && movimentoForm.get('periodo')?.touched) {
+      @if (movimentoForm.get('data')?.invalid && movimentoForm.get('data')?.touched) {
         <div class="error-message">
-          @if (movimentoForm.get('periodo')?.errors?.['required']) {
+          @if (movimentoForm.get('data')?.errors?.['required']) {
             <span>Data é obrigatória</span>
           }
         </div>
@@ -18,6 +44,13 @@
       <input formControlName="valor" tuiInputNumber
         [tuiNumberFormat]="{thousandSeparator: '.', decimalSeparator: ',', decimalMode: 'always'}"
         [prefix]="('BRL' | tuiCurrency) + ' '" />
+      @if (movimentoForm.get('valor')?.invalid && movimentoForm.get('valor')?.touched) {
+        <div class="error-message">
+          @if (movimentoForm.get('valor')?.errors?.['required']) {
+            <span>Valor é obrigatório</span>
+          }
+        </div>
+      }
     </tui-textfield>
   </div>
 
@@ -27,6 +60,11 @@
     <input tuiComboBox formControlName="categoriaOption" />
     <tui-data-list-wrapper *tuiTextfieldDropdown new [itemContent]="categoriasContent" [items]="categoriaOptions() | tuiFilterByInput: matcher">
     </tui-data-list-wrapper>
+    @if (movimentoForm.get('categoriaOption')?.invalid && movimentoForm.get('categoriaOption')?.touched) {
+      <div class="error-message">
+        <span>Categoria é obrigatória</span>
+      </div>
+    }
     <ng-template #categoriasContent let-item>
       @if (item.source === 'orcamento') {
         {{ item.descricao ? item.descricao + ' - ' : '' }}{{ item.categoriaNome }}
@@ -41,6 +79,13 @@
   <tui-textfield>
     <label tuiLabel for="descricao">Descrição</label>
     <input tuiTextfield id="descricao" formControlName="descricao" type="text" placeholder="Digite a descrição" />
+    @if (movimentoForm.get('descricao')?.invalid && movimentoForm.get('descricao')?.touched) {
+      <div class="error-message">
+        @if (movimentoForm.get('descricao')?.errors?.['required']) {
+          <span>Descrição é obrigatória</span>
+        }
+      </div>
+    }
   </tui-textfield>
 
   <tui-textfield tuiChevron [stringify]="contaStringify">
@@ -53,7 +98,7 @@
     </tui-data-list>
   </tui-textfield>
 
-  @if (!isEditing) {
+  @if (!isEditing && !uploadedReceiptId()) {
     <div class="flex gap-1">
        <div>
         <label tuiLabel for="parcelado">Possui parcelamento?</label>
@@ -80,7 +125,7 @@
       Cancelar
     </button>
 
-    <button type="submit" tuiButton appearance="primary" size="m" [disabled]="movimentoForm.invalid || isSubmitting()">
+    <button type="submit" tuiButton appearance="primary" size="m" [disabled]="movimentoForm.invalid || isSubmitting() || isAnalyzingReceipt()">
       {{ isSubmitting() ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Cadastrar') }}
     </button>
   </div>

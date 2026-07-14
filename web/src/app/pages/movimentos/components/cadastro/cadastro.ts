@@ -10,7 +10,7 @@ import { TuiForm } from '@taiga-ui/layout';
 
 import { MovimentoService } from '../../../../core/services/movimento.service';
 import { ContaService } from '../../../../core/services/conta.service';
-import { CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, CategoriaBadgeComponent, CategoriaOption, Conta } from '../../../../shared';
+import { AnalisarComprovanteResponse, CreateMovimentoDto, ToastService, UpdateMovimentoDto, Movimento, CategoriaBadgeComponent, CategoriaOption, Conta } from '../../../../shared';
 import { toUTCDate } from '../../../../shared/helpers/date';
 
 @Component({
@@ -49,8 +49,12 @@ export class OrcamentosCadastroComponent implements OnInit {
 
     protected readonly periodo = signal<string>('');
     protected readonly isSubmitting = signal<boolean>(false);
+    protected readonly isAnalyzingReceipt = signal<boolean>(false);
     protected readonly categoriaOptions = signal<CategoriaOption[]>([]);
     protected readonly contas = signal<Conta[]>([]);
+    protected readonly uploadedReceiptName = signal<string | null>(null);
+    protected readonly uploadedReceiptId = signal<number | null>(null);
+    private readonly pendingCategoriaId = signal<number | null>(null);
     protected readonly contaStringify: TuiStringHandler<number> = (id) =>
         this.contas().find((conta) => conta.id === id)?.nome ?? '';
     protected readonly stringify: TuiStringHandler<CategoriaOption> = (option) => {
@@ -82,7 +86,7 @@ export class OrcamentosCadastroComponent implements OnInit {
 
     constructor() {
         effect(() => {
-            const data = this.movimentoForm.get('data')?.value;
+            const data = this.movimentoForm?.get('data')?.value;
             if (data) {
                 this.onDataChange(data);
             }
@@ -99,7 +103,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             data: ['', [Validators.required]],
             categoriaOption: ['', [Validators.required]],
             valor: [null, [Validators.required, Validators.min(0.01)]],
-            descricao: ['', [Validators.maxLength(255)]],
+            descricao: ['', [Validators.required, Validators.maxLength(255)]],
             contaId: [null],
             parcelado: [false],
             parcelas: [null, [Validators.min(2), Validators.max(99)]]
@@ -184,6 +188,18 @@ export class OrcamentosCadastroComponent implements OnInit {
                         if (selectedOption) {
                             this.movimentoForm.patchValue({ categoriaOption: selectedOption });
                         }
+                    } else if (this.pendingCategoriaId()) {
+                        const selectedOption = allOptions.find(
+                            (option) => option.categoriaId === this.pendingCategoriaId()
+                        );
+
+                        if (selectedOption) {
+                            this.movimentoForm.patchValue({ categoriaOption: selectedOption });
+                        } else {
+                            this.movimentoForm.get('categoriaOption')?.markAsTouched();
+                        }
+
+                        this.pendingCategoriaId.set(null);
                     }
                 },
                 error: (error) => {
@@ -202,7 +218,8 @@ export class OrcamentosCadastroComponent implements OnInit {
             const { categoriaOption, ...rest } = this.movimentoForm.value;
 
             const movimentoData: CreateMovimentoDto = {
-                ...rest
+                ...rest,
+                comprovanteId: this.uploadedReceiptId() ?? undefined,
             };
 
             // Se a opção selecionada veio do orçamento, enviar orcamentoItemId
@@ -220,6 +237,82 @@ export class OrcamentosCadastroComponent implements OnInit {
                 this.createMovimento(movimentoData);
             }
         }
+    }
+
+    onReceiptSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const arquivo = input.files?.[0];
+
+        if (!arquivo) {
+            return;
+        }
+
+        this.isAnalyzingReceipt.set(true);
+        this.movimentosService.analisarComprovante(arquivo).subscribe({
+            next: (response) => {
+                this.applyReceiptAnalysis(response);
+                input.value = '';
+            },
+            error: (error) => {
+                console.error('Erro ao analisar comprovante:', error);
+                this.toast.error('Não foi possível analisar o comprovante enviado.');
+                this.isAnalyzingReceipt.set(false);
+                input.value = '';
+            },
+            complete: () => {
+                this.isAnalyzingReceipt.set(false);
+            },
+        });
+    }
+
+    private applyReceiptAnalysis(response: AnalisarComprovanteResponse) {
+        const { sugestao, camposObrigatoriosFaltantes } = response;
+
+        this.uploadedReceiptId.set(response.comprovanteId);
+        this.uploadedReceiptName.set(response.nomeArquivo);
+        this.pendingCategoriaId.set(sugestao.categoriaId);
+
+        this.movimentoForm.patchValue({
+            valor: sugestao.valor,
+            descricao: sugestao.descricao ?? '',
+            contaId: sugestao.contaId,
+            parcelado: false,
+            parcelas: null,
+        });
+
+        if (sugestao.data) {
+            const [year, month, day] = sugestao.data.split('-').map(Number);
+            this.movimentoForm.patchValue({
+                data: new TuiDay(year, month - 1, day),
+            });
+        } else {
+            this.movimentoForm.get('data')?.setValue(null);
+        }
+
+        if (!sugestao.categoriaId) {
+            this.movimentoForm.get('categoriaOption')?.setValue(null);
+        }
+
+        this.applyRequiredFieldFeedback(camposObrigatoriosFaltantes);
+    }
+
+    private applyRequiredFieldFeedback(camposObrigatoriosFaltantes: string[]) {
+        const campos = {
+            data: this.movimentoForm.get('data'),
+            valor: this.movimentoForm.get('valor'),
+            categoriaId: this.movimentoForm.get('categoriaOption'),
+        };
+
+        Object.entries(campos).forEach(([campo, control]) => {
+            if (!control) {
+                return;
+            }
+
+            if (camposObrigatoriosFaltantes.includes(campo)) {
+                control.markAsTouched();
+                control.updateValueAndValidity();
+            }
+        });
     }
 
     private createMovimento(movimentoData: CreateMovimentoDto) {

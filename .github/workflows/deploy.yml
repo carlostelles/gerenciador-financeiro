@@ -123,19 +123,17 @@ jobs:
             cd "$DEPLOY_PATH"
 
             echo "🔄 Atualizando código-fonte (branch/ref: $REF)..."
-            git fetch --all --prune
-            git fetch --tags
-            echo "aqui 1"
-            if git show-ref --verify --quiet "refs/tags/$REF"; then
+            git fetch --all --prune --tags
+
+            if git rev-parse -q --verify "refs/tags/$REF^{tag}" >/dev/null 2>&1; then
               echo "🏷️ Ref '$REF' identificado como tag."
-              git checkout --detach "tags/$REF"
-              echo "aqui 2"
-            else
+              git checkout --force --detach "refs/tags/$REF"
+            elif git ls-remote --exit-code --heads origin "$REF" >/dev/null 2>&1; then
               echo "🌿 Ref '$REF' identificado como branch."
-              git checkout "$REF" || git checkout -b "$REF" "origin/$REF"
-              echo "aqui 3"
-              git pull --ff-only origin "$REF"
-              echo "aqui 4"
+              git checkout -B "$REF" "origin/$REF"
+            else
+              echo "❌ Ref '$REF' não encontrada no repositório remoto como branch ou tag."
+              exit 1
             fi
 
             echo "🔨 Reconstruindo e reiniciando containers de produção..."

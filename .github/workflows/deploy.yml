@@ -123,7 +123,8 @@ jobs:
             cd "$DEPLOY_PATH"
 
             echo "🔄 Atualizando código-fonte (branch/ref: $REF)..."
-            git fetch --all --prune --tags
+            git fetch --all --prune
+            git fetch --tags --force
 
             if git show-ref --verify --quiet "refs/tags/$REF"; then
               echo "🏷️ Ref '$REF' identificado como tag."

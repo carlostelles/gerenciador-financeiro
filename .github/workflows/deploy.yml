@@ -15,6 +15,8 @@ name: Deploy
 #   SSH_PORT         Porta SSH (opcional, padrão 22)
 #   SSH_USERNAME     Usuário utilizado para conectar via SSH
 #   DEPLOY_PATH      Caminho absoluto do projeto no servidor (ex.: /opt/gerenciador-financeiro)
+#   SSH_CONNECT_TIMEOUT Timeout de conexão SSH (opcional, padrão 120s)
+#   SSH_COMMAND_TIMEOUT Timeout de execução remota (opcional, padrão 20m)
 #
 # Segredo (Settings > Secrets and variables > Actions > Secrets) necessário:
 #   SSH_PRIVATE_KEY  Chave privada SSH (formato PEM) com acesso ao servidor
@@ -108,6 +110,8 @@ jobs:
           port: ${{ vars.SSH_PORT || 22 }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: ${{ vars.SSH_CONNECT_TIMEOUT || '120s' }}
+          command_timeout: ${{ vars.SSH_COMMAND_TIMEOUT || '20m' }}
           script_stop: true
           script: |
             set -e
@@ -160,6 +164,8 @@ jobs:
           port: ${{ vars.SSH_PORT || 22 }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: ${{ vars.SSH_CONNECT_TIMEOUT || '120s' }}
+          command_timeout: ${{ vars.SSH_COMMAND_TIMEOUT || '20m' }}
           script_stop: true
           script: |
             set -e

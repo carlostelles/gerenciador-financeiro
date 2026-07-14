@@ -1,7 +1,7 @@
 # Multi-stage build para otimizar o tamanho da imagem
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Definir diretório de trabalho
 WORKDIR /app

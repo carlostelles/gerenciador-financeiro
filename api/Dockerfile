@@ -10,7 +10,7 @@ RUN apk add --no-cache make gcc g++ python3
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies required for build)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -30,7 +30,7 @@ RUN apk add --no-cache make gcc g++ python3 curl
 COPY package*.json ./
 
 # Install only production dependencies using lockfile (more deterministic in CI)
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm install
 
 # Rebuild native modules for the current architecture
 RUN npm rebuild bcrypt --update-binary

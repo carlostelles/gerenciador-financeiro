@@ -51,7 +51,7 @@ jobs:
 
       - name: Instalar dependências da API
         working-directory: api
-        run: npm ci
+        run: npm install
 
       - name: Build da API
         working-directory: api
@@ -63,7 +63,7 @@ jobs:
 
       - name: Instalar dependências do Web
         working-directory: web
-        run: npm ci
+        run: npm install
 
       - name: Build do Web
         working-directory: web

@@ -29,8 +29,8 @@ RUN apk add --no-cache make gcc g++ python3 curl
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm install --omit=dev --ignore-scripts
+# Install only production dependencies using lockfile (more deterministic in CI)
+RUN npm ci --omit=dev --ignore-scripts
 
 # Rebuild native modules for the current architecture
 RUN npm rebuild bcrypt --update-binary

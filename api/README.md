@@ -56,6 +56,8 @@ Uma API RESTful robusta para gerenciamento financeiro desenvolvida com NestJS, o
 - CRUD de movimentações financeiras
 - Vinculação a itens de orçamento
 - Organização por período
+- Upload de comprovante em imagem/PDF com análise por IA
+- Salvamento do comprovante em bucket S3 com vínculo ao movimento
 
 ### Reservas
 - CRUD de reservas financeiras
@@ -232,7 +234,110 @@ JWT_REFRESH_EXPIRES_IN=7d
 # Application Configuration
 NODE_ENV=development
 PORT=3000
+
+# S3 Configuration for movement receipt uploads
+AWS_S3_REGION=us-east-1
+AWS_S3_BUCKET_NAME=gerenciador-financeiro-comprovantes
+AWS_S3_ACCESS_KEY_ID=your-access-key-id
+AWS_S3_SECRET_ACCESS_KEY=your-secret-access-key
+
+# AI Configuration for receipt analysis
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
+MOVIMENTO_COMPROVANTE_MAX_SIZE_BYTES=10485760
 ```
+
+## 🧾 Comprovantes de Movimentação
+
+O módulo de movimentações suporta o envio de comprovantes em imagem (`image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`) ou PDF (`application/pdf`).
+
+### Fluxo da Integração
+
+1. O frontend envia o arquivo para `POST /movimentacoes/comprovantes/analisar` assim que o usuário seleciona um comprovante.
+2. A API valida tipo e tamanho do arquivo.
+3. O arquivo é salvo no bucket S3 configurado, em uma chave organizada por usuário e ano/mês.
+4. O mesmo arquivo é enviado ao modelo multimodal configurado para extração dos dados.
+5. A IA retorna uma sugestão estruturada contendo:
+   - `data`
+   - `valor`
+   - `descricao`
+   - `categoriaId`
+   - `contaId`
+6. A API devolve também a lista `camposObrigatoriosFaltantes`, para que o frontend marque os campos obrigatórios que não puderam ser inferidos com segurança.
+7. Ao confirmar o formulário, o frontend envia `comprovanteId` junto com a criação da movimentação.
+8. A API vincula o comprovante salvo ao primeiro movimento criado.
+
+### Dados Persistidos do Comprovante
+
+Cada comprovante fica registrado na entidade `movimento_comprovantes` com os seguintes campos:
+
+- `movimentoId`: vínculo com a movimentação confirmada
+- `usuarioId`: dono do arquivo
+- `caminhoArquivo`: caminho completo no S3 (`s3://bucket/key`)
+- `nomeArquivo`: nome original enviado pelo usuário
+- `tipoArquivo`: MIME type do arquivo
+- `tamanhoArquivo`: tamanho em bytes
+
+### Bucket S3
+
+O upload usa as seguintes variáveis:
+
+- `AWS_S3_REGION`
+- `AWS_S3_BUCKET_NAME`
+- `AWS_S3_ACCESS_KEY_ID`
+- `AWS_S3_SECRET_ACCESS_KEY`
+
+Permissões mínimas recomendadas para a credencial usada pela API:
+
+- `s3:PutObject`
+- `s3:GetObject` (opcional, caso a aplicação precise servir ou auditar o arquivo depois)
+
+Exemplo de política mínima:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::gerenciador-financeiro-comprovantes/*"
+    }
+  ]
+}
+```
+
+### Integração com IA
+
+O projeto usa o modelo `gemini-2.5-flash` por equilibrar latência e qualidade para leitura de comprovantes em imagem e PDF. O nome do modelo pode ser alterado por variável de ambiente em `GEMINI_MODEL`.
+
+Variáveis usadas pela integração:
+
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `MOVIMENTO_COMPROVANTE_MAX_SIZE_BYTES`
+
+#### Lógica de Extração
+
+- O arquivo é enviado ao modelo multimodal como `inlineData`.
+- A API envia ao modelo a lista de contas e categorias do usuário, para que a resposta já tente enquadrar o comprovante em `categoriaId` e `contaId` reais do sistema.
+- Quando a IA não consegue inferir um campo com segurança, ela retorna `null`.
+- A API considera obrigatórios, para autofill confiável, os campos `data`, `valor` e `categoriaId`.
+- `descricao` e `contaId` também são inferidos, mas podem permanecer vazios se o comprovante não trouxer evidência suficiente.
+
+#### Como Gerar a Credencial do Gemini
+
+1. Acesse o Google AI Studio: `https://aistudio.google.com/`
+2. Entre com a conta Google que será usada para a integração.
+3. Abra a seção de API keys.
+4. Gere uma nova chave.
+5. Copie o valor para `GEMINI_API_KEY` no seu `.env`.
+6. Defina opcionalmente `GEMINI_MODEL=gemini-2.5-flash` ou outro modelo multimodal compatível.
+
+Observação: a chave do Gemini deve ser tratada como segredo e nunca commitada no repositório.
 
 ## 🧪 Testes
 

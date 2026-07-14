@@ -9,6 +9,8 @@ import {
   UseGuards,
   ParseIntPipe,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,12 +19,17 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MovimentacoesService } from './movimentacoes.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
+import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -55,6 +62,36 @@ export class MovimentacoesController {
   })
   findComparativoPorTipo(@CurrentUser() user: any) {
     return this.movimentacoesService.findComparativoPorTipo(user.sub);
+  }
+
+  @Post('comprovantes/analisar')
+  @UseInterceptors(FileInterceptor('arquivo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Enviar comprovante em imagem ou PDF, salvar no S3 e analisar com IA',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        arquivo: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['arquivo'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Comprovante analisado com sucesso',
+    type: AnalisarComprovanteResponseDto,
+  })
+  analisarComprovante(
+    @UploadedFile() arquivo: ComprovanteUploadFile,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.analisarComprovante(arquivo, user.sub);
   }
 
   @Post(':periodo')

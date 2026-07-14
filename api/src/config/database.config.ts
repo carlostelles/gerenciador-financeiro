@@ -7,6 +7,7 @@ import { Categoria } from '../modules/categorias/entities/categoria.entity';
 import { Orcamento } from '../modules/orcamentos/entities/orcamento.entity';
 import { OrcamentoItem } from '../modules/orcamentos/entities/orcamento-item.entity';
 import { Movimento } from '../modules/movimentacoes/entities/movimento.entity';
+import { MovimentoComprovante } from '../modules/movimentacoes/entities/movimento-comprovante.entity';
 import { Reserva } from '../modules/reservas/entities/reserva.entity';
 import { Conta } from '../modules/contas/entities/conta.entity';
 
@@ -28,6 +29,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Orcamento,
         OrcamentoItem,
         Movimento,
+        MovimentoComprovante,
         Reserva,
         Conta,
       ],

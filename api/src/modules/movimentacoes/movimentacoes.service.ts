@@ -2,7 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movimento } from './entities/movimento.entity';
@@ -14,9 +17,17 @@ import { Categoria } from '../categorias/entities/categoria.entity';
 import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
 import { Conta } from '../contas/entities/conta.entity';
+import { MovimentoComprovante } from './entities/movimento-comprovante.entity';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
 import { contemTodasAsPalavras } from '../../common/utils/normalize-text.util';
+import { MovimentoComprovanteStorageService } from './services/movimento-comprovante-storage.service';
+import {
+  AnaliseComprovanteResultado,
+  MovimentoComprovanteAiService,
+} from './services/movimento-comprovante-ai.service';
+import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 
 export interface ResumoCategoriaItem {
   categoriaId: number;
@@ -50,8 +61,22 @@ export class MovimentacoesService {
     private orcamentoRepository: Repository<Orcamento>,
     @InjectRepository(Conta)
     private contaRepository: Repository<Conta>,
+    @InjectRepository(MovimentoComprovante)
+    private comprovanteRepository: Repository<MovimentoComprovante>,
+    private readonly configService: ConfigService,
     private logsService: LogsService,
+    private readonly comprovanteStorageService: MovimentoComprovanteStorageService,
+    private readonly comprovanteAiService: MovimentoComprovanteAiService,
   ) {}
+
+  private readonly tiposArquivoPermitidos = new Set([
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+  ]);
 
   /**
    * Converte uma string de data (YYYY-MM-DD ou ISO) em um Date local,
@@ -76,11 +101,124 @@ export class MovimentacoesService {
     }
   }
 
+  private get tamanhoMaximoComprovante(): number {
+    return Number(
+      this.configService.get('MOVIMENTO_COMPROVANTE_MAX_SIZE_BYTES') ||
+        10 * 1024 * 1024,
+    );
+  }
+
+  private validarArquivoComprovante(arquivo?: ComprovanteUploadFile): asserts arquivo is ComprovanteUploadFile {
+    if (!arquivo) {
+      throw new BadRequestException('Arquivo de comprovante não informado');
+    }
+
+    if (!this.tiposArquivoPermitidos.has(arquivo.mimetype)) {
+      throw new UnsupportedMediaTypeException(
+        'Formato de arquivo não suportado. Envie uma imagem ou PDF.',
+      );
+    }
+
+    if (arquivo.size > this.tamanhoMaximoComprovante) {
+      throw new PayloadTooLargeException(
+        `O comprovante excede o tamanho máximo permitido de ${this.tamanhoMaximoComprovante} bytes`,
+      );
+    }
+  }
+
+  private async vincularComprovante(
+    comprovanteId: number,
+    movimentoId: number,
+    usuarioId: number,
+  ): Promise<void> {
+    const comprovante = await this.comprovanteRepository.findOne({
+      where: { id: comprovanteId, usuarioId },
+    });
+
+    if (!comprovante) {
+      throw new BadRequestException('O comprovante informado não foi encontrado');
+    }
+
+    comprovante.movimentoId = movimentoId;
+    await this.comprovanteRepository.save(comprovante);
+  }
+
+  async analisarComprovante(
+    arquivo: ComprovanteUploadFile,
+    usuarioId: number,
+  ): Promise<AnalisarComprovanteResponseDto> {
+    this.validarArquivoComprovante(arquivo);
+
+    const categorias = await this.categoriaRepository.find({
+      where: { usuarioId },
+      order: { nome: 'ASC' },
+    });
+    const contas = await this.contaRepository.find({
+      where: { usuarioId },
+      order: { nome: 'ASC' },
+    });
+
+    const upload = await this.comprovanteStorageService.uploadComprovante(
+      usuarioId,
+      arquivo,
+    );
+
+    const analise: AnaliseComprovanteResultado =
+      await this.comprovanteAiService.analisarComprovante(arquivo, categorias, contas);
+
+    const comprovante = await this.comprovanteRepository.save(
+      this.comprovanteRepository.create({
+        usuarioId,
+        movimentoId: null,
+        caminhoArquivo: upload.caminhoArquivo,
+        nomeArquivo: arquivo.originalname,
+        tipoArquivo: arquivo.mimetype,
+        tamanhoArquivo: arquivo.size,
+      }),
+    );
+
+    const categoria = analise.categoriaId
+      ? categorias.find((item) => item.id === analise.categoriaId) || null
+      : null;
+    const conta = analise.contaId
+      ? contas.find((item) => item.id === analise.contaId) || null
+      : null;
+
+    return {
+      comprovanteId: comprovante.id,
+      nomeArquivo: comprovante.nomeArquivo,
+      tipoArquivo: comprovante.tipoArquivo,
+      tamanhoArquivo: comprovante.tamanhoArquivo,
+      caminhoArquivo: comprovante.caminhoArquivo,
+      sugestao: {
+        data: analise.data,
+        periodo: analise.periodo,
+        valor: analise.valor,
+        descricao: analise.descricao,
+        categoriaId: categoria?.id || null,
+        categoriaNome: categoria?.nome || null,
+        contaId: conta?.id || null,
+        contaNome: conta?.nome || null,
+      },
+      camposObrigatoriosFaltantes: [
+        !analise.data ? 'data' : null,
+        analise.valor === null ? 'valor' : null,
+        !categoria ? 'categoriaId' : null,
+      ].filter((campo): campo is string => !!campo),
+    };
+  }
+
   async create(
     periodo: string,
     createMovimentoDto: CreateMovimentoDto,
     usuarioId: number,
   ): Promise<Movimento> {
+    if (createMovimentoDto.comprovanteId && createMovimentoDto.parcelas) {
+      throw new BadRequestException(
+        'Não é possível vincular o mesmo comprovante a uma criação parcelada',
+      );
+    }
+
     // Validar se pelo menos orcamentoItemId ou categoriaId foi informado
     if (!createMovimentoDto.orcamentoItemId && !createMovimentoDto.categoriaId) {
       throw new BadRequestException(
@@ -98,7 +236,6 @@ export class MovimentacoesService {
     const [ano, mes] = periodo.split('-');
     const anoData = dataMovimento.getFullYear();
     const mesData = dataMovimento.getMonth() + 1;
-    console.log(`Data do movimento: ${dataMovimento}, Ano: ${anoData}, Mês: ${mesData}, Período: ${periodo}`);
     if (anoData !== parseInt(ano) || mesData !== parseInt(mes)) {
       throw new BadRequestException(
         'A data da movimentação deve estar dentro do período especificado',
@@ -116,6 +253,8 @@ export class MovimentacoesService {
       }
     }
 
+    let primeiroMovimentoId: number | null = null;
+
     for (let i = 0; i < (createMovimentoDto.parcelas || 1); i++) {
       const dataParcelada = new Date(dataMovimento);
       dataParcelada.setMonth(dataParcelada.getMonth() + i);
@@ -131,7 +270,11 @@ export class MovimentacoesService {
         descricao: createMovimentoDto.descricao + (createMovimentoDto.parcelas ? ` (Parcela ${i + 1}/${createMovimentoDto.parcelas})` : ''),
       });
 
-      await this.movimentoRepository.save(movimento);
+      const savedMovimento = await this.movimentoRepository.save(movimento);
+
+      if (primeiroMovimentoId === null) {
+        primeiroMovimentoId = savedMovimento.id;
+      }
 
       // Log da criação
       await this.logsService.create({
@@ -140,14 +283,22 @@ export class MovimentacoesService {
         descricao: `Movimentação criada: ${movimento.descricao}`,
         acao: LogAcao.CREATE,
         entidade: 'Movimento',
-        entidadeId: movimento.id.toString(),
-        dadosNovos: movimento,
+        entidadeId: savedMovimento.id.toString(),
+        dadosNovos: savedMovimento,
       });
     }
 
+    if (createMovimentoDto.comprovanteId && primeiroMovimentoId) {
+      await this.vincularComprovante(
+        createMovimentoDto.comprovanteId,
+        primeiroMovimentoId,
+        usuarioId,
+      );
+    }
+
     return this.movimentoRepository.findOne({
-      where: { data: dataMovimento, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria'],
+      where: { id: primeiroMovimentoId!, usuarioId },
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
     });
   }
 
@@ -169,6 +320,7 @@ export class MovimentacoesService {
       .leftJoinAndSelect('orcamentoItem.categoria', 'orcamentoItemCategoria')
       .leftJoinAndSelect('movimento.categoria', 'categoria')
       .leftJoinAndSelect('movimento.conta', 'conta')
+      .leftJoinAndSelect('movimento.comprovante', 'comprovante')
       .where('movimento.periodo = :periodo', { periodo })
       .andWhere('movimento.usuarioId = :usuarioId', { usuarioId });
 
@@ -257,7 +409,7 @@ export class MovimentacoesService {
   ): Promise<Movimento> {
     const movimento = await this.movimentoRepository.findOne({
       where: { id, periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta'],
+      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
     });
 
     if (!movimento) {

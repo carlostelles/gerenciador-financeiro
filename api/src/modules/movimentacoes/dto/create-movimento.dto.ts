@@ -75,4 +75,12 @@ export class CreateMovimentoDto {
   @IsNumber({}, { message: 'O número de parcelas deve ser um número' })
   @IsPositive({ message: 'O número de parcelas deve ser um número positivo' })
   parcelas?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID do comprovante previamente analisado e enviado para o S3',
+    example: 15,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'O comprovanteId deve ser um número' })
+  comprovanteId?: number;
 }

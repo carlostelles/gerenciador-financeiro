@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToOne,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -11,6 +12,7 @@ import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
 import { Categoria } from '../../categorias/entities/categoria.entity';
 import { Conta } from '../../contas/entities/conta.entity';
+import { MovimentoComprovante } from './movimento-comprovante.entity';
 
 @Entity('movimentos')
 export class Movimento {
@@ -62,4 +64,7 @@ export class Movimento {
   @ManyToOne(() => Conta, (conta) => conta.movimentos, { nullable: true })
   @JoinColumn({ name: 'contaId' })
   conta: Conta;
+
+  @OneToOne(() => MovimentoComprovante, (comprovante) => comprovante.movimento)
+  comprovante: MovimentoComprovante | null;
 }

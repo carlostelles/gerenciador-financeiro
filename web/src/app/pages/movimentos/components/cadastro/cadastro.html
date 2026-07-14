@@ -15,7 +15,6 @@
       id="comprovante"
       type="file"
       accept="image/*,application/pdf"
-      capture="environment"
       (change)="onReceiptSelected($event)"
       [disabled]="isSubmitting() || isAnalyzingReceipt()"
     />

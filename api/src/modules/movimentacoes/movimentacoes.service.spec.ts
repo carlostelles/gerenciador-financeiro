@@ -305,15 +305,88 @@ describe('MovimentacoesService', () => {
         tipoArquivo: 'application/pdf',
         tamanhoArquivo: 2048,
       } as MovimentoComprovante);
+      comprovanteRepository.findOne.mockResolvedValue({
+        id: 10,
+        usuarioId,
+        movimentoId: null,
+      } as MovimentoComprovante);
+      contaRepository.findOne.mockResolvedValue({
+        id: 2,
+        usuarioId,
+        nome: 'Conta Corrente',
+      } as Conta);
+      movimentoRepository.create.mockImplementation((payload) => payload as any);
+      movimentoRepository.save.mockResolvedValue({
+        id: 88,
+        usuarioId,
+        periodo: '2026-07',
+        data: new Date('2026-07-13'),
+        descricao: 'Pagamento via PIX',
+        valor: 123.45,
+        categoriaId: 7,
+      } as Movimento);
+      movimentoRepository.findOne.mockResolvedValue({
+        id: 88,
+        usuarioId,
+        periodo: '2026-07',
+        data: '2026-07-13',
+        descricao: 'Pagamento via PIX',
+        valor: 123.45,
+        categoriaId: 7,
+      } as unknown as Movimento);
 
       const result = await service.analisarComprovante(arquivo as any, usuarioId);
 
       expect(comprovanteStorageService.uploadComprovante).toHaveBeenCalledWith(usuarioId, arquivo);
       expect(comprovanteAiService.analisarComprovante).toHaveBeenCalled();
-      expect(result.sugestao.data).toBe('2026-07-13');
-      expect(result.sugestao.categoriaId).toBe(7);
-      expect(result.sugestao.contaId).toBe(2);
-      expect(result.camposObrigatoriosFaltantes).toEqual([]);
+      expect(result.statusCode).toBe(201);
+      expect(result.body.sugestao.data).toBe('2026-07-13');
+      expect(result.body.sugestao.categoriaId).toBe(7);
+      expect(result.body.sugestao.contaId).toBe(2);
+      expect(result.body.camposObrigatoriosFaltantes).toEqual([]);
+      expect(result.body.salvamento).toEqual({
+        status: 'criado',
+        movimentoId: 88,
+      });
+    });
+
+    it('deve retornar pendente quando faltar campo obrigatório', async () => {
+      categoriaRepository.find.mockResolvedValue([
+        { id: 7, usuarioId, nome: 'Alimentação', tipo: 'DESPESA' } as Categoria,
+      ]);
+      contaRepository.find.mockResolvedValue([
+        { id: 2, usuarioId, nome: 'Conta Corrente' } as Conta,
+      ]);
+      comprovanteStorageService.uploadComprovante.mockResolvedValue({
+        bucket: 'bucket-teste',
+        key: 'movimentacoes/1/2026/07/arquivo.pdf',
+        caminhoArquivo: 's3://bucket-teste/movimentacoes/1/2026/07/arquivo.pdf',
+      });
+      comprovanteAiService.analisarComprovante.mockResolvedValue({
+        data: null,
+        periodo: null,
+        valor: 123.45,
+        descricao: 'Pagamento via PIX',
+        categoriaId: 7,
+        contaId: 2,
+      });
+      comprovanteRepository.create.mockImplementation((payload) => payload as any);
+      comprovanteRepository.save.mockResolvedValue({
+        id: 10,
+        usuarioId,
+        movimentoId: null,
+        caminhoArquivo: 's3://bucket-teste/movimentacoes/1/2026/07/arquivo.pdf',
+        nomeArquivo: 'comprovante.pdf',
+        tipoArquivo: 'application/pdf',
+        tamanhoArquivo: 2048,
+      } as MovimentoComprovante);
+
+      const result = await service.analisarComprovante(arquivo as any, usuarioId);
+
+      expect(result.statusCode).toBe(202);
+      expect(result.body.camposObrigatoriosFaltantes).toContain('data');
+      expect(result.body.salvamento.status).toBe('pendente');
+      expect(movimentoRepository.create).not.toHaveBeenCalled();
     });
 
     it('deve rejeitar arquivo com tipo não suportado', async () => {

@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class AnalisarComprovanteSalvamentoDto {
+  @ApiProperty({
+    enum: ['pendente', 'criado', 'atualizado'],
+    example: 'criado',
+  })
+  status: 'pendente' | 'criado' | 'atualizado';
+
+  @ApiPropertyOptional({ example: 123 })
+  movimentoId?: number;
+}
+
 export class AnaliseComprovanteSugestaoDto {
   @ApiPropertyOptional({ example: '2026-07-13' })
   data: string | null;
@@ -47,4 +58,7 @@ export class AnalisarComprovanteResponseDto {
 
   @ApiProperty({ type: [String], example: ['data', 'categoriaId'] })
   camposObrigatoriosFaltantes: string[];
+
+  @ApiProperty({ type: AnalisarComprovanteSalvamentoDto })
+  salvamento: AnalisarComprovanteSalvamentoDto;
 }

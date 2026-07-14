@@ -27,6 +27,7 @@ import {
   MovimentoComprovanteAiService,
 } from './services/movimento-comprovante-ai.service';
 import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { AnalisarComprovanteRequestDto } from './dto/analisar-comprovante-request.dto';
 import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 
 export interface ResumoCategoriaItem {
@@ -146,7 +147,8 @@ export class MovimentacoesService {
   async analisarComprovante(
     arquivo: ComprovanteUploadFile,
     usuarioId: number,
-  ): Promise<AnalisarComprovanteResponseDto> {
+    request?: AnalisarComprovanteRequestDto,
+  ): Promise<{ statusCode: 200 | 201 | 202; body: AnalisarComprovanteResponseDto }> {
     this.validarArquivoComprovante(arquivo);
 
     const categorias = await this.categoriaRepository.find({
@@ -184,7 +186,18 @@ export class MovimentacoesService {
       ? contas.find((item) => item.id === analise.contaId) || null
       : null;
 
-    return {
+    const periodoAlvo = request?.periodo || analise.periodo || null;
+
+    const camposObrigatoriosFaltantes = [
+      !analise.data ? 'data' : null,
+      analise.valor === null ? 'valor' : null,
+      !categoria ? 'categoriaId' : null,
+      request?.movimentoId && request?.periodo && analise.periodo && analise.periodo !== request.periodo
+        ? 'data'
+        : null,
+    ].filter((campo): campo is string => !!campo);
+
+    const body: AnalisarComprovanteResponseDto = {
       comprovanteId: comprovante.id,
       nomeArquivo: comprovante.nomeArquivo,
       tipoArquivo: comprovante.tipoArquivo,
@@ -200,11 +213,82 @@ export class MovimentacoesService {
         contaId: conta?.id || null,
         contaNome: conta?.nome || null,
       },
-      camposObrigatoriosFaltantes: [
-        !analise.data ? 'data' : null,
-        analise.valor === null ? 'valor' : null,
-        !categoria ? 'categoriaId' : null,
-      ].filter((campo): campo is string => !!campo),
+      camposObrigatoriosFaltantes,
+      salvamento: {
+        status: 'pendente',
+      },
+    };
+
+    if (camposObrigatoriosFaltantes.length > 0 || !periodoAlvo) {
+      return {
+        statusCode: 202,
+        body,
+      };
+    }
+
+    if (request?.movimentoId) {
+      const movimentoAtual = await this.movimentoRepository.findOne({
+        where: { id: request.movimentoId, usuarioId },
+      });
+
+      if (!movimentoAtual) {
+        throw new NotFoundException('Movimentação não encontrada para atualização automática');
+      }
+
+      const periodoAtualizacao = request.periodo || movimentoAtual.periodo;
+      const updateDto: UpdateMovimentoDto = {
+        data: analise.data || undefined,
+        valor: analise.valor ?? undefined,
+        categoriaId: categoria?.id || undefined,
+        contaId: conta?.id || undefined,
+      };
+
+      if (analise.descricao && analise.descricao.trim()) {
+        updateDto.descricao = analise.descricao.trim();
+      }
+
+      const movimentoAtualizado = await this.update(
+        periodoAtualizacao,
+        request.movimentoId,
+        updateDto,
+        usuarioId,
+      );
+
+      await this.vincularComprovante(comprovante.id, movimentoAtualizado.id, usuarioId);
+
+      body.salvamento = {
+        status: 'atualizado',
+        movimentoId: movimentoAtualizado.id,
+      };
+
+      return {
+        statusCode: 200,
+        body,
+      };
+    }
+
+    const createDto: CreateMovimentoDto = {
+      data: analise.data!,
+      valor: analise.valor!,
+      descricao:
+        analise.descricao && analise.descricao.trim()
+          ? analise.descricao.trim()
+          : 'Movimento criado a partir do comprovante',
+      categoriaId: categoria!.id,
+      contaId: conta?.id || undefined,
+      comprovanteId: comprovante.id,
+    };
+
+    const movimentoCriado = await this.create(periodoAlvo, createDto, usuarioId);
+
+    body.salvamento = {
+      status: 'criado',
+      movimentoId: movimentoCriado.id,
+    };
+
+    return {
+      statusCode: 201,
+      body,
     };
   }
 

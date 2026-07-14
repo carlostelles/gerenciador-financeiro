@@ -11,7 +11,9 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -29,6 +31,7 @@ import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
 import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { AnalisarComprovanteRequestDto } from './dto/analisar-comprovante-request.dto';
 import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -78,20 +81,47 @@ export class MovimentacoesController {
           type: 'string',
           format: 'binary',
         },
+        periodo: {
+          type: 'string',
+          example: '2026-07',
+        },
+        movimentoId: {
+          type: 'number',
+          example: 42,
+        },
       },
       required: ['arquivo'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Comprovante analisado com sucesso',
+    description: 'Comprovante analisado e movimentação criada automaticamente',
     type: AnalisarComprovanteResponseDto,
   })
-  analisarComprovante(
+  @ApiResponse({
+    status: 200,
+    description: 'Comprovante analisado e movimentação atualizada automaticamente',
+    type: AnalisarComprovanteResponseDto,
+  })
+  @ApiResponse({
+    status: 202,
+    description: 'Comprovante analisado, mas faltam dados para persistência automática',
+    type: AnalisarComprovanteResponseDto,
+  })
+  async analisarComprovante(
     @UploadedFile() arquivo: ComprovanteUploadFile,
+    @Body() body: AnalisarComprovanteRequestDto,
     @CurrentUser() user: any,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.movimentacoesService.analisarComprovante(arquivo, user.sub);
+    const result = await this.movimentacoesService.analisarComprovante(
+      arquivo,
+      user.sub,
+      body,
+    );
+
+    response.status(result.statusCode);
+    return result.body;
   }
 
   @Post(':periodo')

@@ -263,9 +263,11 @@ O módulo de movimentações suporta o envio de comprovantes em imagem (`image/j
    - `descricao`
    - `categoriaId`
    - `contaId`
-6. A API devolve também a lista `camposObrigatoriosFaltantes`, para que o frontend marque os campos obrigatórios que não puderam ser inferidos com segurança.
-7. Ao confirmar o formulário, o frontend envia `comprovanteId` junto com a criação da movimentação.
-8. A API vincula o comprovante salvo ao primeiro movimento criado.
+6. Se os campos obrigatórios estiverem presentes, a API já persiste a movimentação na mesma chamada:
+  - `201 Created` quando cria nova movimentação
+  - `200 OK` quando atualiza movimentação existente (modo edição)
+7. Se faltar algum campo obrigatório, a API retorna `202 Accepted` com `camposObrigatoriosFaltantes` e a sugestão para o frontend permitir complementação manual.
+8. Em todos os cenários, o comprovante fica salvo e pode ser vinculado ao movimento persistido.
 
 ### Dados Persistidos do Comprovante
 

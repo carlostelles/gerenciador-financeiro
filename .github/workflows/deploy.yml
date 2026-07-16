@@ -141,7 +141,7 @@ jobs:
             fi
 
             echo "🛑 Interrompendo containers em execução..."
-            make prod-stop
+            make prod-down
 
             echo "🔨 Reconstruindo e reiniciando containers de produção..."
             make prod-rebuild

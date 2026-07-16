@@ -70,6 +70,22 @@
             gap: 0.25rem;
             min-inline-size: 10rem;
         }
+
+        @media (max-width: 48rem) {
+            .comparativo-axes {
+                block-size: 18rem;
+            }
+
+            .comparativo-legend {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .comparativo-hint {
+                min-inline-size: 12rem;
+            }
+        }
     }
 
     .chart-wrapper {

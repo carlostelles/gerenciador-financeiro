@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed, WritableSignal, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TuiHint, TuiTextfield } from '@taiga-ui/core';
 import { TuiChevron, TuiComboBox } from '@taiga-ui/kit';
@@ -51,6 +51,7 @@ export class HomeComponent implements OnInit {
   private readonly movimentoService = inject(MovimentoService);
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly contaService = inject(ContaService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly isLoading = signal<boolean>(false);
   protected readonly periodos = signal<string[]>([]);
@@ -61,10 +62,19 @@ export class HomeComponent implements OnInit {
   protected readonly comparativo = signal<ComparativoPorTipoResponse>(COMPARATIVO_VAZIO);
 
   protected readonly comparativoLabels = ['Receitas', 'Despesas', 'Reservas'];
+  protected readonly isSmallScreen = signal<boolean>(false);
 
   protected readonly comparativoValue = computed<number[][]>(() => {
     const { receitas, despesas, reservas } = this.comparativo();
     return [receitas, despesas, reservas];
+  });
+
+  protected readonly comparativoValueResponsive = computed<number[][]>(() => {
+    if (!this.isSmallScreen()) {
+      return this.comparativoValue();
+    }
+
+    return this.transposeValues(this.comparativoValue());
   });
 
   protected readonly comparativoMax = computed<number>(() => {
@@ -74,6 +84,10 @@ export class HomeComponent implements OnInit {
 
   protected readonly comparativoAxisXLabels = computed<string[]>(() =>
     this.comparativo().periodos.map((periodo) => formatPeriod(periodo)),
+  );
+
+  protected readonly comparativoAxisXLabelsResponsive = computed<string[]>(() =>
+    this.isSmallScreen() ? this.comparativoLabels : this.comparativoAxisXLabels(),
   );
 
   protected readonly activeReceita = signal<number>(Number.NaN);
@@ -108,9 +122,66 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.setupResponsiveComparativo();
     this.loadContas();
     this.loadPeriodos();
     this.loadComparativo();
+  }
+
+  private setupResponsiveComparativo() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const query = window.matchMedia('(max-width: 48rem)');
+    this.isSmallScreen.set(query.matches);
+
+    const update = (event: MediaQueryListEvent) => this.isSmallScreen.set(event.matches);
+    query.addEventListener('change', update);
+
+    this.destroyRef.onDestroy(() => {
+      query.removeEventListener('change', update);
+    });
+  }
+
+  private transposeValues(values: ReadonlyArray<readonly number[]>): number[][] {
+    if (!values.length || !values[0]?.length) {
+      return [];
+    }
+
+    return values[0].map((_, index) => values.map((serie) => serie[index] ?? 0));
+  }
+
+  protected comparativoHintTitle(index: number): string {
+    if (!this.isSmallScreen()) {
+      return this.comparativoAxisXLabels()[index] || '';
+    }
+
+    return this.comparativoLabels[index] || '';
+  }
+
+  protected comparativoHintValues(index: number): Array<{ label: string; value: number }> {
+    const comparativo = this.comparativo();
+
+    if (!this.isSmallScreen()) {
+      return [
+        { label: 'Receitas', value: comparativo.receitas[index] ?? 0 },
+        { label: 'Despesas', value: comparativo.despesas[index] ?? 0 },
+        { label: 'Reservas', value: comparativo.reservas[index] ?? 0 },
+      ];
+    }
+
+    const periodos = this.comparativoAxisXLabels();
+
+    if (index === 0) {
+      return periodos.map((label, i) => ({ label, value: comparativo.receitas[i] ?? 0 }));
+    }
+
+    if (index === 1) {
+      return periodos.map((label, i) => ({ label, value: comparativo.despesas[i] ?? 0 }));
+    }
+
+    return periodos.map((label, i) => ({ label, value: comparativo.reservas[i] ?? 0 }));
   }
 
   loadComparativo() {

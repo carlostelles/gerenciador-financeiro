@@ -8,7 +8,7 @@
             <h3>Comparativo por período</h3>
             <tui-axes
                 class="comparativo-axes"
-                [axisXLabels]="comparativoAxisXLabels()"
+                [axisXLabels]="comparativoAxisXLabelsResponsive()"
                 [horizontalLines]="4"
             >
                 <tui-bar-chart
@@ -16,15 +16,15 @@
                     [collapsed]="false"
                     [max]="comparativoMax()"
                     [tuiHintContent]="comparativoHint"
-                    [value]="comparativoValue()"
+                    [value]="comparativoValueResponsive()"
                 />
             </tui-axes>
             <ng-template #comparativoHint let-index>
                 <div class="comparativo-hint">
-                    <strong>{{ comparativoAxisXLabels()[index] }}</strong><br>
-                    <span>Receitas: {{ comparativo().receitas[index] | currency }}</span><br>
-                    <span>Despesas: {{ comparativo().despesas[index] | currency }}</span><br>
-                    <span>Reservas: {{ comparativo().reservas[index] | currency }}</span>
+                    <strong>{{ comparativoHintTitle(index) }}</strong>
+                    @for (item of comparativoHintValues(index); track item.label + $index.toString()) {
+                        <span>{{ item.label }}: {{ item.value | currency }}</span>
+                    }
                 </div>
             </ng-template>
             <div class="comparativo-legend">

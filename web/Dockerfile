@@ -3,20 +3,24 @@
 # Stage 1: Build
 FROM node:24-alpine AS builder
 
+# Limitar memória/concorrência do build para reduzir pico de RAM em containers pequenos
+ENV NODE_OPTIONS=--max-old-space-size=1024 \
+  NG_BUILD_MAX_WORKERS=2
+
 # Definir diretório de trabalho
 WORKDIR /app
 
 # Copiar arquivos de dependências
 COPY package*.json ./
 
-# Instalar dependências
-RUN npm install --legacy-peer-deps
+# Instalar dependências de forma determinística e com menor overhead
+RUN npm ci --legacy-peer-deps --no-audit --no-fund
 
 # Copiar código fonte
 COPY . .
 
 # Build da aplicação para produção
-RUN npm run build
+RUN npm run build -- --configuration production --source-map=false
 
 # Stage 2: Production com Nginx
 FROM nginx:alpine AS production

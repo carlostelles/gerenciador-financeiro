@@ -140,17 +140,11 @@ jobs:
               exit 1
             fi
 
+            echo "🛑 Interrompendo containers em execução..."
+            make prod-stop
+
             echo "🔨 Reconstruindo e reiniciando containers de produção..."
-            if command -v make >/dev/null 2>&1; then
-              make prod-rebuild
-            else
-              echo "⚠️ 'make' não encontrado no servidor; usando docker compose diretamente."
-              DOCKER_COMPOSE_CMD="docker compose"
-              if command -v docker-compose >/dev/null 2>&1; then
-                DOCKER_COMPOSE_CMD="docker-compose"
-              fi
-              $DOCKER_COMPOSE_CMD -f docker-compose.yml up --build -d
-            fi
+            make prod-rebuild
 
             echo "🧹 Removendo imagens antigas não utilizadas..."
             docker system prune -a --volumes

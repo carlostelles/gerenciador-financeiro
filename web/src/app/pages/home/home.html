@@ -6,36 +6,38 @@
     @if (comparativo().periodos.length) {
         <div class="chart-card comparativo-card">
             <h3>Comparativo por período</h3>
-            <tui-axes
-                class="comparativo-axes"
-                [axisXLabels]="comparativoAxisXLabelsResponsive()"
-                [horizontalLines]="4"
-            >
-                <tui-bar-chart
-                    class="comparativo-chart"
-                    [collapsed]="false"
-                    [max]="comparativoMax()"
-                    [tuiHintContent]="comparativoHint"
-                    [value]="comparativoValueResponsive()"
-                />
-            </tui-axes>
-            <ng-template #comparativoHint let-index>
-                <div class="comparativo-hint">
-                    <strong>{{ comparativoHintTitle(index) }}</strong>
-                    @for (item of comparativoHintValues(index); track item.label + $index.toString()) {
-                        <span>{{ item.label }}: {{ item.value | currency }}</span>
+            <div class="chart-wrapper" [style.height.rem]="mobileAxesHeight()">
+                <tui-axes
+                    class="comparativo-axes"
+                    [axisXLabels]="comparativoAxisXLabels()"
+                    [horizontalLines]="4"
+                >
+                    <tui-bar-chart
+                        class="comparativo-chart"
+                        [collapsed]="false"
+                        [max]="comparativoMax()"
+                        [tuiHintContent]="comparativoHint"
+                        [value]="comparativoValue()"
+                    />
+                </tui-axes>
+                <ng-template #comparativoHint let-index>
+                    <div class="comparativo-hint">
+                        <strong>{{ comparativoAxisXLabels()[index] }}</strong><br>
+                        <span>Receitas: {{ comparativo().receitas[index] | currency }}</span><br>
+                        <span>Despesas: {{ comparativo().despesas[index] | currency }}</span><br>
+                        <span>Reservas: {{ comparativo().reservas[index] | currency }}</span>
+                    </div>
+                </ng-template>
+                <div class="comparativo-legend">
+                    @for (label of comparativoLabels; track label) {
+                        <tui-legend-item
+                            size="s"
+                            class="item"
+                            [color]="'var(--tui-chart-categorical-' + $index.toString().padStart(2, '0') + ')'"
+                            [text]="label"
+                        />
                     }
                 </div>
-            </ng-template>
-            <div class="comparativo-legend">
-                @for (label of comparativoLabels; track label) {
-                    <tui-legend-item
-                        size="s"
-                        class="item"
-                        [color]="'var(--tui-chart-categorical-' + $index.toString().padStart(2, '0') + ')'"
-                        [text]="label"
-                    />
-                }
             </div>
         </div>
     }

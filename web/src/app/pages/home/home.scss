@@ -73,11 +73,14 @@
 
         @media (max-width: 48rem) {
             .comparativo-axes {
-                block-size: 18rem;
+                transform-origin: bottom left;
+                transform: rotate(90deg) translate(-12.5rem, 0);
+                block-size: 15rem;
+                width: 100%;
             }
 
             .comparativo-legend {
-                flex-direction: column;
+                flex-direction: row;
                 align-items: flex-start;
                 gap: 0.5rem;
             }
@@ -90,12 +93,16 @@
 
     .chart-wrapper {
         display: flex;
-        align-items: center;
-        flex-direction: row;
+        align-items: stretch;
+        flex-direction: column;
         gap: 1.5rem;
+        width: 100%;
 
         @container (max-width: 24rem) {
-            flex-direction: column;
+            flex-direction: column-reverse;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0;
         }
 
         .chart {

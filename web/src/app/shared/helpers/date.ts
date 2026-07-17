@@ -44,11 +44,14 @@ export function isPastUTC(date: string | Date): boolean {
     return compareDatesUTC(date, getTodayUTC()) < 0;
 }
 
-export function formatPeriod(periodo: string): string {
+export function formatPeriod(periodo: string, isShort?: boolean): string {
     const [year, month] = periodo.split('-');
     const monthNames = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
+    if (isShort) {
+        return `${monthNames[parseInt(month) - 1].slice(0, 3)}/${year.slice(-2)}`;
+    }
     return `${monthNames[parseInt(month) - 1]} ${year}`;
 }

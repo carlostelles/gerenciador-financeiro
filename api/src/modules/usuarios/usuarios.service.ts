@@ -94,6 +94,11 @@ export class UsuariosService {
     });
   }
 
+  async updatePassword(id: number, senha: string): Promise<void> {
+    const hashedPassword = await bcrypt.hash(senha, 10);
+    await this.usuariosRepository.update(id, { senha: hashedPassword });
+  }
+
   async update(
     id: number,
     updateUsuarioDto: UpdateUsuarioDto,

@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 
 import { UsuariosService } from '../usuarios/usuarios.service';
-import { LoginDto, RefreshTokenDto, AuthResponseDto } from './dto/auth.dto';
+import { AlterarSenhaDto, LoginDto, RefreshTokenDto, AuthResponseDto } from './dto/auth.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
 
@@ -63,6 +63,36 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Refresh token inválido');
     }
+  }
+
+  async alterarSenha(alterarSenhaDto: AlterarSenhaDto): Promise<{ message: string }> {
+    const { email, senhaAtual, novaSenha, confirmarSenha } = alterarSenhaDto;
+
+    if (novaSenha !== confirmarSenha) {
+      throw new BadRequestException('A confirmação da nova senha não confere');
+    }
+
+    const usuario = await this.usuariosService.findByEmail(email);
+    if (!usuario || !usuario.ativo) {
+      throw new UnauthorizedException('Email ou senha atual inválidos');
+    }
+
+    const senhaAtualValida = await bcrypt.compare(senhaAtual, usuario.senha);
+    if (!senhaAtualValida) {
+      throw new UnauthorizedException('Email ou senha atual inválidos');
+    }
+
+    await this.usuariosService.updatePassword(usuario.id, novaSenha);
+    await this.logsService.create({
+      data: new Date(),
+      usuarioId: usuario.id,
+      descricao: `Senha alterada para o usuário ${usuario.email}`,
+      acao: LogAcao.UPDATE,
+      entidade: 'Usuario',
+      entidadeId: usuario.id.toString(),
+    });
+
+    return { message: 'Senha alterada com sucesso' };
   }
 
   async logout(userId: number): Promise<void> {

@@ -1,0 +1,71 @@
+<div class="password-container">
+  <div class="password-card">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="password-form" autocomplete="off">
+      <div class="password-header">
+        <img class="password-logo" src="gerenciador-financeiro-logo.svg" alt="Logo do Gerenciador Financeiro" />
+        <div>
+          <p class="brand-name">Gerenciador Financeiro</p>
+          <h2>Alterar senha</h2>
+        </div>
+      </div>
+
+      <p class="instructions">
+        Informe seu e-mail e sua senha atual para cadastrar uma nova senha.
+      </p>
+
+      <tui-textfield>
+        <label tuiLabel for="email">E-mail</label>
+        <input tuiTextfield id="email" formControlName="email" type="email" placeholder="Digite seu e-mail" />
+        @if (hasError('email', 'required')) {
+          <span class="field-error">E-mail é obrigatório</span>
+        }
+        @if (hasError('email', 'email')) {
+          <span class="field-error">E-mail deve ser válido</span>
+        }
+      </tui-textfield>
+
+      <tui-textfield>
+        <label tuiLabel for="senhaAtual">Senha atual</label>
+        <input tuiTextfield id="senhaAtual" formControlName="senhaAtual" type="password" placeholder="Digite sua senha atual" />
+        @if (hasError('senhaAtual', 'required')) {
+          <span class="field-error">Senha atual é obrigatória</span>
+        }
+        @if (hasError('senhaAtual', 'minlength') || hasError('senhaAtual', 'maxlength') || hasError('senhaAtual', 'pattern')) {
+          <span class="field-error">Use de 8 a 16 caracteres permitidos</span>
+        }
+      </tui-textfield>
+
+      <tui-textfield>
+        <label tuiLabel for="novaSenha">Nova senha</label>
+        <input tuiTextfield id="novaSenha" formControlName="novaSenha" type="password" placeholder="Digite a nova senha" />
+        @if (hasError('novaSenha', 'required')) {
+          <span class="field-error">Nova senha é obrigatória</span>
+        }
+        @if (hasError('novaSenha', 'minlength') || hasError('novaSenha', 'maxlength') || hasError('novaSenha', 'pattern')) {
+          <span class="field-error">Use de 8 a 16 caracteres permitidos</span>
+        }
+      </tui-textfield>
+
+      <tui-textfield>
+        <label tuiLabel for="confirmarSenha">Confirme a nova senha</label>
+        <input tuiTextfield id="confirmarSenha" formControlName="confirmarSenha" type="password" placeholder="Repita a nova senha" />
+        @if (hasError('confirmarSenha', 'required')) {
+          <span class="field-error">Confirmação da nova senha é obrigatória</span>
+        }
+        @if (form.touched && form.hasError('passwordMismatch')) {
+          <span class="field-error">As novas senhas devem ser iguais</span>
+        }
+      </tui-textfield>
+
+      <p class="password-hint">
+        São aceitos letras, números e os caracteres especiais ! &#64; # $ % ^ &amp; * ( ) _ + - = [ ] &#123; &#125; | ? , . :
+      </p>
+
+      <button tuiButton type="submit" class="submit-button" [disabled]="isLoading">
+        {{ isLoading ? 'Alterando...' : 'Alterar senha' }}
+      </button>
+
+      <a class="login-link" routerLink="/login">Voltar para entrar</a>
+    </form>
+  </div>
+</div>

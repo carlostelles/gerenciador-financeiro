@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap, of } from 'rxjs';
 import { Router } from '@angular/router';
-import { AuthResponse, JwtToken, LoginDto, RefreshTokenDto } from '../../shared/interfaces';
+import { AlterarSenhaDto, AuthResponse, JwtToken, LoginDto, RefreshTokenDto } from '../../shared/interfaces';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -13,7 +13,7 @@ export class AuthService {
   private readonly tokenKey = 'auth_token';
   private readonly refreshTokenKey = 'refresh_token';
   private readonly tokenExpirationKey = 'token_expiration';
-  
+
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasValidToken);
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
@@ -41,11 +41,11 @@ export class AuthService {
 
   private get hasValidToken(): boolean {
     const expiration = this.tokenExpiration;
-    
+
     if (!this.token || !expiration) {
       return false;
     }
-    
+
     // Verificar se o token não está expirado
     return new Date().getTime() < expiration;
   }
@@ -73,7 +73,7 @@ export class AuthService {
     if (!expiration) {
       return 0;
     }
-    
+
     const now = new Date().getTime();
     return (expiration - now) / 1000 / 60;
   }
@@ -92,6 +92,10 @@ export class AuthService {
       );
   }
 
+  alterarSenha(dados: AlterarSenhaDto): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/auth/alterar-senha`, dados);
+  }
+
   logout(): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.baseUrl}/auth/logout`, {})
       .pipe(
@@ -102,13 +106,13 @@ export class AuthService {
   private handleAuthSuccess(response: AuthResponse): void {
     sessionStorage.setItem(this.tokenKey, response.accessToken);
     sessionStorage.setItem(this.refreshTokenKey, response.refreshToken);
-    
+
     // Calcular o tempo de expiração baseado no expiresIn (em segundos)
     const expirationTime = new Date().getTime() + (response.expiresIn * 1000);
     sessionStorage.setItem(this.tokenExpirationKey, expirationTime.toString());
 
     console.log(this.decodedToken)
-    
+
     this.isAuthenticatedSubject.next(true);
   }
 

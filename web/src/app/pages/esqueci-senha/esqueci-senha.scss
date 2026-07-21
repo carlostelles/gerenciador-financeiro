@@ -1,0 +1,103 @@
+.password-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background-color: #f5f5f5;
+}
+
+.password-card {
+  width: 100%;
+  max-width: 28rem;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.password-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+
+  h2 {
+    margin: 0.25rem 0 0;
+    color: #333;
+    font-size: 1rem;
+  }
+}
+
+.password-logo {
+  width: 3.75rem;
+  height: 3.75rem;
+}
+
+.brand-name {
+  margin: 0;
+  color: #0b4f6c;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.instructions,
+.password-hint {
+  margin: 0;
+  color: #666;
+  line-height: 1.4;
+}
+
+.password-hint {
+  padding: 0.75rem;
+  background: #f5f8fa;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.submit-button {
+  width: 100%;
+}
+
+.login-link {
+  color: #0b4f6c;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.field-error,
+.error-message {
+  display: block;
+  margin-top: 0.25rem;
+  color: #c62828;
+  font-size: 0.8125rem;
+}
+
+.success-message {
+  margin: 0;
+  padding: 0.75rem;
+  color: #1b5e20;
+  background: #e8f5e9;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .password-container {
+    padding: 0.5rem;
+  }
+
+  .password-card {
+    padding: 1.5rem;
+  }
+}

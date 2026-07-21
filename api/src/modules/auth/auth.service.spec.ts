@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LogsService } from '../logs/logs.service';
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -34,6 +34,7 @@ describe('AuthService', () => {
           useValue: {
             findByEmail: jest.fn(),
             findOne: jest.fn(),
+            updatePassword: jest.fn(),
           },
         },
         {
@@ -135,6 +136,44 @@ describe('AuthService', () => {
       jwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
 
       await expect(service.refresh(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('alterarSenha', () => {
+    const alterarSenhaDto = {
+      email: 'test@example.com',
+      senhaAtual: 'SenhaAtual1!',
+      novaSenha: 'NovaSenha1!',
+      confirmarSenha: 'NovaSenha1!',
+    };
+
+    it('deve alterar a senha com credenciais e confirmação válidas', async () => {
+      usuariosService.findByEmail.mockResolvedValue(mockUser as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.alterarSenha(alterarSenhaDto)).resolves.toEqual({
+        message: 'Senha alterada com sucesso',
+      });
+
+      expect(usuariosService.updatePassword).toHaveBeenCalledWith(1, 'NovaSenha1!');
+      expect(logsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        usuarioId: 1,
+        acao: 'UPDATE',
+      }));
+    });
+
+    it('deve rejeitar quando a confirmação da nova senha for diferente', async () => {
+      await expect(service.alterarSenha({
+        ...alterarSenhaDto,
+        confirmarSenha: 'OutraSenha1!',
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve rejeitar quando a senha atual for inválida', async () => {
+      usuariosService.findByEmail.mockResolvedValue(mockUser as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.alterarSenha(alterarSenhaDto)).rejects.toThrow(UnauthorizedException);
     });
   });
 

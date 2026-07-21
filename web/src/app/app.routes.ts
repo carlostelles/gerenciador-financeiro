@@ -50,6 +50,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/login/login').then(m => m.LoginComponent)
   },
   {
+    path: 'esqueci-senha',
+    loadComponent: () => import('./pages/esqueci-senha/esqueci-senha').then(m => m.EsqueciSenhaComponent)
+  },
+  {
     path: 'signup',
     loadComponent: () => import('./pages/signup/signup').then(m => m.SignupComponent)
   },

@@ -3,6 +3,13 @@ export interface LoginDto {
     senha: string;
 }
 
+export interface AlterarSenhaDto {
+    email: string;
+    senhaAtual: string;
+    novaSenha: string;
+    confirmarSenha: string;
+}
+
 export interface AuthResponse {
     accessToken: string;
     refreshToken: string;

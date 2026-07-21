@@ -9,6 +9,8 @@ import { UsuarioService } from '../../../../core/services/usuario.service';
 import { Usuario, UserRole, CreateUsuarioDto, UpdateUsuarioDto } from '../../../../shared/interfaces';
 import { TuiForm } from '@taiga-ui/layout';
 
+const SAFE_PASSWORD_PATTERN = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|?,.:]+$/;
+
 @Component({
     selector: 'app-usuarios-cadastro',
     imports: [
@@ -45,7 +47,9 @@ export class UsuariosCadastroComponent {
         nome: [this.usuario?.nome || '', [Validators.required, Validators.minLength(2)]],
         email: [this.usuario?.email || '', [Validators.required, Validators.email]],
         telefone: [this.usuario?.telefone || '', [Validators.required, Validators.pattern(/^\+\d{13}$/)]],
-        senha: ['', this.usuario ? [] : [Validators.required, Validators.minLength(8), Validators.maxLength(16)]],
+        senha: ['', this.usuario
+            ? [Validators.minLength(8), Validators.maxLength(16), Validators.pattern(SAFE_PASSWORD_PATTERN)]
+            : [Validators.required, Validators.minLength(8), Validators.maxLength(16), Validators.pattern(SAFE_PASSWORD_PATTERN)]],
         role: [this.usuario?.role || UserRole.USER, Validators.required],
         ativo: [this.usuario?.ativo ?? true]
     });
@@ -59,7 +63,6 @@ export class UsuariosCadastroComponent {
 
         // Se é edição, senha não é obrigatória
         if (this.usuario) {
-            this.usuarioForm.get('senha')?.clearValidators();
             this.usuarioForm.get('senha')?.updateValueAndValidity();
         }
     }

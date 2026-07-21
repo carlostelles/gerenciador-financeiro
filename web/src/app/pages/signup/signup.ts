@@ -7,6 +7,8 @@ import { UsuarioService } from '../../core/services/usuario.service';
 import { CreateUsuarioDto } from '../../shared/interfaces';
 import { TuiInputPhone } from '@taiga-ui/kit';
 
+const SAFE_PASSWORD_PATTERN = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|?,.:]+$/;
+
 @Component({
   selector: 'app-signup',
   standalone: true,
@@ -39,7 +41,8 @@ export class SignupComponent {
       senha: ['', [
         Validators.required,
         Validators.minLength(8),
-        Validators.maxLength(16)
+        Validators.maxLength(16),
+        Validators.pattern(SAFE_PASSWORD_PATTERN)
       ]]
     });
   }

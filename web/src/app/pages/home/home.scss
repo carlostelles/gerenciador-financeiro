@@ -1,5 +1,12 @@
 :host {
     display: block;
+    max-inline-size: 100%;
+    overflow-x: hidden;
+
+    .container {
+        inline-size: 100%;
+        max-inline-size: 100%;
+    }
 
     .header {
         display: flex;
@@ -18,21 +25,22 @@
 
         .periodo-filter,
         .conta-filter {
-            inline-size: 16rem;
+            inline-size: min(16rem, 100%);
         }
     }
 
     .charts {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
         gap: 2rem;
         padding-block: 1.5rem;
     }
 
     .chart-card {
-        flex: 1 1 20rem;
-        min-inline-size: 18rem;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
+        box-sizing: border-box;
         padding: 1.5rem;
         border-radius: var(--tui-radius-l);
         background: var(--tui-background-base);
@@ -80,7 +88,7 @@
             }
 
             .comparativo-legend {
-                flex-direction: row;
+                flex-direction: column;
                 align-items: flex-start;
                 gap: 0.5rem;
             }
@@ -99,15 +107,15 @@
         width: 100%;
 
         @container (max-width: 24rem) {
-            flex-direction: column-reverse;
             justify-content: flex-end;
             align-items: center;
+            flex-direction: column-reverse;
             gap: 0;
         }
 
         .chart {
-            inline-size: 50%;
-            block-size: 50%;
+            inline-size: min(100%, 18rem);
+            block-size: auto;
         }
 
         .legend {
@@ -125,6 +133,29 @@
                 color: var(--tui-text-secondary);
                 text-align: center;
             }
+        }
+    }
+
+    @media (max-width: 48rem) {
+        .filters {
+            flex-direction: column;
+            align-items: stretch;
+
+            .periodo-filter,
+            .conta-filter {
+                inline-size: 100%;
+            }
+        }
+
+        .charts {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            padding-block: 1rem;
+        }
+
+        .chart-card {
+            padding: 1rem;
+            border-radius: var(--tui-radius-m);
         }
     }
 }

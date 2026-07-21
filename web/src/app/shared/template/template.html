@@ -9,8 +9,8 @@
         Sair
     </button>
 </header>
-<div [style.display]="'flex'">
-    <aside [style.height.rem]="27" [tuiNavigationAside]="expanded()">
+<div class="navigation-layout">
+    <aside class="navigation-aside" [tuiNavigationAside]="expanded()">
         <header>
             <button iconStart="@tui.home" tuiAsideItem routerLink="/home" type="button">
                 <span tuiFade>Início</span>
@@ -48,7 +48,7 @@
             </button>
         </footer>
     </aside>
-    <main tuiNavigationMain>
+    <main class="navigation-main" tuiNavigationMain>
         <nav compact tuiSubheader [style.position]="'sticky'">
             <tui-breadcrumbs [itemsLimit]="10">
                 <ng-container *ngFor="let item of breadcrumbs; let last = last">

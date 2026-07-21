@@ -78,7 +78,7 @@ export class HomeComponent implements OnInit {
 
   protected readonly mobileAxesHeight = computed<number>(() => {
     if (window.innerWidth <= 768) {
-      return this.comparativo().periodos.length * 6.5;
+      return this.comparativo().periodos.length * 7;
     }
     return 17;
   });

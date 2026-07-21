@@ -22,12 +22,25 @@
   gap: 1.5rem;
 }
 
+.login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.login-logo {
+  width: 6rem;
+  height: 6rem;
+  flex: 0 0 auto;
+}
+
 .login-title {
-  text-align: center;
-  margin: 0 0 1.5rem 0;
-  font-size: 1.8rem;
+  margin: 0.25rem 0 0;
+  font-size: 2rem;
   font-weight: 600;
-  color: #333;
+  color: #0b4f6c;
 }
 
 .form-field {
@@ -84,12 +97,12 @@
   .login-container {
     padding: 0.5rem;
   }
-  
+
   .login-card {
     padding: 1.5rem;
   }
-  
+
   .login-title {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
   }
 }

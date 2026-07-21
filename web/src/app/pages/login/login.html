@@ -1,8 +1,17 @@
 <div class="login-container">
   <div class="login-card">
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" autocomplete="off">
-      <h2 class="login-title">Entrar</h2>
-      
+      <div class="login-brand">
+        <img
+          class="login-logo"
+          src="gerenciador-financeiro-logo.svg"
+          alt="Logo do Gerenciador Financeiro"
+        />
+        <div>
+          <h2 class="login-title">Gerenciador Financeiro</h2>
+        </div>
+      </div>
+
       <tui-textfield>
         <label tuiLabel for="email">E-mail</label>
         <input
@@ -12,7 +21,7 @@
           type="email"
           placeholder="Digite seu e-mail"
         />
-        <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" 
+        <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
              class="error-message">
           <span *ngIf="loginForm.get('email')?.errors?.['required']">E-mail é obrigatório</span>
           <span *ngIf="loginForm.get('email')?.errors?.['email']">E-mail deve ser válido</span>
@@ -28,16 +37,16 @@
           type="password"
           placeholder="Digite sua senha"
         />
-        <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched" 
+        <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched"
              class="error-message">
           <span *ngIf="loginForm.get('senha')?.errors?.['required']">Senha é obrigatória</span>
         </div>
       </tui-textfield>
 
       <div class="form-actions">
-        <button 
-          tuiButton 
-          size="m" 
+        <button
+          tuiButton
+          size="m"
           type="submit"
           [disabled]="loginForm.invalid || isLoading"
           class="submit-button"

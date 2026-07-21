@@ -1,0 +1,17 @@
+{
+  "name": "Gerenciador Financeiro",
+  "short_name": "Finanças",
+  "description": "Gerencie suas finanças de forma simples e organizada.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#0B4F6C",
+  "icons": [
+    {
+      "src": "gerenciador-financeiro-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

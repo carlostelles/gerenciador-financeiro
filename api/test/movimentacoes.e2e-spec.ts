@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +11,7 @@ import { MovimentacoesService } from '../src/modules/movimentacoes/movimentacoes
 import { LogsService } from '../src/modules/logs/logs.service';
 import { RolesGuard } from '../src/common/guards/roles.guard';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
+import { CreateMovimentoDto } from '../src/modules/movimentacoes/dto/create-movimento.dto';
 
 describe('MovimentacoesController (e2e)', () => {
   let app: INestApplication;
@@ -30,6 +33,8 @@ describe('MovimentacoesController (e2e)', () => {
     descricao: 'Movimento de teste',
     valor: 500.00,
     orcamentoItemId: 1,
+    categoriaId: 1,
+    revisado: false,
     createdAt: '2025-09-30T14:30:25.628Z',
     updatedAt: '2025-09-30T14:30:25.628Z',
     usuario: { id: 1, nome: 'Test User', email: 'test@example.com' } as any,
@@ -126,7 +131,8 @@ describe('MovimentacoesController (e2e)', () => {
         data: '2025-09-15',
         descricao: 'Movimento de teste',
         valor: 500.00,
-        orcamentoItemId: 1
+        orcamentoItemId: 1,
+        categoriaId: 1,
       };
 
       movimentacoesService.create.mockResolvedValue(mockMovimento as any);
@@ -146,7 +152,8 @@ describe('MovimentacoesController (e2e)', () => {
         data: '2025-09-20',
         descricao: 'Novo movimento',
         valor: 750.00,
-        orcamentoItemId: 2
+        orcamentoItemId: 2,
+        categoriaId: 1,
       };
 
       movimentacoesService.create.mockResolvedValue({ ...mockMovimento, ...createMovimentoDto } as any);
@@ -158,12 +165,25 @@ describe('MovimentacoesController (e2e)', () => {
         .expect(201);
     });
 
+    it('deve exigir categoria ao criar uma movimentação pela API', async () => {
+      const createMovimentoDto = {
+        data: '2025-09-20',
+        descricao: 'Movimento sem categoria',
+        valor: 750.00,
+      };
+
+      const errors = await validate(plainToInstance(CreateMovimentoDto, createMovimentoDto));
+
+      expect(errors.some((error) => error.property === 'categoriaId')).toBe(true);
+    });
+
     it('deve tratar erros de criação de movimento', async () => {
       const createMovimentoDto = {
         data: '2025-10-15', // Data fora do período
         descricao: 'Movimento inválido',
         valor: 500.00,
-        orcamentoItemId: 1
+        orcamentoItemId: 1,
+        categoriaId: 1,
       };
 
       movimentacoesService.create.mockRejectedValue(new Error('Data não está dentro do período'));
@@ -180,7 +200,8 @@ describe('MovimentacoesController (e2e)', () => {
         data: '2025-09-15',
         descricao: 'Movimento com item inválido',
         valor: 500.00,
-        orcamentoItemId: 999
+        orcamentoItemId: 999,
+        categoriaId: 1,
       };
 
       movimentacoesService.create.mockRejectedValue(new Error('Item de orçamento não encontrado'));
@@ -204,7 +225,7 @@ describe('MovimentacoesController (e2e)', () => {
         .expect(200);
 
       expect(response.body).toEqual(mockMovimentos);
-      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2025-09', mockUser.sub);
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2025-09', mockUser.sub, {});
     });
 
     it('deve retornar array vazio quando não encontrar movimentos', async () => {
@@ -234,7 +255,7 @@ describe('MovimentacoesController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2024-12', mockUser.sub);
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2024-12', mockUser.sub, {});
     });
   });
 
@@ -388,7 +409,7 @@ describe('MovimentacoesController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2025-09', mockUser.sub);
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2025-09', mockUser.sub, {});
       expect(movimentacoesService.findAll).toHaveBeenCalledTimes(1);
     });
   });
@@ -505,7 +526,7 @@ describe('MovimentacoesController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2024-01', mockUser.sub);
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2024-01', mockUser.sub, {});
     });
 
     it('deve tratar períodos futuros', async () => {
@@ -516,7 +537,7 @@ describe('MovimentacoesController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2026-12', mockUser.sub);
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith('2026-12', mockUser.sub, {});
     });
 
     it('deve manter consistência de período nas operações', async () => {

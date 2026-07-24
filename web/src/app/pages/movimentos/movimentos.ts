@@ -79,7 +79,7 @@ export class MovimentosComponent implements OnInit {
 
     /** Resolve o nome da categoria */
     getCategoriaNome(mov: Movimento): string {
-        return mov.orcamentoItem?.categoria?.nome || mov.categoria?.nome || '';
+        return mov.orcamentoItem?.categoria?.nome || mov.categoria?.nome || 'Sem categoria';
     }
 
     /** Resolve a descrição do item de orçamento (se existir) */
@@ -272,10 +272,12 @@ export class MovimentosComponent implements OnInit {
             data: mov.data,
             categoriaTipo: this.getCategoriaTipo(mov) || '',
             categoriaNome: this.getCategoriaNome(mov),
+            categoriaAusente: !this.getCategoriaTipo(mov),
             descricao: (this.getOrcamentoItemDescricao(mov)
                 ? this.getOrcamentoItemDescricao(mov) + (mov.descricao ? ' - ' + mov.descricao : '')
                 : mov.descricao) || '',
             valor: Number(mov.valor),
+            revisado: mov.revisado ?? false,
             raw: mov,
         }));
     });

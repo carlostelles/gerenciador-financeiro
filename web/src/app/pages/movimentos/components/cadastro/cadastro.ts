@@ -106,7 +106,8 @@ export class OrcamentosCadastroComponent implements OnInit {
             descricao: ['', [Validators.required, Validators.maxLength(255)]],
             contaId: [null],
             parcelado: [false],
-            parcelas: [null, [Validators.min(2), Validators.max(99)]]
+            parcelas: [null, [Validators.min(2), Validators.max(99)]],
+            revisado: [false],
         });
 
         if (this.movimentacao()) {
@@ -117,7 +118,8 @@ export class OrcamentosCadastroComponent implements OnInit {
             this.movimentoForm.patchValue({
                 data: tuiDay,
                 valor: this.movimentacao()!.valor,
-                descricao: this.movimentacao()!.descricao || ''
+                descricao: this.movimentacao()!.descricao || '',
+                revisado: this.movimentacao()!.revisado ?? false,
             });
         }
 
@@ -234,7 +236,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             } else {
                 movimentoData.categoriaId = categoriaOption.categoriaId;
             }
-    
+
             if (this.isEditing && this.context.data) {
                 this.updateMovimento(this.context.data.id!, movimentoData);
             } else {
@@ -301,6 +303,7 @@ export class OrcamentosCadastroComponent implements OnInit {
             contaId: sugestao.contaId,
             parcelado: false,
             parcelas: null,
+            revisado: false,
         });
 
         if (sugestao.data) {

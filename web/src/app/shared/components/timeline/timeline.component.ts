@@ -12,8 +12,10 @@ export interface TimelineItem {
     conta?: Conta;
     categoriaTipo: CategoriaTipo | string;
     categoriaNome: string;
+    categoriaAusente: boolean;
     descricao: string;
     valor: number;
+    revisado: boolean;
     raw: any;
 }
 

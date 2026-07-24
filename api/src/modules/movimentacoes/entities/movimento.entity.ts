@@ -43,6 +43,9 @@ export class Movimento {
   @Column({ nullable: true })
   contaId: number;
 
+  @Column({ default: false })
+  revisado: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

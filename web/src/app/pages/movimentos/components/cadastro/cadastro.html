@@ -97,6 +97,18 @@
     </tui-data-list>
   </tui-textfield>
 
+  <div>
+    <label tuiLabel for="revisado">Movimentação revisada?</label>
+    <input
+      tuiSwitch
+      id="revisado"
+      type="checkbox"
+      formControlName="revisado"
+      [showIcons]="true"
+      size="m"
+    />
+  </div>
+
   @if (!isEditing && !uploadedReceiptId()) {
     <div class="flex gap-1">
        <div>

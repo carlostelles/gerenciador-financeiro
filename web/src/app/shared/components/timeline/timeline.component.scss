@@ -112,6 +112,15 @@
                     font-size: 0.8125rem;
                     color: var(--tui-text-secondary);
                     font-weight: 400;
+
+                    &.item-category-missing {
+                        color: var(--tui-background-accent-2);
+                        font-weight: 700;
+                    }
+                }
+
+                .review-badge {
+                    align-self: flex-start;
                 }
 
                 .item-description {

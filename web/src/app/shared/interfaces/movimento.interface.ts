@@ -15,6 +15,7 @@ export interface Movimento {
   categoria?: Categoria;
   contaId?: number;
   conta?: Conta;
+  revisado: boolean;
   comprovante?: MovimentoComprovante;
 }
 
@@ -37,6 +38,7 @@ export interface CreateMovimentoDto {
   contaId?: number;
   parcelado?: boolean; // Novo campo para indicar se a movimentação é parcelada
   parcelas?: number; // Novo campo para indicar número de parcelas, se for parcelado
+  revisado?: boolean;
   comprovanteId?: number;
 }
 
@@ -47,6 +49,7 @@ export interface UpdateMovimentoDto {
   orcamentoItemId?: number;
   categoriaId?: number;
   contaId?: number;
+  revisado?: boolean;
 }
 
 /** Filtros de pesquisa aplicados à listagem de movimentações de um período */

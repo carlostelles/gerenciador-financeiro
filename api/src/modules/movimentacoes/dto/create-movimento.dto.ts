@@ -43,13 +43,13 @@ export class CreateMovimentoDto {
   @IsNumber({}, { message: 'O orcamentoItemId deve ser um número' })
   orcamentoItemId?: number;
 
-  @ApiPropertyOptional({
-    description: 'ID da categoria (opcional se orcamentoItemId for informado)',
+  @ApiProperty({
+    description: 'ID da categoria',
     example: 1,
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'O campo categoriaId é obrigatório' })
   @IsNumber({}, { message: 'O categoriaId deve ser um número' })
-  categoriaId?: number;
+  categoriaId: number;
 
   @ApiPropertyOptional({
     description: 'ID da conta (opcional)',
@@ -75,6 +75,14 @@ export class CreateMovimentoDto {
   @IsNumber({}, { message: 'O número de parcelas deve ser um número' })
   @IsPositive({ message: 'O número de parcelas deve ser um número positivo' })
   parcelas?: number;
+
+  @ApiPropertyOptional({
+    description: 'Indica se a movimentação foi revisada',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo revisado deve ser um booleano' })
+  revisado?: boolean;
 
   @ApiPropertyOptional({
     description: 'ID do comprovante previamente analisado e enviado para o S3',

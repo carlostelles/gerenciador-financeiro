@@ -303,13 +303,6 @@ export class MovimentacoesService {
       );
     }
 
-    // Validar se pelo menos orcamentoItemId ou categoriaId foi informado
-    if (!createMovimentoDto.orcamentoItemId && !createMovimentoDto.categoriaId) {
-      throw new BadRequestException(
-        'É necessário informar o item de orçamento ou a categoria',
-      );
-    }
-
     // Validar se a conta informada existe
     if (createMovimentoDto.contaId) {
       await this.validarConta(createMovimentoDto.contaId, usuarioId);

@@ -18,7 +18,16 @@
                             </tui-badge>
                         }
                         <div class="item-content">
-                            <span class="item-category">{{ item.categoriaNome }}</span>
+                            @if (item.categoriaAusente) {
+                                <strong class="item-category item-category-missing">Sem categoria</strong>
+                            } @else {
+                                <span class="item-category">{{ item.categoriaNome }}</span>
+                            }
+                            @if (!item.revisado) {
+                                <tui-badge class="review-badge" appearance="warning" iconStart="@tui.triangle-alert" size="s">
+                                    Revisar movimentação
+                                </tui-badge>
+                            }
                             @if (item.descricao) {
                                 <span class="item-description">{{ item.descricao }}</span>
                             }

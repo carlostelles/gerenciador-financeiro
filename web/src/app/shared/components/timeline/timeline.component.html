@@ -13,7 +13,11 @@
                             <tui-icon [icon]="getIcon(item.categoriaTipo)" />
                         </div>
                         @if (item.raw.conta) {
-                            <tui-badge iconStart="@tui.wallet" appearance="warning" size="s">
+                            <tui-badge
+                                class="account-badge"
+                                iconStart="@tui.wallet"
+                                size="s"
+                                [style.--account-badge-color]="getContaBadgeColor(item.raw.conta)">
                                 <b>{{ item.raw.conta.nome }}</b>
                             </tui-badge>
                         }

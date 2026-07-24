@@ -111,6 +111,11 @@ export class TimelineComponent {
         return item.valor;
     }
 
+    getContaBadgeColor(conta: Conta): string {
+        const hue = (conta.id * 137.508) % 360;
+        return `hsl(${hue} 58% 38%)`;
+    }
+
     onEdit(item: TimelineItem) {
         this.edit.emit(item.raw);
     }

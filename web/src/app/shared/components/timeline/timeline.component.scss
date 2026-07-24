@@ -101,6 +101,13 @@
                 }
             }
 
+            .account-badge {
+                --tui-background-base: var(--account-badge-color);
+                --tui-text-primary: #fff;
+                background-color: var(--account-badge-color) !important;
+                color: #fff !important;
+            }
+
             .item-content {
                 display: flex;
                 flex-direction: column;

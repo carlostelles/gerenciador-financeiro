@@ -243,7 +243,7 @@ AWS_S3_SECRET_ACCESS_KEY=your-secret-access-key
 
 # AI Configuration for receipt analysis
 GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.1-flash-lite
 MOVIMENTO_COMPROVANTE_MAX_SIZE_BYTES=10485760
 ```
 
@@ -314,7 +314,7 @@ Exemplo de política mínima:
 
 ### Integração com IA
 
-O projeto usa o modelo `gemini-2.5-flash` por equilibrar latência e qualidade para leitura de comprovantes em imagem e PDF. O nome do modelo pode ser alterado por variável de ambiente em `GEMINI_MODEL`.
+O projeto usa o modelo `gemini-3.1-flash-lite` por equilibrar latência e qualidade para leitura de comprovantes em imagem e PDF. O nome do modelo pode ser alterado por variável de ambiente em `GEMINI_MODEL`.
 
 Variáveis usadas pela integração:
 
@@ -337,7 +337,7 @@ Variáveis usadas pela integração:
 3. Abra a seção de API keys.
 4. Gere uma nova chave.
 5. Copie o valor para `GEMINI_API_KEY` no seu `.env`.
-6. Defina opcionalmente `GEMINI_MODEL=gemini-2.5-flash` ou outro modelo multimodal compatível.
+6. Defina opcionalmente `GEMINI_MODEL=gemini-3.1-flash-lite` ou outro modelo multimodal compatível.
 
 Observação: a chave do Gemini deve ser tratada como segredo e nunca commitada no repositório.
 

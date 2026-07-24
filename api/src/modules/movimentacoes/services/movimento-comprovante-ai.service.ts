@@ -22,7 +22,7 @@ export class MovimentoComprovanteAiService {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.client = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
   }
 
   async analisarComprovante(

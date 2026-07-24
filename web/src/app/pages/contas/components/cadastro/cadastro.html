@@ -8,6 +8,18 @@
         </div>
     </tui-textfield>
 
+    <tui-textfield multi>
+        <label tuiLabel for="tags">Tags</label>
+        <tui-input-chip *tuiItem></tui-input-chip>
+        <input
+            tuiInputChip
+            id="tags"
+            formControlName="tags"
+            placeholder="Adicione uma tag e pressione Enter"
+            [separator]="','"
+        />
+    </tui-textfield>
+
     <div class="form-actions">
         <button type="button" tuiButton appearance="secondary" size="m" (click)="onClose()">
             Cancelar

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, OnChanges } fro
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TuiButton, TuiDialogContext, TuiTextfield } from '@taiga-ui/core';
+import { TuiInputChip } from '@taiga-ui/kit';
 import { injectContext } from '@taiga-ui/polymorpheus';
 import { TuiForm } from '@taiga-ui/layout';
 
@@ -15,6 +16,7 @@ import { Conta } from '../../../../shared/interfaces';
     ReactiveFormsModule,
     TuiButton,
     TuiTextfield,
+    TuiInputChip,
     TuiForm
   ],
   standalone: true,
@@ -30,7 +32,8 @@ export class ContasCadastroComponent implements OnChanges {
   protected conta: Conta = this.context.data;
 
   protected readonly contaForm = this.fb.group({
-    nome: [this.conta?.nome || '', [Validators.required, Validators.minLength(2)]]
+    nome: [this.conta?.nome || '', [Validators.required, Validators.minLength(2)]],
+    tags: [this.getTags(this.conta?.tags)]
   });
 
   constructor(private elementRef: ElementRef<HTMLElement>) {
@@ -44,7 +47,8 @@ export class ContasCadastroComponent implements OnChanges {
   ngOnChanges() {
     if (this.conta) {
       this.contaForm.patchValue({
-        nome: this.conta.nome
+        nome: this.conta.nome,
+        tags: this.getTags(this.conta.tags)
       });
     } else {
       this.contaForm.reset();
@@ -55,7 +59,8 @@ export class ContasCadastroComponent implements OnChanges {
     if (this.contaForm.valid) {
       const formData = this.contaForm.value;
       const contaData = {
-        nome: formData.nome!
+        nome: formData.nome!,
+        tags: this.serializeTags(formData.tags)
       };
 
       if (this.conta) {
@@ -86,5 +91,14 @@ export class ContasCadastroComponent implements OnChanges {
 
   onClose() {
     this.context.completeWith('');
+  }
+
+  private getTags(tags: string | null | undefined): string[] {
+    return tags?.split(',').map((tag) => tag.trim()).filter(Boolean) || [];
+  }
+
+  private serializeTags(tags: string[] | null | undefined): string | null {
+    const uniqueTags = Array.from(new Set((tags || []).map((tag) => tag.trim()).filter(Boolean)));
+    return uniqueTags.length ? uniqueTags.join(',') : null;
   }
 }

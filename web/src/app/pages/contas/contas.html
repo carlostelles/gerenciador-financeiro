@@ -12,12 +12,22 @@
                 <thead>
                     <tr>
                         <th tuiTh>Nome</th>
+                        <th tuiTh>Tags</th>
                         <th tuiTh>Ações</th>
                     </tr>
                 </thead>
                 <tbody tuiTbody>
                     <tr *ngFor="let conta of contas; trackBy: trackByFn">
                         <td tuiTd>{{ conta.nome }}</td>
+                        <td tuiTd>
+                            <div class="tags">
+                                @for (tag of getTags(conta); track tag) {
+                                    <tui-badge appearance="neutral" size="s">{{ tag }}</tui-badge>
+                                } @empty {
+                                    <span class="no-tags">Sem tags</span>
+                                }
+                            </div>
+                        </td>
                         <td tuiTd class="actions">
                             <button tuiButton appearance="secondary" size="s" (click)="openFormModal(conta)">
                                 <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary" tuiTooltip="Editar conta"

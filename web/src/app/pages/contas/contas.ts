@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiButton, TuiDialogService, TuiIcon } from '@taiga-ui/core';
-import { TuiConfirmService, TuiTooltip } from '@taiga-ui/kit';
+import { TuiBadge, TuiConfirmService, TuiTooltip } from '@taiga-ui/kit';
 import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 
 import { ContaService } from '../../core/services/conta.service';
@@ -17,6 +17,7 @@ import { ContasCadastroComponent } from './components/cadastro/cadastro';
     TuiButton,
     TuiIcon,
     TuiTooltip,
+    TuiBadge,
     TuiTable,
     TuiTableControl,
     ButtonFloatComponent
@@ -100,5 +101,9 @@ export class ContasComponent implements OnInit {
 
   trackByFn(index: number, item: Conta): string {
     return item.nome;
+  }
+
+  protected getTags(conta: Conta): string[] {
+    return conta.tags?.split(',').map((tag) => tag.trim()).filter(Boolean) || [];
   }
 }

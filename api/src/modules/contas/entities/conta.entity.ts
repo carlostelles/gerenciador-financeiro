@@ -22,6 +22,9 @@ export class Conta {
   @Column({ length: 255 })
   nome: string;
 
+  @Column({ type: 'text', nullable: true })
+  tags: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

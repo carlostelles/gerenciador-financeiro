@@ -45,7 +45,10 @@ export class MovimentoComprovanteAiService {
       '- Extraia o valor total pago como número decimal usando ponto.',
       '- Gere uma descrição curta e útil para o lançamento financeiro.',
       '- Escolha categoriaId exclusivamente entre as categorias fornecidas. Se não houver segurança, retorne null.',
-      '- Escolha contaId exclusivamente entre as contas fornecidas. Se não houver evidência suficiente, retorne null.',
+      '- Escolha contaId exclusivamente entre as contas fornecidas.',
+      '- Para identificar a conta, considere tanto o nome da conta quanto todas as suas tags.',
+      '- Compare qualquer informação encontrada no comprovante (banco, cartão, carteira, método de pagamento, identificador ou texto semelhante) com os nomes e tags das contas.',
+      '- Se uma tag corresponder de forma confiável a uma informação do comprovante, use a conta correspondente. Se houver mais de uma conta possível, considere aquela que seja mais provável de ser a correta ou, na ausência de evidência suficiente, retorne null.',
       '- Se um campo não puder ser identificado com segurança, retorne null.',
       '- Não invente dados ausentes.',
       'JSON esperado:',
@@ -59,7 +62,14 @@ export class MovimentoComprovanteAiService {
         })),
       )}`,
       `Contas disponíveis: ${JSON.stringify(
-        contas.map((conta) => ({ id: conta.id, nome: conta.nome })),
+        contas.map((conta) => ({
+          id: conta.id,
+          nome: conta.nome,
+          tags: conta.tags
+            ?.split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean) || [],
+        })),
       )}`,
     ].join('\n');
 

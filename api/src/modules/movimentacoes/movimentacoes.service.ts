@@ -144,6 +144,45 @@ export class MovimentacoesService {
     await this.comprovanteRepository.save(comprovante);
   }
 
+  private getPeriodoAtual(): string {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private async criarMovimentoParcialPorComprovante(
+    periodo: string,
+    analise: AnaliseComprovanteResultado,
+    categoriaId: number | null,
+    contaId: number | null,
+    comprovanteId: number,
+    usuarioId: number,
+  ): Promise<Movimento> {
+    const movimento = this.movimentoRepository.create({
+      usuarioId,
+      periodo,
+      data: analise.data ? this.parseDataSemTimezone(analise.data) : null,
+      descricao: analise.descricao?.trim() || null,
+      valor: analise.valor,
+      categoriaId,
+      contaId,
+      revisado: false,
+    });
+
+    const movimentoSalvo = await this.movimentoRepository.save(movimento);
+    await this.vincularComprovante(comprovanteId, movimentoSalvo.id, usuarioId);
+    await this.logsService.create({
+      data: new Date(),
+      usuarioId,
+      descricao: 'Movimentação parcial criada a partir de comprovante',
+      acao: LogAcao.CREATE,
+      entidade: 'Movimento',
+      entidadeId: movimentoSalvo.id.toString(),
+      dadosNovos: movimentoSalvo,
+    });
+
+    return movimentoSalvo;
+  }
+
   async analisarComprovante(
     arquivo: ComprovanteUploadFile,
     usuarioId: number,
@@ -186,7 +225,7 @@ export class MovimentacoesService {
       ? contas.find((item) => item.id === analise.contaId) || null
       : null;
 
-    const periodoAlvo = request?.periodo || analise.periodo || null;
+    const periodoAlvo = request?.periodo || analise.periodo || this.getPeriodoAtual();
 
     const camposObrigatoriosFaltantes = [
       !analise.data ? 'data' : null,
@@ -219,13 +258,6 @@ export class MovimentacoesService {
       },
     };
 
-    if (camposObrigatoriosFaltantes.length > 0 || !periodoAlvo) {
-      return {
-        statusCode: 202,
-        body,
-      };
-    }
-
     if (request?.movimentoId) {
       const movimentoAtual = await this.movimentoRepository.findOne({
         where: { id: request.movimentoId, usuarioId },
@@ -237,11 +269,24 @@ export class MovimentacoesService {
 
       const periodoAtualizacao = request.periodo || movimentoAtual.periodo;
       const updateDto: UpdateMovimentoDto = {
-        data: analise.data || undefined,
-        valor: analise.valor ?? undefined,
-        categoriaId: categoria?.id || undefined,
-        contaId: conta?.id || undefined,
+        revisado: false,
       };
+
+      const dataCompativelComPeriodo =
+        !request.periodo || !analise.periodo || analise.periodo === request.periodo;
+
+      if (analise.data && dataCompativelComPeriodo) {
+        updateDto.data = analise.data;
+      }
+      if (analise.valor !== null) {
+        updateDto.valor = analise.valor;
+      }
+      if (categoria) {
+        updateDto.categoriaId = categoria.id;
+      }
+      if (conta) {
+        updateDto.contaId = conta.id;
+      }
 
       if (analise.descricao && analise.descricao.trim()) {
         updateDto.descricao = analise.descricao.trim();
@@ -267,6 +312,27 @@ export class MovimentacoesService {
       };
     }
 
+    if (camposObrigatoriosFaltantes.length > 0) {
+      const movimentoParcial = await this.criarMovimentoParcialPorComprovante(
+        periodoAlvo,
+        analise,
+        categoria?.id || null,
+        conta?.id || null,
+        comprovante.id,
+        usuarioId,
+      );
+
+      body.salvamento = {
+        status: 'criado',
+        movimentoId: movimentoParcial.id,
+      };
+
+      return {
+        statusCode: 201,
+        body,
+      };
+    }
+
     const createDto: CreateMovimentoDto = {
       data: analise.data!,
       valor: analise.valor!,
@@ -277,6 +343,7 @@ export class MovimentacoesService {
       categoriaId: categoria!.id,
       contaId: conta?.id || undefined,
       comprovanteId: comprovante.id,
+      revisado: false,
     };
 
     const movimentoCriado = await this.create(periodoAlvo, createDto, usuarioId);

@@ -25,14 +25,14 @@ export class Movimento {
   @Column({ length: 7 }) // yyyy-mm
   periodo: string;
 
-  @Column({ type: 'date' })
-  data: Date;
+  @Column({ type: 'date', nullable: true })
+  data: Date | null;
 
-  @Column({ length: 500 })
-  descricao: string;
+  @Column({ length: 500, nullable: true })
+  descricao: string | null;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  valor: number;
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  valor: number | null;
 
   @Column({ nullable: true })
   orcamentoItemId: number;

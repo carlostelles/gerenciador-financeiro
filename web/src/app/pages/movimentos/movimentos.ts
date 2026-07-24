@@ -284,26 +284,26 @@ export class MovimentosComponent implements OnInit {
 
     readonly timelineFutureItems = computed<TimelineItem[]>(() => {
         return this.timelineItems().filter(item => {
-            return isFutureUTC(item.data);
+            return item.data !== null && isFutureUTC(item.data);
         });
     });
 
     readonly timelineTodayItems = computed<TimelineItem[]>(() => {
         return this.timelineItems().filter(item => {
-            return isTodayUTC(item.data);
+            return item.data !== null && isTodayUTC(item.data);
         });
     });
 
     readonly timelinePastItems = computed<TimelineItem[]>(() => {
         return this.timelineItems().filter(item => {
-            return isPastUTC(item.data);
+            return item.data === null || isPastUTC(item.data);
         });
     });
 
     somaValores(items: TimelineItem[], tipo: CategoriaTipo): number {
         return items
             .filter(item => item.categoriaTipo === tipo)
-            .reduce((sum, item) => sum + item.valor, 0);
+            .reduce((sum, item) => sum + (item.valor ?? 0), 0);
     }
 
     handleAutoShowFutureItens() {
@@ -326,6 +326,6 @@ export class MovimentosComponent implements OnInit {
     }
 
     trackByFn(index: number, item: Movimento): string {
-        return item.data;
+        return item.data || item.id?.toString() || index.toString();
     }
 }

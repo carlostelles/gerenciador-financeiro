@@ -39,7 +39,11 @@
                     </div>
                     <div class="item-actions">
                         <span class="item-valor" [ngClass]="getValorClass(item.categoriaTipo)">
-                            {{ getDisplayValor(item) | currency }}
+                            @if (getDisplayValor(item) !== null) {
+                                {{ getDisplayValor(item) | currency }}
+                            } @else {
+                                Valor não identificado
+                            }
                         </span>
                         <div class="action-buttons">
                             <button class="action-btn duplicate-btn" (click)="onDuplicate(item); $event.stopPropagation()" title="Duplicar">

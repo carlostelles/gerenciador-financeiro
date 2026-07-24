@@ -54,6 +54,7 @@ describe('MovimentacoesService', () => {
     descricao: 'Test movimento',
     valor: 100.50,
     orcamentoItemId: 1,
+    categoriaId: 10,
   };
 
   const mockUpdateMovimentoDto: UpdateMovimentoDto = {
@@ -350,7 +351,7 @@ describe('MovimentacoesService', () => {
       });
     });
 
-    it('deve retornar pendente quando faltar campo obrigatório', async () => {
+    it('deve criar movimento parcial não revisado quando faltar campo obrigatório', async () => {
       categoriaRepository.find.mockResolvedValue([
         { id: 7, usuarioId, nome: 'Alimentação', tipo: 'DESPESA' } as Categoria,
       ]);
@@ -380,13 +381,36 @@ describe('MovimentacoesService', () => {
         tipoArquivo: 'application/pdf',
         tamanhoArquivo: 2048,
       } as MovimentoComprovante);
+      comprovanteRepository.findOne.mockResolvedValue({
+        id: 10,
+        usuarioId,
+        movimentoId: null,
+      } as MovimentoComprovante);
+      movimentoRepository.create.mockImplementation((payload) => payload as any);
+      movimentoRepository.save.mockResolvedValue({
+        id: 89,
+        usuarioId,
+        periodo: new Date().toISOString().slice(0, 7),
+        data: null,
+        descricao: 'Pagamento via PIX',
+        valor: 123.45,
+        categoriaId: 7,
+        contaId: 2,
+        revisado: false,
+      } as Movimento);
 
       const result = await service.analisarComprovante(arquivo as any, usuarioId);
 
-      expect(result.statusCode).toBe(202);
+      expect(result.statusCode).toBe(201);
       expect(result.body.camposObrigatoriosFaltantes).toContain('data');
-      expect(result.body.salvamento.status).toBe('pendente');
-      expect(movimentoRepository.create).not.toHaveBeenCalled();
+      expect(result.body.salvamento).toEqual({ status: 'criado', movimentoId: 89 });
+      expect(movimentoRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: null,
+        valor: 123.45,
+        categoriaId: 7,
+        contaId: 2,
+        revisado: false,
+      }));
     });
 
     it('deve rejeitar arquivo com tipo não suportado', async () => {

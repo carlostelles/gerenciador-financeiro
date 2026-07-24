@@ -112,8 +112,10 @@ export class OrcamentosCadastroComponent implements OnInit {
 
         if (this.movimentacao()) {
             const dataString = this.movimentacao()!.data;
-            const date = toUTCDate(dataString);
-            const tuiDay = new TuiDay(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+            const date = dataString ? toUTCDate(dataString) : null;
+            const tuiDay = date
+                ? new TuiDay(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+                : null;
 
             this.movimentoForm.patchValue({
                 data: tuiDay,

@@ -6,9 +6,9 @@ export interface Movimento {
   id?: number;
   usuarioId: number;
   periodo: string;
-  data: string;
-  descricao: string;
-  valor: number;
+  data: string | null;
+  descricao: string | null;
+  valor: number | null;
   orcamentoItemId?: number;
   orcamentoItem?: OrcamentoItem;
   categoriaId?: number;

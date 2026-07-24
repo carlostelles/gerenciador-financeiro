@@ -8,13 +8,13 @@ import { TuiBadge } from "@taiga-ui/kit";
 
 export interface TimelineItem {
     id: number;
-    data: string;
+    data: string | null;
     conta?: Conta;
     categoriaTipo: CategoriaTipo | string;
     categoriaNome: string;
     categoriaAusente: boolean;
     descricao: string;
-    valor: number;
+    valor: number | null;
     revisado: boolean;
     raw: any;
 }
@@ -43,7 +43,7 @@ export class TimelineComponent {
         const items = this.items();
         const grouped = new Map<string, TimelineItem[]>();
         for (const item of items) {
-            const key = item.data;
+            const key = item.data || 'sem-data';
             if (!grouped.has(key)) {
                 grouped.set(key, []);
             }
@@ -104,7 +104,7 @@ export class TimelineComponent {
         }
     }
 
-    getDisplayValor(item: TimelineItem): number {
+    getDisplayValor(item: TimelineItem): number | null {
         if (item.categoriaTipo === 'DESPESA' || item.categoriaTipo === CategoriaTipo.DESPESA) {
             return item.valor;
         }
@@ -129,6 +129,10 @@ export class TimelineComponent {
     }
 
     private formatDate(dateStr: string): string {
+        if (dateStr === 'sem-data') {
+            return 'Data não identificada';
+        }
+
         const date = toUTCDate(dateStr);
         const day = date.getUTCDate().toString().padStart(2, '0');
         const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');

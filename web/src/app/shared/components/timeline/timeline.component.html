@@ -46,6 +46,11 @@
                             }
                         </span>
                         <div class="action-buttons">
+                            @if (!item.revisado) {
+                                <button class="action-btn" (click)="onMarkAsReviewed(item); $event.stopPropagation()" title="Marcar como revisado">
+                                    <tui-icon icon="@tui.check" />
+                                </button>
+                            }
                             @if (item.raw.comprovante) {
                                 <button class="action-btn" (click)="onViewAttachment(item); $event.stopPropagation()" title="Visualizar anexo">
                                     <tui-icon icon="@tui.paperclip" />

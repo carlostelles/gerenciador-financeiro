@@ -39,6 +39,7 @@ export class TimelineComponent {
     readonly delete = output<any>();
     readonly duplicate = output<any>();
     readonly viewAttachment = output<any>();
+    readonly markAsReviewed = output<any>();
 
     readonly groups = computed<TimelineGroup[]>(() => {
         const items = this.items();
@@ -131,6 +132,10 @@ export class TimelineComponent {
 
     onViewAttachment(item: TimelineItem) {
         this.viewAttachment.emit(item.raw);
+    }
+
+    onMarkAsReviewed(item: TimelineItem) {
+        this.markAsReviewed.emit(item.raw);
     }
 
     private formatDate(dateStr: string): string {

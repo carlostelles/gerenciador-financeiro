@@ -258,6 +258,13 @@ export class MovimentosComponent implements OnInit {
             .subscribe();
     }
 
+    markAsReviewed(movimento: Movimento) {
+        this.movimentoService.update(movimento.periodo, movimento.id!, { revisado: true }).subscribe({
+            next: () => this.loadMovimentos(movimento.periodo),
+            error: (error) => console.error('Erro ao marcar movimentação como revisada:', error),
+        });
+    }
+
     confirmDelete(movimento: Movimento) {
         this.promptService
             .open(`O movimento <strong>${movimento.descricao}</strong> do período <strong>${formatPeriod(movimento.periodo)}</strong> será excluído. Esta ação não pode ser desfeita.`, {

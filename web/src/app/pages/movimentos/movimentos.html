@@ -159,7 +159,8 @@
             [items]="timelinePastItems()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
-            (duplicate)="duplicateItem($event)">
+            (duplicate)="duplicateItem($event)"
+            (viewAttachment)="openAttachmentModal($event)">
         </app-timeline>
     </div> 
 </ng-template>
@@ -170,7 +171,8 @@
             [items]="timelineTodayItems()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
-            (duplicate)="duplicateItem($event)">
+            (duplicate)="duplicateItem($event)"
+            (viewAttachment)="openAttachmentModal($event)">
         </app-timeline>
     </div>
 </ng-template>
@@ -181,7 +183,8 @@
             [items]="timelineFutureItems()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
-            (duplicate)="duplicateItem($event)">
+            (duplicate)="duplicateItem($event)"
+            (viewAttachment)="openAttachmentModal($event)">
         </app-timeline>
     </div>
 </ng-template>

@@ -6,6 +6,7 @@ import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
 
 import { formatPeriod, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
+import { VisualizarComprovanteComponent } from './components/visualizar-comprovante/visualizar-comprovante';
 import { MovimentosFiltroComponent } from './components/filtro/filtro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
@@ -241,6 +242,20 @@ export class MovimentosComponent implements OnInit {
                     console.error('Erro ao salvar movimento:', error);
                 }
             });
+    }
+
+    openAttachmentModal(movimento: Movimento) {
+        if (!movimento.comprovante) {
+            return;
+        }
+
+        this.dialogs
+            .open<void>(new PolymorpheusComponent(VisualizarComprovanteComponent), {
+                label: movimento.comprovante.nomeArquivo,
+                size: 'l',
+                data: movimento.comprovante,
+            })
+            .subscribe();
     }
 
     confirmDelete(movimento: Movimento) {

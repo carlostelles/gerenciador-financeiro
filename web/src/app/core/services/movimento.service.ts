@@ -93,4 +93,10 @@ export class MovimentoService {
       formData,
     );
   }
+
+  getUrlVisualizacaoComprovante(comprovanteId: number): Observable<{ url: string }> {
+    return this.http.get<{ url: string }>(
+      `${this.baseUrl}/movimentacoes/comprovantes/${comprovanteId}/url-visualizacao`,
+    );
+  }
 }

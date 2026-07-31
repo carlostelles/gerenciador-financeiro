@@ -68,6 +68,16 @@ export class MovimentacoesController {
     return this.movimentacoesService.findComparativoPorTipo(user.sub);
   }
 
+  @Get('comprovantes/:comprovanteId/url-visualizacao')
+  @ApiOperation({ summary: 'Obter URL temporária para visualizar um arquivo anexado' })
+  @ApiParam({ name: 'comprovanteId', type: Number })
+  obterUrlComprovante(
+    @Param('comprovanteId', ParseIntPipe) comprovanteId: number,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.obterUrlComprovante(comprovanteId, user.sub);
+  }
+
   @Post('comprovantes/analisar-extratos')
   @UseInterceptors(FilesInterceptor('arquivos', 20))
   @ApiConsumes('multipart/form-data')

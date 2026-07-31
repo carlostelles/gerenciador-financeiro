@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
 import { ComprovanteUploadFile } from '../types/comprovante-upload-file.type';
@@ -62,5 +63,27 @@ export class MovimentoComprovanteStorageService {
       key,
       caminhoArquivo: `s3://${this.bucket}/${key}`,
     };
+  }
+
+  async obterUrlVisualizacao(caminhoArquivo: string): Promise<string> {
+    if (!this.bucket) {
+      throw new InternalServerErrorException(
+        'Bucket S3 não configurado para visualização de comprovantes',
+      );
+    }
+
+    const prefixo = `s3://${this.bucket}/`;
+    if (!caminhoArquivo.startsWith(prefixo)) {
+      throw new InternalServerErrorException('Caminho do comprovante inválido');
+    }
+
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: caminhoArquivo.slice(prefixo.length),
+      }),
+      { expiresIn: 60 * 15 },
+    );
   }
 }

@@ -145,6 +145,19 @@ export class MovimentacoesService {
     await this.comprovanteRepository.save(comprovante);
   }
 
+  async obterUrlComprovante(comprovanteId: number, usuarioId: number): Promise<{ url: string }> {
+    const comprovante = await this.comprovanteRepository.findOne({
+      where: { id: comprovanteId, usuarioId },
+    });
+    if (!comprovante) {
+      throw new NotFoundException('Arquivo anexado não encontrado');
+    }
+
+    return {
+      url: await this.comprovanteStorageService.obterUrlVisualizacao(comprovante.caminhoArquivo),
+    };
+  }
+
   private getPeriodoAtual(): string {
     const hoje = new Date();
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;

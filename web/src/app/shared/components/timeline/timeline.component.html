@@ -46,6 +46,11 @@
                             }
                         </span>
                         <div class="action-buttons">
+                            @if (item.raw.comprovante) {
+                                <button class="action-btn" (click)="onViewAttachment(item); $event.stopPropagation()" title="Visualizar anexo">
+                                    <tui-icon icon="@tui.paperclip" />
+                                </button>
+                            }
                             <button class="action-btn duplicate-btn" (click)="onDuplicate(item); $event.stopPropagation()" title="Duplicar">
                                 <tui-icon icon="@tui.copy" />
                             </button>

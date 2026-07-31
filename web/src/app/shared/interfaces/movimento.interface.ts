@@ -106,6 +106,13 @@ export interface AnalisarComprovanteResponse {
   };
 }
 
+export interface AnalisarExtratosResponse {
+  resultados: AnalisarComprovanteResponse[];
+  movimentosCriados: number;
+  movimentosIgnorados: number;
+  transferenciasIgnoradas: number;
+}
+
 
 /** Item vindo do orçamento */
 export interface CategoriaOrcamentoOption {

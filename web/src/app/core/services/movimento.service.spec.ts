@@ -55,4 +55,24 @@ describe('MovimentoService', () => {
       },
     }, { status: 202, statusText: 'Accepted' });
   });
+
+  it('should upload multiple bank statements using the arquivos multipart field', () => {
+    const primeiro = new File(['statement-a'], 'conta-a.pdf', { type: 'application/pdf' });
+    const segundo = new File(['statement-b'], 'conta-b.png', { type: 'image/png' });
+
+    service.analisarExtratos([primeiro, segundo]).subscribe((response) => {
+      expect(response.movimentosCriados).toBe(2);
+    });
+
+    const req = httpMock.expectOne('http://localhost:3000/movimentacoes/comprovantes/analisar-extratos');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBeTruthy();
+    expect((req.request.body as FormData).getAll('arquivos')).toEqual([primeiro, segundo]);
+    req.flush({
+      resultados: [],
+      movimentosCriados: 2,
+      movimentosIgnorados: 0,
+      transferenciasIgnoradas: 0,
+    });
+  });
 });

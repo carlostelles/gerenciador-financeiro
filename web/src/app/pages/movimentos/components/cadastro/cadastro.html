@@ -24,6 +24,21 @@
     }
   </div>
 
+  @if (!isEditing) {
+    <div class="upload-field">
+      <label class="upload-label" for="extratos">Extratos bancários (imagens ou PDFs)</label>
+      <input
+        id="extratos"
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        (change)="onStatementsSelected($event)"
+        [disabled]="isSubmitting() || isAnalyzingReceipt()"
+      />
+      <small>Selecione um ou mais extratos. Cada lançamento será analisado, vinculado ao arquivo de origem e transferências entre as contas enviadas serão ignoradas.</small>
+    </div>
+  }
+
   <div class="flex gap-1">
     <tui-textfield>
       <label tuiLabel for="periodo">Data *</label>

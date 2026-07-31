@@ -12,6 +12,17 @@ export interface AnaliseComprovanteResultado {
   descricao: string | null;
   categoriaId: number | null;
   contaId: number | null;
+  tipoDocumento: 'comprovante' | 'extrato';
+  lancamentos: AnaliseLancamentoExtrato[];
+}
+
+export interface AnaliseLancamentoExtrato {
+  data: string | null;
+  valor: number | null;
+  descricao: string | null;
+  categoriaId: number | null;
+  contaId: number | null;
+  tipo: 'entrada' | 'saida' | null;
 }
 
 @Injectable()
@@ -38,7 +49,7 @@ export class MovimentoComprovanteAiService {
 
     const model = this.client.getGenerativeModel({ model: this.model });
     const prompt = [
-      'Você é um extrator de dados financeiros a partir de comprovantes de pagamento.',
+      'Você é um extrator de dados financeiros a partir de comprovantes de pagamento e extratos bancários.',
       'Analise o arquivo anexado e retorne APENAS JSON válido sem markdown.',
       'Regras:',
       '- Extraia a data da movimentação no formato YYYY-MM-DD quando houver confiança suficiente.',
@@ -51,8 +62,12 @@ export class MovimentoComprovanteAiService {
       '- Se uma tag corresponder de forma confiável a uma informação do comprovante, use a conta correspondente. Se houver mais de uma conta possível, considere aquela que seja mais provável de ser a correta ou, na ausência de evidência suficiente, retorne null.',
       '- Se um campo não puder ser identificado com segurança, retorne null.',
       '- Não invente dados ausentes.',
+      '- Identifique tipoDocumento como "extrato" somente quando o arquivo listar vários lançamentos de uma conta bancária; caso contrário, use "comprovante".',
+      '- Para extratos, extraia TODOS os lançamentos de entrada e saída em lancamentos. Cada lançamento deve ter data, valor absoluto positivo, descricao, categoriaId, contaId e tipo (entrada ou saida).',
+      '- Não inclua saldo inicial, saldo final, tarifas de resumo, cabeçalhos ou totais como lançamentos.',
+      '- Em extratos, use a conta identificada no arquivo em cada lançamento. Classifique PIX e transferências pela natureza de entrada ou saída exibida.',
       'JSON esperado:',
-      '{"data":string|null,"valor":number|null,"descricao":string|null,"categoriaId":number|null,"contaId":number|null}',
+      '{"tipoDocumento":"comprovante"|"extrato","data":string|null,"valor":number|null,"descricao":string|null,"categoriaId":number|null,"contaId":number|null,"lancamentos":[{"data":string|null,"valor":number|null,"descricao":string|null,"categoriaId":number|null,"contaId":number|null,"tipo":"entrada"|"saida"|null}]}',
       `Categorias disponíveis: ${JSON.stringify(
         categorias.map((categoria) => ({
           id: categoria.id,
@@ -95,22 +110,27 @@ export class MovimentoComprovanteAiService {
 
     const rawText = response.response.text().trim();
     const parsed = JSON.parse(rawText) as Partial<AnaliseComprovanteResultado>;
-
-    const data = parsed.data && /^\d{4}-\d{2}-\d{2}$/.test(parsed.data)
-      ? parsed.data
-      : null;
+    const normalizarLancamento = (lancamento: Partial<AnaliseLancamentoExtrato>): AnaliseLancamentoExtrato => ({
+      data: lancamento.data && /^\d{4}-\d{2}-\d{2}$/.test(lancamento.data) ? lancamento.data : null,
+      valor: typeof lancamento.valor === 'number' && Number.isFinite(lancamento.valor)
+        ? Math.abs(lancamento.valor)
+        : null,
+      descricao: typeof lancamento.descricao === 'string' && lancamento.descricao.trim()
+        ? lancamento.descricao.trim()
+        : null,
+      categoriaId: typeof lancamento.categoriaId === 'number' ? lancamento.categoriaId : null,
+      contaId: typeof lancamento.contaId === 'number' ? lancamento.contaId : null,
+      tipo: lancamento.tipo === 'entrada' || lancamento.tipo === 'saida' ? lancamento.tipo : null,
+    });
+    const lancamentoPrincipal = normalizarLancamento(parsed);
 
     return {
-      data,
-      periodo: data ? data.slice(0, 7) : null,
-      valor: typeof parsed.valor === 'number' && Number.isFinite(parsed.valor)
-        ? parsed.valor
-        : null,
-      descricao: typeof parsed.descricao === 'string' && parsed.descricao.trim()
-        ? parsed.descricao.trim()
-        : null,
-      categoriaId: typeof parsed.categoriaId === 'number' ? parsed.categoriaId : null,
-      contaId: typeof parsed.contaId === 'number' ? parsed.contaId : null,
+      ...lancamentoPrincipal,
+      periodo: lancamentoPrincipal.data ? lancamentoPrincipal.data.slice(0, 7) : null,
+      tipoDocumento: parsed.tipoDocumento === 'extrato' ? 'extrato' : 'comprovante',
+      lancamentos: Array.isArray(parsed.lancamentos)
+        ? parsed.lancamentos.map(normalizarLancamento)
+        : [],
     };
   }
 }

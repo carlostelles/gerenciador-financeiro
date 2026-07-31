@@ -62,3 +62,17 @@ export class AnalisarComprovanteResponseDto {
   @ApiProperty({ type: AnalisarComprovanteSalvamentoDto })
   salvamento: AnalisarComprovanteSalvamentoDto;
 }
+
+export class AnalisarComprovantesLoteResponseDto {
+  @ApiProperty({ type: [AnalisarComprovanteResponseDto] })
+  resultados: AnalisarComprovanteResponseDto[];
+
+  @ApiProperty({ example: 3 })
+  movimentosCriados: number;
+
+  @ApiProperty({ example: 2 })
+  movimentosIgnorados: number;
+
+  @ApiProperty({ example: 1 })
+  transferenciasIgnoradas: number;
+}

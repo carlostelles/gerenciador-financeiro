@@ -20,13 +20,14 @@ import { Conta } from '../contas/entities/conta.entity';
 import { MovimentoComprovante } from './entities/movimento-comprovante.entity';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
-import { contemTodasAsPalavras } from '../../common/utils/normalize-text.util';
+import { contemTodasAsPalavras, normalizarTexto } from '../../common/utils/normalize-text.util';
 import { MovimentoComprovanteStorageService } from './services/movimento-comprovante-storage.service';
 import {
   AnaliseComprovanteResultado,
+  AnaliseLancamentoExtrato,
   MovimentoComprovanteAiService,
 } from './services/movimento-comprovante-ai.service';
-import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { AnalisarComprovanteResponseDto, AnalisarComprovantesLoteResponseDto } from './dto/analisar-comprovante-response.dto';
 import { AnalisarComprovanteRequestDto } from './dto/analisar-comprovante-request.dto';
 import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 
@@ -181,6 +182,159 @@ export class MovimentacoesService {
     });
 
     return movimentoSalvo;
+  }
+
+  private descricoesSemelhantes(primeira: string | null, segunda: string | null): boolean {
+    const palavrasPrimeira = new Set(normalizarTexto(primeira || '').split(' ').filter(Boolean));
+    const palavrasSegunda = new Set(normalizarTexto(segunda || '').split(' ').filter(Boolean));
+    if (!palavrasPrimeira.size || !palavrasSegunda.size) {
+      return false;
+    }
+    const intersecao = [...palavrasPrimeira].filter((palavra) => palavrasSegunda.has(palavra)).length;
+    return intersecao / Math.max(palavrasPrimeira.size, palavrasSegunda.size) >= 0.5;
+  }
+
+  private async existeMovimentoEquivalente(
+    usuarioId: number,
+    lancamento: AnaliseLancamentoExtrato,
+  ): Promise<boolean> {
+    if (!lancamento.data || lancamento.valor === null || !lancamento.categoriaId) {
+      return false;
+    }
+
+    const movimentos = await this.movimentoRepository.find({
+      where: { usuarioId, periodo: lancamento.data.slice(0, 7) },
+    });
+    return movimentos.some((movimento) =>
+      movimento.categoriaId === lancamento.categoriaId &&
+      Number(movimento.valor) === Number(lancamento.valor) &&
+      this.descricoesSemelhantes(movimento.descricao, lancamento.descricao),
+    );
+  }
+
+  private saoDadosDeTransferencia(
+    primeiro: AnaliseLancamentoExtrato,
+    segundo: AnaliseLancamentoExtrato,
+  ): boolean {
+    return !!primeiro.data &&
+      primeiro.data === segundo.data &&
+      primeiro.valor !== null &&
+      primeiro.valor === segundo.valor &&
+      primeiro.tipo !== null &&
+      primeiro.tipo !== segundo.tipo &&
+      !!primeiro.contaId &&
+      !!segundo.contaId &&
+      primeiro.contaId === segundo.contaId;
+  }
+
+  async analisarExtratos(
+    arquivos: ComprovanteUploadFile[],
+    usuarioId: number,
+  ): Promise<AnalisarComprovantesLoteResponseDto> {
+    if (!arquivos.length) {
+      throw new BadRequestException('Envie pelo menos um arquivo para análise');
+    }
+
+    arquivos.forEach((arquivo) => this.validarArquivoComprovante(arquivo));
+    const categorias = await this.categoriaRepository.find({ where: { usuarioId }, order: { nome: 'ASC' } });
+    const contas = await this.contaRepository.find({ where: { usuarioId }, order: { nome: 'ASC' } });
+    const analisados = await Promise.all(arquivos.map(async (arquivo) => ({
+      arquivo,
+      upload: await this.comprovanteStorageService.uploadComprovante(usuarioId, arquivo),
+      analise: await this.comprovanteAiService.analisarComprovante(arquivo, categorias, contas),
+    })));
+
+    if (analisados.some(({ analise }) => analise.tipoDocumento !== 'extrato')) {
+      throw new BadRequestException('O envio em lote aceita apenas extratos bancários. Envie comprovantes individualmente.');
+    }
+
+    const todosLancamentos = analisados.flatMap((item, indiceArquivo) =>
+      item.analise.lancamentos.map((lancamento, indiceLancamento) => ({
+        ...lancamento,
+        indiceArquivo,
+        indiceLancamento,
+      })),
+    );
+    const transferencias = new Set<string>();
+    todosLancamentos.forEach((lancamento, indice) => {
+      todosLancamentos.slice(indice + 1).forEach((outro) => {
+        if (this.saoDadosDeTransferencia(lancamento, outro)) {
+          transferencias.add(`${lancamento.indiceArquivo}:${lancamento.indiceLancamento}`);
+          transferencias.add(`${outro.indiceArquivo}:${outro.indiceLancamento}`);
+        }
+      });
+    });
+
+    const resultados: AnalisarComprovanteResponseDto[] = [];
+    let movimentosIgnorados = 0;
+    let transferenciasIgnoradas = 0;
+    for (const item of analisados) {
+      const indiceArquivo = analisados.indexOf(item);
+      for (const [indiceLancamento, lancamento] of item.analise.lancamentos.entries()) {
+        if (transferencias.has(`${indiceArquivo}:${indiceLancamento}`)) {
+          transferenciasIgnoradas++;
+          continue;
+        }
+        const categoria = lancamento.categoriaId
+          ? categorias.find((itemCategoria) => itemCategoria.id === lancamento.categoriaId) || null
+          : null;
+        const conta = lancamento.contaId
+          ? contas.find((itemConta) => itemConta.id === lancamento.contaId) || null
+          : null;
+        if (await this.existeMovimentoEquivalente(usuarioId, lancamento)) {
+          movimentosIgnorados++;
+          continue;
+        }
+
+        const comprovante = await this.comprovanteRepository.save(this.comprovanteRepository.create({
+          usuarioId,
+          movimentoId: null,
+          caminhoArquivo: item.upload.caminhoArquivo,
+          nomeArquivo: item.arquivo.originalname,
+          tipoArquivo: item.arquivo.mimetype,
+          tamanhoArquivo: item.arquivo.size,
+        }));
+        const analise: AnaliseComprovanteResultado = {
+          ...lancamento,
+          periodo: lancamento.data ? lancamento.data.slice(0, 7) : null,
+          tipoDocumento: 'extrato',
+          lancamentos: [],
+        };
+        const camposObrigatoriosFaltantes = [
+          !lancamento.data ? 'data' : null,
+          lancamento.valor === null ? 'valor' : null,
+          !categoria ? 'categoriaId' : null,
+        ].filter((campo): campo is string => !!campo);
+        const periodo = analise.periodo || this.getPeriodoAtual();
+        let movimento: Movimento;
+        if (camposObrigatoriosFaltantes.length) {
+          movimento = await this.criarMovimentoParcialPorComprovante(
+            periodo, analise, categoria?.id || null, conta?.id || null, comprovante.id, usuarioId,
+          );
+        } else {
+          movimento = await this.create(periodo, {
+            data: lancamento.data!,
+            valor: lancamento.valor!,
+            descricao: lancamento.descricao || 'Movimento importado de extrato bancário',
+            categoriaId: categoria!.id,
+            contaId: conta?.id,
+            comprovanteId: comprovante.id,
+            revisado: false,
+          }, usuarioId);
+        }
+        resultados.push({
+          comprovanteId: comprovante.id,
+          nomeArquivo: comprovante.nomeArquivo,
+          tipoArquivo: comprovante.tipoArquivo,
+          tamanhoArquivo: comprovante.tamanhoArquivo,
+          caminhoArquivo: comprovante.caminhoArquivo,
+          sugestao: { data: lancamento.data, periodo: analise.periodo, valor: lancamento.valor, descricao: lancamento.descricao, categoriaId: categoria?.id || null, categoriaNome: categoria?.nome || null, contaId: conta?.id || null, contaNome: conta?.nome || null },
+          camposObrigatoriosFaltantes,
+          salvamento: { status: 'criado', movimentoId: movimento.id },
+        });
+      }
+    }
+    return { resultados, movimentosCriados: resultados.length, movimentosIgnorados, transferenciasIgnoradas };
   }
 
   async analisarComprovante(

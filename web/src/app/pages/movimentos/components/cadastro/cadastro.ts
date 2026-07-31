@@ -292,6 +292,33 @@ export class OrcamentosCadastroComponent implements OnInit {
         });
     }
 
+    onStatementsSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const arquivos = Array.from(input.files ?? []);
+        if (!arquivos.length) {
+            return;
+        }
+
+        this.isAnalyzingReceipt.set(true);
+        this.movimentosService.analisarExtratos(arquivos).subscribe({
+            next: (response) => {
+                this.toast.success(
+                    `${response.movimentosCriados} lançamento(s) criado(s)` +
+                    `${response.movimentosIgnorados ? `, ${response.movimentosIgnorados} já existente(s) ignorado(s)` : ''}` +
+                    `${response.transferenciasIgnoradas ? ` e ${response.transferenciasIgnoradas} transferência(s) ignorada(s)` : ''}.`,
+                );
+                this.context.completeWith('success');
+                input.value = '';
+            },
+            error: (error) => {
+                console.error('Erro ao analisar extratos:', error);
+                this.toast.error('Não foi possível analisar os extratos enviados.');
+                input.value = '';
+            },
+            complete: () => this.isAnalyzingReceipt.set(false),
+        });
+    }
+
     private applyReceiptAnalysis(response: AnalisarComprovanteResponse) {
         const { sugestao, camposObrigatoriosFaltantes } = response;
 

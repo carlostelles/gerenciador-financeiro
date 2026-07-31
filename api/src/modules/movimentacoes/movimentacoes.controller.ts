@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   Res,
 } from '@nestjs/common';
@@ -24,13 +25,13 @@ import {
   ApiBody,
   ApiConsumes,
 } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { MovimentacoesService } from './movimentacoes.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
-import { AnalisarComprovanteResponseDto } from './dto/analisar-comprovante-response.dto';
+import { AnalisarComprovanteResponseDto, AnalisarComprovantesLoteResponseDto } from './dto/analisar-comprovante-response.dto';
 import { AnalisarComprovanteRequestDto } from './dto/analisar-comprovante-request.dto';
 import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -65,6 +66,29 @@ export class MovimentacoesController {
   })
   findComparativoPorTipo(@CurrentUser() user: any) {
     return this.movimentacoesService.findComparativoPorTipo(user.sub);
+  }
+
+  @Post('comprovantes/analisar-extratos')
+  @UseInterceptors(FilesInterceptor('arquivos', 20))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Enviar vários extratos bancários em PDF ou imagem e criar os lançamentos encontrados',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        arquivos: { type: 'array', items: { type: 'string', format: 'binary' } },
+      },
+      required: ['arquivos'],
+    },
+  })
+  @ApiResponse({ status: 201, type: AnalisarComprovantesLoteResponseDto })
+  async analisarExtratos(
+    @UploadedFiles() arquivos: ComprovanteUploadFile[],
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.analisarExtratos(arquivos || [], user.sub);
   }
 
   @Post('comprovantes/analisar')

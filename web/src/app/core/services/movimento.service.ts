@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse, AnalisarExtratosResponse } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -81,6 +81,16 @@ export class MovimentoService {
       `${this.baseUrl}/movimentacoes/comprovantes/analisar`,
       formData,
       { observe: 'response' },
+    );
+  }
+
+  analisarExtratos(arquivos: File[]): Observable<AnalisarExtratosResponse> {
+    const formData = new FormData();
+    arquivos.forEach((arquivo) => formData.append('arquivos', arquivo));
+
+    return this.http.post<AnalisarExtratosResponse>(
+      `${this.baseUrl}/movimentacoes/comprovantes/analisar-extratos`,
+      formData,
     );
   }
 }

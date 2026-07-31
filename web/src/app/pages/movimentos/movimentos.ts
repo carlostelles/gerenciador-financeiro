@@ -57,6 +57,7 @@ export class MovimentosComponent implements OnInit {
     protected readonly showPastItens = signal<boolean>(true);
 
     protected readonly filtro = signal<MovimentoFiltro | undefined>(undefined);
+    private scrollPositionBeforeReload: number | null = null;
     protected readonly hasFiltro = computed<boolean>(() => {
         const f = this.filtro();
         return !!f && (!!f.categoriaId || !!f.contaId || !!f.descricao);
@@ -173,6 +174,7 @@ export class MovimentosComponent implements OnInit {
     }
 
     loadMovimentos(periodo: string) {
+        this.saveScrollPosition();
         this.isLoading.set(true);
         this.chosedPeriodo.set(periodo);
         this.loadOrcamento(periodo);
@@ -181,15 +183,18 @@ export class MovimentosComponent implements OnInit {
                 this.movimentos.set(movimentos);
                 this.handleAutoShowFutureItens();
                 this.isLoading.set(false);
+                this.restoreScrollPosition();
             },
             error: (error) => {
                 console.error('Erro ao carregar movimentações:', error);
                 this.isLoading.set(false);
+                this.scrollPositionBeforeReload = null;
             }
         });
     }
 
     openFiltroModal() {
+        this.saveScrollPosition();
         this.dialogs
             .open<MovimentoFiltro | null>(new PolymorpheusComponent(MovimentosFiltroComponent), {
                 label: 'Filtrar movimentações',
@@ -203,11 +208,13 @@ export class MovimentosComponent implements OnInit {
                 },
                 error: (error) => {
                     console.error('Erro ao aplicar filtro:', error);
+                    this.scrollPositionBeforeReload = null;
                 }
             });
     }
 
     openFormModal(movimento?: Movimento) {
+        this.saveScrollPosition();
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
                 label: movimento ? 'Editar movimento' : 'Cadastrar movimento',
@@ -220,11 +227,13 @@ export class MovimentosComponent implements OnInit {
                 },
                 error: (error) => {
                     console.error('Erro ao salvar movimento:', error);
+                    this.scrollPositionBeforeReload = null;
                 }
             });
     }
 
     duplicateItem(movimento: Movimento) {
+        this.saveScrollPosition();
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
                 label: 'Duplicar movimento',
@@ -240,6 +249,7 @@ export class MovimentosComponent implements OnInit {
                 },
                 error: (error) => {
                     console.error('Erro ao salvar movimento:', error);
+                    this.scrollPositionBeforeReload = null;
                 }
             });
     }
@@ -259,13 +269,18 @@ export class MovimentosComponent implements OnInit {
     }
 
     markAsReviewed(movimento: Movimento) {
+        this.saveScrollPosition();
         this.movimentoService.update(movimento.periodo, movimento.id!, { revisado: true }).subscribe({
             next: () => this.loadMovimentos(movimento.periodo),
-            error: (error) => console.error('Erro ao marcar movimentação como revisada:', error),
+            error: (error) => {
+                console.error('Erro ao marcar movimentação como revisada:', error);
+                this.scrollPositionBeforeReload = null;
+            },
         });
     }
 
     confirmDelete(movimento: Movimento) {
+        this.saveScrollPosition();
         this.promptService
             .open(`O movimento <strong>${movimento.descricao}</strong> do período <strong>${formatPeriod(movimento.periodo)}</strong> será excluído. Esta ação não pode ser desfeita.`, {
                 heading: 'Confirmação de Exclusão',
@@ -284,6 +299,8 @@ export class MovimentosComponent implements OnInit {
                             console.error('Erro ao excluir movimento:', error);
                         }
                     });
+                } else {
+                    this.scrollPositionBeforeReload = null;
                 }
             });
     }
@@ -349,5 +366,23 @@ export class MovimentosComponent implements OnInit {
 
     trackByFn(index: number, item: Movimento): string {
         return item.data || item.id?.toString() || index.toString();
+    }
+
+    private saveScrollPosition() {
+        if (this.scrollPositionBeforeReload === null && typeof window !== 'undefined') {
+            this.scrollPositionBeforeReload = window.scrollY;
+        }
+    }
+
+    private restoreScrollPosition() {
+        const scrollPosition = this.scrollPositionBeforeReload;
+        this.scrollPositionBeforeReload = null;
+        if (scrollPosition === null || typeof window === 'undefined') {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => window.scrollTo({ top: scrollPosition }));
+        });
     }
 }

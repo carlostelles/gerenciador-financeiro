@@ -23,8 +23,9 @@ main {
 .navigation-main {
   flex: 1;
   margin-inline-start: 3rem;
-  max-inline-size: calc(100% - 3rem) !important;
+  max-inline-size: calc(100%) !important;
   min-inline-size: 0;
+  border: none;
 }
 
 /* Sidebar */

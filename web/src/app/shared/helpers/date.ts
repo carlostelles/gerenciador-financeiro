@@ -7,11 +7,12 @@ export function toUTCDate(dateString: string): Date {
 }
 
 /**
- * Obtém a data atual em UTC (início do dia)
+ * Obtém a data atual do fuso horário do usuário, normalizada em UTC para
+ * manter as comparações de datas existentes sem influência do horário.
  */
 export function getTodayUTC(): Date {
     const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 }
 
 /**

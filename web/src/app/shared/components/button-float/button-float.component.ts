@@ -16,9 +16,13 @@ import { TuiButton, TuiIcon, TuiAppearance } from '@taiga-ui/core';
   styles: `
     :host {
       position: fixed;
-      bottom: 16px;
-      right: 16px;
+      bottom: 1rem;
+      right: 1rem;
       z-index: 1000;
+
+      @media (max-width: 768px) {
+        right: 4rem;
+      }
     }
   `
 })

@@ -19,10 +19,6 @@ import { TuiButton, TuiIcon, TuiAppearance } from '@taiga-ui/core';
       bottom: 1rem;
       right: 1rem;
       z-index: 1000;
-
-      @media (max-width: 768px) {
-        right: 4rem;
-      }
     }
   `
 })

@@ -1,7 +1,6 @@
-.home-container {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
+:host {
+  display: block;
+  min-height: 100dvh;
 }
 
 main {
@@ -17,7 +16,7 @@ main {
   position: fixed;
   top: 3rem;
   z-index: 2;
-  height: calc(100vh - 3rem);
+  height: calc(100dvh - 3rem);
 }
 
 .navigation-main {
@@ -162,11 +161,15 @@ main {
 
 /* Responsividade - Mobile First */
 @media (max-width: 768px) {
+  .navigation-main {
+    max-inline-size: 100% !important;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100dvh;
     z-index: 1000;
     transform: translateX(-100%);
   }

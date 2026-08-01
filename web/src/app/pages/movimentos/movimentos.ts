@@ -4,7 +4,7 @@ import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiTitle } from '@
 import {TuiAccordion} from '@taiga-ui/experimental';
 import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
 
-import { formatPeriod, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC } from '../../shared';
+import { formatPeriod, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, ToastService } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { VisualizarComprovanteComponent } from './components/visualizar-comprovante/visualizar-comprovante';
 import { MovimentosFiltroComponent } from './components/filtro/filtro';
@@ -44,6 +44,7 @@ export class MovimentosComponent implements OnInit {
     private readonly orcamentoService = inject(OrcamentoService);
     private readonly promptService = inject(PromptService);
     private readonly dialogs = inject(TuiDialogService);
+    private readonly toast = inject(ToastService);
 
     protected activeItemIndex = 0;
     protected readonly isLoading = signal<boolean>(false);
@@ -269,6 +270,16 @@ export class MovimentosComponent implements OnInit {
     }
 
     markAsReviewed(movimento: Movimento) {
+        const camposObrigatoriosPreenchidos =
+            !!movimento.data &&
+            movimento.valor !== null &&
+            Number(movimento.valor) > 0 &&
+            !!(movimento.categoriaId || movimento.orcamentoItemId);
+        if (!camposObrigatoriosPreenchidos) {
+            this.toast.error('Preencha data, valor e categoria antes de marcar a movimentação como revisada.');
+            return;
+        }
+
         this.saveScrollPosition();
         this.movimentoService.update(movimento.periodo, movimento.id!, { revisado: true }).subscribe({
             next: () => this.loadMovimentos(movimento.periodo),

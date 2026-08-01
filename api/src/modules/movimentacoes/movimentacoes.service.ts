@@ -914,6 +914,19 @@ export class MovimentacoesService {
       }
     }
 
+    if (updateMovimentoDto.revisado === true) {
+      const data = updateMovimentoDto.data ?? movimento.data;
+      const valor = updateMovimentoDto.valor ?? movimento.valor;
+      const categoriaId = updateMovimentoDto.categoriaId ?? movimento.categoriaId;
+      const orcamentoItemId = updateMovimentoDto.orcamentoItemId ?? movimento.orcamentoItemId;
+
+      if (!data || valor === null || Number(valor) <= 0 || (!categoriaId && !orcamentoItemId)) {
+        throw new BadRequestException(
+          'Preencha data, valor e categoria antes de marcar a movimentação como revisada',
+        );
+      }
+    }
+
     const dadosAnteriores = JSON.parse(JSON.stringify(movimento));
     const { orcamentoItem, categoria, conta, ...movimentoData } = movimento;
     Object.assign(movimentoData, updateMovimentoDto);

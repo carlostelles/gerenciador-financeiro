@@ -525,6 +525,20 @@ describe('MovimentacoesService', () => {
         expect.objectContaining({ conta: expect.anything() }),
       );
     });
+
+    it('não deve marcar como revisada uma movimentação com campos obrigatórios ausentes', async () => {
+      movimentoRepository.findOne.mockResolvedValue({
+        ...mockMovimento,
+        data: null,
+        valor: null,
+        categoriaId: null,
+        orcamentoItemId: null,
+      } as Movimento);
+
+      await expect(service.update(periodo, 1, { revisado: true }, usuarioId))
+        .rejects.toThrow('Preencha data, valor e categoria antes de marcar a movimentação como revisada');
+      expect(movimentoRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('remove', () => {

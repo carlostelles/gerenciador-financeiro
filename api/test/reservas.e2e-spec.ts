@@ -1,10 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 import { ReservasController } from '../src/modules/reservas/reservas.controller';
 import { ReservasService } from '../src/modules/reservas/reservas.service';
 import { LogsService } from '../src/modules/logs/logs.service';
 import { RolesGuard } from '../src/common/guards/roles.guard';
+import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 
 describe('ReservasController (e2e)', () => {
   let app: INestApplication;
@@ -60,10 +64,37 @@ describe('ReservasController (e2e)', () => {
           provide: LogsService,
           useValue: mockLogsService,
         },
+        // Mock do JwtService necessário para JwtAuthGuard
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+            verify: jest.fn(),
+          },
+        },
+        // Mock do Reflector necessário para guards
+        {
+          provide: Reflector,
+          useValue: {
+            get: jest.fn(),
+            getAllAndOverride: jest.fn(),
+          },
+        },
+        // Mock do ConfigService necessário para JwtAuthGuard
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
       ],
     })
       .overrideGuard(RolesGuard)
       .useValue(mockRolesGuard)
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: jest.fn(() => true),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();

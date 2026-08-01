@@ -111,8 +111,6 @@ export class AuthService {
     const expirationTime = new Date().getTime() + (response.expiresIn * 1000);
     sessionStorage.setItem(this.tokenExpirationKey, expirationTime.toString());
 
-    console.log(this.decodedToken)
-
     this.isAuthenticatedSubject.next(true);
   }
 

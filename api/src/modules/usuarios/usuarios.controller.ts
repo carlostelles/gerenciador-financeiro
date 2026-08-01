@@ -9,6 +9,7 @@ import {
   UseGuards,
   ParseIntPipe,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -105,7 +106,7 @@ export class UsuariosController {
   ): Promise<UsuarioResponseDto> {
     // Admin pode ver qualquer usuário, usuário comum só pode ver a si mesmo
     if (currentUser.role !== UserRole.ADMIN && currentUser.sub !== id) {
-      throw new Error('Acesso negado');
+      throw new ForbiddenException('Acesso negado');
     }
     return this.usuariosService.findOne(id);
   }

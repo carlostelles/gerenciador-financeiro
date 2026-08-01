@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -53,7 +52,6 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.get('JWT_REFRESH_SECRET'),
       });
-      Logger.log(`Payload: ${JSON.stringify(payload)}`, 'AuthService');
       const usuario = await this.usuariosService.findOne(payload.sub);
       if (!usuario || !usuario.ativo) {
         throw new UnauthorizedException('Usuário não encontrado ou inativo');

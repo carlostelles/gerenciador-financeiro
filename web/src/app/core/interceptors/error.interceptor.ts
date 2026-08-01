@@ -10,14 +10,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
   const alerts = inject(TuiAlertService);
-  
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse): Observable<HttpEvent<any>> => {
       // Se for erro 401 e não for uma tentativa de refresh token
       if (error.status === 401 && !req.url.includes('/auth/refresh') && !req.url.includes('/auth/login')) {
         return handle401Error(req, next, authService, router);
       }
-      
+
       // Se for erro 401 na rota de refresh token, fazer logout
       if (error.status === 401 && req.url.includes('/auth/refresh')) {
         authService.logout().subscribe();
@@ -37,7 +37,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (error.status === 400) {
-        console.log('Erro 400:', error.error);
         if (error.error && error.error.message) {
           if (Array.isArray(error.error.message)) {
             error.error.message.forEach((msg: string) => {
@@ -50,20 +49,20 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           alerts.open('Erro de requisição inválida.', { appearance: 'negative' }).subscribe();
         }
       }
-      
+
       if (error.status > 404 && error.status < 500 || error.status === 401) {
         alerts.open(error.error.message, { appearance: 'negative' }).subscribe();
       }
-      
+
       return throwError(() => error);
     })
   );
 };
 
 function handle401Error(
-  request: HttpRequest<any>, 
-  next: HttpHandlerFn, 
-  authService: AuthService, 
+  request: HttpRequest<any>,
+  next: HttpHandlerFn,
+  authService: AuthService,
   router: Router
 ): Observable<HttpEvent<any>> {
   const refreshToken = authService.refreshToken;

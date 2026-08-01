@@ -61,6 +61,13 @@
         border-radius: 0.5rem;
         margin: 0;
 
+        .account-badge {
+            --tui-background-base: var(--account-badge-color);
+            --tui-text-primary: #fff;
+            background-color: var(--account-badge-color) !important;
+            color: #fff !important;
+        }
+
         .timeline-item-description {
             display: flex;
             align-items: center;
@@ -99,13 +106,6 @@
                     background-color: color-mix(in srgb, var(--tui-text-tertiary) 15%, transparent);
                     color: var(--tui-text-tertiary);
                 }
-            }
-
-            .account-badge {
-                --tui-background-base: var(--account-badge-color);
-                --tui-text-primary: #fff;
-                background-color: var(--account-badge-color) !important;
-                color: #fff !important;
             }
 
             .item-content {
@@ -250,6 +250,11 @@
                 padding-inline-start: 3.5rem;
                 justify-content: space-between;
                 width: calc(100% - 4rem);
+            }
+
+            .action-buttons {
+                opacity: 1 !important;
+                pointer-events: auto !important;
             }
         }
 

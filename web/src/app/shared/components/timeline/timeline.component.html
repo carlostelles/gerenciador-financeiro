@@ -10,18 +10,18 @@
                 <div class="timeline-item" (click)="onEdit(item)">
                     <div class="timeline-item-description">
                         <div class="item-icon" [ngClass]="getIconClass(item.categoriaTipo)">
-                            <tui-icon [icon]="getIcon(item.categoriaTipo)" />
+                          <tui-icon [icon]="getIcon(item.categoriaTipo)" />
                         </div>
-                        @if (item.raw.conta) {
-                            <tui-badge
-                                class="account-badge"
-                                iconStart="@tui.wallet"
-                                size="s"
-                                [style.--account-badge-color]="getContaBadgeColor(item.raw.conta)">
-                                <b>{{ item.raw.conta.nome }}</b>
-                            </tui-badge>
-                        }
                         <div class="item-content">
+                            @if (item.raw.conta) {
+                              <tui-badge
+                                  class="account-badge"
+                                  iconStart="@tui.wallet"
+                                  size="s"
+                                  [style.--account-badge-color]="getContaBadgeColor(item.raw.conta)">
+                                  <b>{{ item.raw.conta.nome }}</b>
+                              </tui-badge>
+                            }
                             @if (item.categoriaAusente) {
                                 <strong class="item-category item-category-missing">Sem categoria</strong>
                             } @else {

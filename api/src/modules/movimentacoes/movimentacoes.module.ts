@@ -25,6 +25,6 @@ import { MovimentoComprovanteAiService } from './services/movimento-comprovante-
     MovimentoComprovanteStorageService,
     MovimentoComprovanteAiService,
   ],
-  exports: [MovimentacoesService],
+  exports: [MovimentacoesService, MovimentoComprovanteStorageService],
 })
 export class MovimentacoesModule {}

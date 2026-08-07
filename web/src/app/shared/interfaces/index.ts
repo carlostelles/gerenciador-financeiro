@@ -7,3 +7,4 @@ export * from './reserva.interface';
 export * from './log.interface';
 export * from './error.interface';
 export * from './conta.interface';
+export * from './whatsapp.interface';

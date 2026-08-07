@@ -1,0 +1,66 @@
+<div class="container">
+  <div class="header">
+    <h2>WhatsApp Inbound</h2>
+    <p>Caixa de entrada e status de processamento das mensagens recebidas pelo webhook.</p>
+  </div>
+
+  <div class="panel">
+    <label>
+      Filtrar por status
+      <select
+        [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusFilterChange($event)">
+        <option value="">Todos</option>
+        <option value="RECEBIDA">Recebida</option>
+        <option value="PROCESSADA">Processada</option>
+        <option value="IGNORADA_NAO_SUPORTADA">Ignorada (nao suportada)</option>
+        <option value="FALHA">Falha</option>
+      </select>
+    </label>
+  </div>
+
+  @if (!isLoading()) {
+    <table tuiTable size="l">
+      <thead>
+        <tr>
+          <th tuiTh>ID</th>
+          <th tuiTh>Status</th>
+          <th tuiTh>Tipo</th>
+          <th tuiTh>Intencao</th>
+          <th tuiTh>Movimentacao</th>
+          <th tuiTh>Periodo</th>
+          <th tuiTh>Mensagem</th>
+          <th tuiTh>Erro</th>
+          <th tuiTh>Recebida em</th>
+        </tr>
+      </thead>
+      <tbody tuiTbody>
+        @for (message of inboundMessages(); track message.id) {
+          <tr>
+            <td tuiTd>#{{ message.id }}</td>
+            <td tuiTd>
+              <tui-badge [appearance]="statusBadgeAppearance(message.statusProcessamento)">
+                {{ message.statusProcessamento }}
+              </tui-badge>
+            </td>
+            <td tuiTd>{{ message.tipoMensagem }}</td>
+            <td tuiTd>{{ message.intentDetectada }}</td>
+            <td tuiTd>{{ message.movimentoId ? '#' + message.movimentoId : '-' }}</td>
+            <td tuiTd>{{ message.periodoReferencia || '-' }}</td>
+            <td tuiTd>{{ message.texto || message.nomeArquivo || '-' }}</td>
+            <td tuiTd>{{ message.erroProcessamento || '-' }}</td>
+            <td tuiTd>{{ message.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (inboundMessages().length === 0) {
+      <div class="empty">Nenhuma mensagem inbound encontrada.</div>
+    }
+  }
+
+  @if (isLoading()) {
+    <div class="loading">Carregando inbox inbound...</div>
+  }
+</div>

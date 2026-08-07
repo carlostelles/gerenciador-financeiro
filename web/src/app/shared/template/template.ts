@@ -71,7 +71,7 @@ export class TemplateComponent implements OnInit {
   ngOnInit(): void {
     this.isAdmin.set(this.authService.decodedToken?.role === 'ADMIN');
   }
- 
+
   protected handleToggle(): void {
       this.expanded.update((e) => !e);
   }
@@ -95,6 +95,7 @@ export class TemplateComponent implements OnInit {
       '/categorias': 'Categorias',
       '/orcamentos': 'Orçamentos',
       '/movimentacoes': 'Movimentações',
+      '/whatsapp': 'WhatsApp',
       '/reservas': 'Reservas',
       '/usuarios': 'Usuários',
       '/logs': 'Logs'

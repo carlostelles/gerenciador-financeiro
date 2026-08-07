@@ -245,7 +245,144 @@ AWS_S3_SECRET_ACCESS_KEY=your-secret-access-key
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-3.1-flash-lite
 MOVIMENTO_COMPROVANTE_MAX_SIZE_BYTES=10485760
+
+# WhatsApp Cloud API Configuration
+WHATSAPP_API_VERSION=v20.0
+WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id
+WHATSAPP_ACCESS_TOKEN=your-whatsapp-access-token
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=your-webhook-verify-token
+WHATSAPP_APP_SECRET=your-whatsapp-app-secret
 ```
+
+### Operação do Webhook WhatsApp (Inbound-Only)
+
+#### Escopo Atual da Integração
+
+A integração WhatsApp desta API está em modo **inbound-only**:
+
+- recebe eventos de mensagens e status enviados pela Meta WhatsApp Cloud API;
+- processa mensagens de texto e anexos (imagem/PDF) no fluxo interno;
+- **não envia mensagens outbound** para números de clientes nesta implementação atual.
+
+#### Variáveis de Ambiente
+
+Obrigatórias para o fluxo inbound:
+
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: token de verificação usado no `GET /whatsapp/webhook` (deve ser idêntico ao configurado no App da Meta).
+
+Obrigatória em produção e recomendada em qualquer ambiente:
+
+- `WHATSAPP_APP_SECRET`: usada para validar a assinatura `x-hub-signature-256` do `POST /whatsapp/webhook`.
+
+Opcionais/legadas para o contexto atual inbound-only (mantidas por compatibilidade/evolução futura):
+
+- `WHATSAPP_API_VERSION`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_ACCESS_TOKEN`
+
+#### Endpoints Expostos
+
+- `GET /whatsapp/webhook`: verificação inicial do webhook pela Meta.
+- `POST /whatsapp/webhook`: recebimento de eventos (mensagens/status).
+- `GET /whatsapp/inbound` (com autenticação JWT): consulta do histórico de mensagens inbound processadas.
+
+#### Configuração na Meta WhatsApp Cloud API
+
+1. Publique a API em uma URL HTTPS acessível publicamente (ou use túnel local durante desenvolvimento).
+2. Na configuração de Webhook da Meta, defina:
+   - **Callback URL**: `https://SEU-DOMINIO/whatsapp/webhook`
+   - **Verify Token**: mesmo valor de `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+3. Salve a configuração e confirme a validação inicial (a Meta envia `GET` com `hub.mode`, `hub.verify_token` e `hub.challenge`).
+4. Configure `WHATSAPP_APP_SECRET` com o App Secret da Meta para validar a assinatura `x-hub-signature-256` no `POST`.
+5. Assine os eventos necessários no webhook:
+   - `messages` (mensagens recebidas)
+   - `message_status`/status de mensagens (a Meta pode representar como array `statuses` no payload)
+
+#### Teste Local (ngrok/cloudflared)
+
+1. Inicie a API local (ex.: porta `3000`).
+2. Abra um túnel HTTPS para a porta local.
+
+Exemplo com ngrok:
+
+```bash
+ngrok http 3000
+```
+
+Exemplo com cloudflared:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+3. Use a URL pública gerada como callback:
+   - `https://SEU-TUNEL/whatsapp/webhook`
+4. Teste o `GET` de verificação:
+
+```bash
+curl -i "https://SEU-TUNEL/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=SEU_VERIFY_TOKEN&hub.challenge=12345"
+```
+
+Resposta esperada: `200` com body `12345`.
+
+5. Teste um `POST` de payload (simulação local):
+
+```bash
+curl -i -X POST "https://SEU-TUNEL/whatsapp/webhook" \
+  -H "Content-Type: application/json" \
+  -H "x-hub-signature-256: sha256=ASSINATURA_HEX" \
+  -d '{
+    "object": "whatsapp_business_account",
+    "entry": [
+      {
+        "id": "WABA_ID",
+        "changes": [
+          {
+            "field": "messages",
+            "value": {
+              "messaging_product": "whatsapp",
+              "metadata": {
+                "display_phone_number": "5511999999999",
+                "phone_number_id": "123456789"
+              },
+              "contacts": [
+                {
+                  "wa_id": "5511888888888",
+                  "profile": { "name": "Cliente Teste" }
+                }
+              ],
+              "messages": [
+                {
+                  "from": "5511888888888",
+                  "id": "wamid.HBgL...",
+                  "timestamp": "1723000000",
+                  "type": "text",
+                  "text": { "body": "gastei 23,90 no mercado hoje" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+Observação: com `WHATSAPP_APP_SECRET` ativo, a assinatura precisa ser válida para o body enviado; caso contrário, a API retorna erro de assinatura.
+
+#### Troubleshooting Rápido
+
+- **Verify token inválido**
+  - Sintoma: falha no handshake de verificação do webhook.
+  - Verifique se o token configurado na Meta é exatamente igual a `WHATSAPP_WEBHOOK_VERIFY_TOKEN` da API.
+
+- **Assinatura inválida (`x-hub-signature-256`)**
+  - Sintoma: rejeição do `POST /whatsapp/webhook` com erro de assinatura.
+  - Verifique `WHATSAPP_APP_SECRET`, o header `sha256=<hash>` e se o cálculo foi feito sobre o body bruto enviado.
+
+- **Telefone sem usuário vinculado**
+  - Sintoma: webhook é recebido, mas a mensagem inbound fica com falha de processamento por usuário não identificado.
+  - Verifique se existe usuário com telefone cadastrado no formato esperado (com/sem `55`, conforme normalização do sistema).
 
 ## 🧾 Comprovantes de Movimentação
 

@@ -10,6 +10,8 @@ import { Movimento } from '../modules/movimentacoes/entities/movimento.entity';
 import { MovimentoComprovante } from '../modules/movimentacoes/entities/movimento-comprovante.entity';
 import { Reserva } from '../modules/reservas/entities/reserva.entity';
 import { Conta } from '../modules/contas/entities/conta.entity';
+import { WhatsappWebhookEvent } from '../modules/whatsapp/entities/whatsapp-webhook-event.entity';
+import { WhatsappInboundMessage } from '../modules/whatsapp/entities/whatsapp-inbound-message.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -32,6 +34,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         MovimentoComprovante,
         Reserva,
         Conta,
+        WhatsappWebhookEvent,
+        WhatsappInboundMessage,
       ],
       synchronize: this.configService.get('NODE_ENV') !== 'production',
       logging: this.configService.get('NODE_ENV') === 'development',

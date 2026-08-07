@@ -1,0 +1,2 @@
+# Estado local de execução dos hooks (marcadores de testes passados etc.) — não deve ser versionado.
+.state/

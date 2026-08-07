@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "bash ./.github/hooks/scripts/guard-git-commands.sh",
+        "timeout": 15
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "bash ./.github/hooks/scripts/track-test-success.sh",
+        "timeout": 15
+      },
+      {
+        "type": "command",
+        "command": "bash ./.github/hooks/scripts/auto-lint.sh",
+        "timeout": 30
+      }
+    ]
+  }
+}

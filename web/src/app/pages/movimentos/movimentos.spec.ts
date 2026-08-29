@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { TuiDialogService } from '@taiga-ui/core';
 
-import { MovimentosComponent } from './movimentos';
+import { ALL_ACCOUNTS, MovimentosComponent } from './movimentos';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
@@ -14,6 +14,7 @@ describe('MovimentosComponent', () => {
   let orcamentoService: Record<string, jest.Mock>;
   let contaService: { getAll: jest.Mock };
   let toast: { error: jest.Mock; success: jest.Mock };
+  let dialogs: { open: jest.Mock };
 
   beforeEach(() => {
     sessionStorage.clear();
@@ -32,6 +33,15 @@ describe('MovimentosComponent', () => {
         origem: 'MANUAL',
         criadoPorManual: true,
       })),
+      getSaldosIniciais: jest.fn().mockReturnValue(of({
+        periodo: '2026-08',
+        valorTotal: 75,
+        quantidadeContas: 2,
+        saldos: [
+          { contaId: 7, contaNome: 'Conta Corrente', valor: 50, origem: 'MANUAL' },
+          { contaId: 8, contaNome: 'Carteira', valor: 25, origem: 'AUTO' },
+        ],
+      })),
     };
     orcamentoService = {
       findPeriodos: jest.fn().mockReturnValue(of([])),
@@ -39,6 +49,7 @@ describe('MovimentosComponent', () => {
     };
     contaService = { getAll: jest.fn().mockReturnValue(of([conta])) };
     toast = { error: jest.fn(), success: jest.fn() };
+    dialogs = { open: jest.fn().mockReturnValue(of(undefined)) };
 
     TestBed.configureTestingModule({
       imports: [MovimentosComponent],
@@ -47,7 +58,7 @@ describe('MovimentosComponent', () => {
         { provide: OrcamentoService, useValue: orcamentoService },
         { provide: ContaService, useValue: contaService },
         { provide: PromptService, useValue: { open: jest.fn() } },
-        { provide: TuiDialogService, useValue: { open: jest.fn() } },
+        { provide: TuiDialogService, useValue: dialogs },
         { provide: ToastService, useValue: toast },
       ],
     });
@@ -79,6 +90,98 @@ describe('MovimentosComponent', () => {
     fixture.detectChanges();
 
     expect((fixture.componentInstance as any).contaId()).toBe(8);
+  });
+
+  it('usa a primeira conta quando a seleção salva é inválida', () => {
+    sessionStorage.setItem('movimentacoes.contaId', '999');
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+
+    expect((fixture.componentInstance as any).contaId()).toBe(7);
+  });
+
+  it('restaura Todas as contas da sessão e omite contaId ao carregar movimentos', () => {
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    expect(component.contaId()).toBe(ALL_ACCOUNTS);
+    expect(movimentoService.getAll).toHaveBeenCalledWith(component.currentPeriodo, {});
+    expect(movimentoService.getSaldosIniciais).toHaveBeenCalledWith(component.currentPeriodo);
+    expect(component.saldoInicial().valor).toBe(75);
+    expect(component.saldoInicial().origem).toBe('CONSOLIDADO');
+  });
+
+  it('persiste Todas as contas e calcula o saldo final consolidado', () => {
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    component.onContaChange(ALL_ACCOUNTS);
+
+    expect(sessionStorage.getItem('movimentacoes.contaId')).toBe(ALL_ACCOUNTS);
+    expect(movimentoService.getAll).toHaveBeenLastCalledWith(component.currentPeriodo, {});
+    expect(component.saldo).toBe(125);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Consolidado');
+    expect(fixture.nativeElement.textContent).toContain('Saldo consolidado');
+  });
+
+  it('ignora conta legada ao indicar filtros ativos', () => {
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    component.filtro.set({ contaId: 7 });
+
+    expect(component.hasFiltro()).toBe(false);
+  });
+
+  it('abre a lista consolidada pelo lápis e recarrega a tela ao fechar', () => {
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+    movimentoService.getAll.mockClear();
+
+    component.openSaldoInicialModal();
+
+    expect(dialogs.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      label: 'Saldos iniciais por conta',
+      data: expect.objectContaining({ periodo: component.currentPeriodo }),
+    }));
+    expect(movimentoService.getAll).toHaveBeenCalledWith(component.currentPeriodo, {});
+  });
+
+  it('ignora resposta agregada antiga após trocar para uma conta individual', () => {
+    const agregadoAntigo = new Subject<any>();
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+    movimentoService.getSaldosIniciais.mockReturnValue(agregadoAntigo);
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    component.onContaChange(7);
+    agregadoAntigo.next({
+      periodo: component.currentPeriodo,
+      valorTotal: 999,
+      quantidadeContas: 2,
+      saldos: [],
+    });
+
+    expect(component.contaId()).toBe(7);
+    expect(component.saldoInicial()).toEqual(expect.objectContaining({ contaId: 7, valor: 50 }));
+    expect(component.saldosIniciais()).toBeNull();
   });
 
   it('combina, deduplica e ordena períodos decrescentemente, mantendo o mês atual como padrão', () => {
@@ -210,6 +313,7 @@ describe('MovimentosComponent', () => {
   });
 
   it('mantém os seletores desabilitados e a orientação quando não há contas', () => {
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
     contaService.getAll.mockReturnValue(of([]));
 
     const fixture = TestBed.createComponent(MovimentosComponent);
@@ -223,6 +327,7 @@ describe('MovimentosComponent', () => {
       'Nenhuma conta cadastrada',
     );
     expect(movimentoService.getAll).not.toHaveBeenCalled();
+    expect(movimentoService.getSaldosIniciais).not.toHaveBeenCalled();
   });
 
   it('renderiza seletores estritos e não renderiza tabs', () => {
@@ -248,6 +353,25 @@ describe('MovimentosComponent', () => {
     expect(component.saldoInicial()).toBeNull();
     expect(toast.error).toHaveBeenCalledWith(
       'Não foi possível carregar o saldo inicial desta conta.',
+    );
+  });
+
+  it('mantém as movimentações disponíveis quando o saldo inicial agregado falha', () => {
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+    movimentoService.getSaldosIniciais.mockReturnValue(
+      throwError(() => new Error('saldos indisponíveis')),
+    );
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    expect(component.movimentos()).toHaveLength(3);
+    expect(component.isSaldoLoading()).toBe(false);
+    expect(component.saldoInicial()).toBeNull();
+    expect(toast.error).toHaveBeenCalledWith(
+      'Não foi possível carregar os saldos iniciais das contas.',
     );
   });
 

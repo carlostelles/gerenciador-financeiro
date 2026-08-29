@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.aggregate-summary,
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aggregate-summary {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--tui-border-normal);
+}
+
+.aggregate-summary strong {
+  margin-left: auto;
+}
+
+.accounts-list {
+  display: grid;
+}
+
+.account-row {
+  min-height: 4.5rem;
+  border-bottom: 1px solid var(--tui-border-normal);
+}
+
+.account-balance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  flex: 1;
+}
+
+.account-balance strong {
+  overflow-wrap: anywhere;
+}
+
+.account-balance tui-badge {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.account-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.loading,
+.empty {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.negative {
+  color: var(--tui-status-negative);
+}

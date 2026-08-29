@@ -42,6 +42,27 @@ describe('MovimentoService', () => {
     });
   });
 
+  it('should load all initial balances for a period in one request', () => {
+    service.getSaldosIniciais('2026-08').subscribe((response) => {
+      expect(response.valorTotal).toBe(125);
+      expect(response.saldos).toHaveLength(2);
+    });
+
+    const req = httpMock.expectOne(
+      'http://localhost:3000/movimentacoes/2026-08/saldos-iniciais',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      periodo: '2026-08',
+      valorTotal: 125,
+      quantidadeContas: 2,
+      saldos: [
+        { contaId: 7, contaNome: 'Banco', valor: 150, origem: 'MANUAL' },
+        { contaId: 8, contaNome: 'Carteira', valor: -25, origem: 'AUTO' },
+      ],
+    });
+  });
+
   it('should save a negative manual initial balance', () => {
     service.updateSaldoInicial('2026-08', 7, -150).subscribe();
 

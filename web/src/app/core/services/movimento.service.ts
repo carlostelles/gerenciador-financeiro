@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse, AnalisarExtratosResponse, SaldoInicial } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse, AnalisarExtratosResponse, SaldoInicial, SaldosIniciaisResponse } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -51,6 +51,12 @@ export class MovimentoService {
     return this.http.get<SaldoInicial>(
       `${this.baseUrl}/movimentacoes/${periodo}/saldo-inicial`,
       { params },
+    );
+  }
+
+  getSaldosIniciais(periodo: string): Observable<SaldosIniciaisResponse> {
+    return this.http.get<SaldosIniciaisResponse>(
+      `${this.baseUrl}/movimentacoes/${periodo}/saldos-iniciais`,
     );
   }
 

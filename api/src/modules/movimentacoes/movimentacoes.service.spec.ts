@@ -105,6 +105,7 @@ describe('MovimentacoesService', () => {
         nome: 'Conta Corrente',
       } as Conta),
       find: jest.fn(),
+      createQueryBuilder: jest.fn(),
     };
 
     const mockSaldoInicialRepository = {
@@ -629,6 +630,95 @@ describe('MovimentacoesService', () => {
   });
 
   describe('saldo inicial', () => {
+    it('deve agregar os saldos iniciais de todas as contas do usuário', async () => {
+      const queryBuilder: any = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            id: '1',
+            contaId: '7',
+            contaNome: 'Conta Corrente',
+            valor: '150.00',
+            origem: SaldoInicialOrigem.MANUAL,
+            criadoPorManual: 1,
+          },
+          {
+            id: null,
+            contaId: '8',
+            contaNome: 'Carteira',
+            valor: '-25.00',
+            origem: null,
+            criadoPorManual: null,
+          },
+        ]),
+      };
+      contaRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await expect(
+        service.getSaldosIniciais('2024-02', usuarioId),
+      ).resolves.toEqual({
+        periodo: '2024-02',
+        valorTotal: 125,
+        quantidadeContas: 2,
+        saldos: [
+          expect.objectContaining({
+            contaId: 7,
+            contaNome: 'Conta Corrente',
+            valor: 150,
+          }),
+          expect.objectContaining({
+            contaId: 8,
+            contaNome: 'Carteira',
+            valor: -25,
+          }),
+        ],
+      });
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'conta.usuarioId = :usuarioId',
+        { usuarioId },
+      );
+      expect(queryBuilder.getRawMany).toHaveBeenCalledTimes(1);
+      expect(saldoInicialRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it('deve retornar agregado vazio quando o usuário não possui contas', async () => {
+      const queryBuilder: any = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      };
+      contaRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await expect(
+        service.getSaldosIniciais('2024-02', usuarioId),
+      ).resolves.toEqual({
+        periodo: '2024-02',
+        valorTotal: 0,
+        quantidadeContas: 0,
+        saldos: [],
+      });
+    });
+
+    it('deve rejeitar período inválido antes de executar o agregado', async () => {
+      await expect(
+        service.getSaldosIniciais('2024-13', usuarioId),
+      ).rejects.toThrow('O período deve estar no formato YYYY-MM');
+      expect(contaRepository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
     it('deve incluir períodos que existem somente em saldos iniciais', async () => {
       movimentoRepository.find.mockResolvedValue([
         { periodo: '2024-03' },

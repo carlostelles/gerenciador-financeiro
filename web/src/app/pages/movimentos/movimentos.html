@@ -45,6 +45,7 @@
                 (ngModelChange)="onContaChange($event)"
             />
             <tui-data-list *tuiTextfieldDropdown>
+                <button new tuiOption type="button" [value]="ALL_ACCOUNTS">Todas as contas</button>
                 @for (conta of contas(); track conta.id) {
                     <button new tuiOption type="button" [value]="conta.id">{{ conta.nome }}</button>
                 }
@@ -74,7 +75,7 @@
                             <div tuiSubtitle>
                                 Saldo inicial
                                 <tui-badge size="s" [appearance]="inicial.origem === 'AUTO' ? 'info' : 'warning'">
-                                    {{ inicial.origem }}
+                                    {{ inicial.origem === 'CONSOLIDADO' ? 'Consolidado' : inicial.origem }}
                                 </tui-badge>
                             </div>
                         } @else {
@@ -87,7 +88,7 @@
                         type="button"
                         appearance="secondary"
                         iconStart="@tui.pencil"
-                        aria-label="Editar saldo inicial"
+                        [attr.aria-label]="contaId() === ALL_ACCOUNTS ? 'Ver saldos iniciais por conta' : 'Editar saldo inicial'"
                         [disabled]="!saldoInicial() || isSaldoLoading()"
                         (click)="openSaldoInicialModal()"
                     ></button>
@@ -110,7 +111,7 @@
                     <tui-avatar [appearance]="saldo >= 0 ? 'positive' : 'negative'" src="@tui.dollar-sign" />
                     <div tuiTitle>
                         <strong [class.negative]="saldo < 0" [class.positive]="saldo >= 0">{{ saldo | currency }}</strong>
-                        <div tuiSubtitle>Saldo da conta</div>
+                        <div tuiSubtitle>{{ contaId() === ALL_ACCOUNTS ? 'Saldo consolidado' : 'Saldo da conta' }}</div>
                     </div>
                 </div>
                 @if (hasOrcamento) {

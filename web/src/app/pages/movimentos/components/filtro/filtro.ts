@@ -8,8 +8,7 @@ import { TuiStringHandler } from '@taiga-ui/cdk';
 import { TuiForm } from '@taiga-ui/layout';
 
 import { CategoriaService } from '../../../../core/services/categoria.service';
-import { ContaService } from '../../../../core/services/conta.service';
-import { Categoria, Conta, MovimentoFiltro } from '../../../../shared';
+import { Categoria, MovimentoFiltro } from '../../../../shared';
 
 @Component({
     selector: 'app-movimentos-filtro',
@@ -31,22 +30,16 @@ import { Categoria, Conta, MovimentoFiltro } from '../../../../shared';
 export class MovimentosFiltroComponent implements OnInit {
     private readonly fb = inject(FormBuilder);
     private readonly categoriaService = inject(CategoriaService);
-    private readonly contaService = inject(ContaService);
     private readonly context = inject<TuiDialogContext<MovimentoFiltro | null, MovimentoFiltro | undefined>>(POLYMORPHEUS_CONTEXT);
 
     filtroForm!: FormGroup;
     protected readonly categorias = signal<Categoria[]>([]);
-    protected readonly contas = signal<Conta[]>([]);
 
     protected readonly categoriaStringify: TuiStringHandler<number> = (id) =>
         this.categorias().find((categoria) => categoria.id === id)?.nome ?? '';
-    protected readonly contaStringify: TuiStringHandler<number> = (id) =>
-        this.contas().find((conta) => conta.id === id)?.nome ?? '';
-
     ngOnInit() {
         this.filtroForm = this.fb.group({
             categoriaId: [null],
-            contaId: [null],
             descricao: [this.context.data?.descricao ?? ''],
         });
 
@@ -60,22 +53,12 @@ export class MovimentosFiltroComponent implements OnInit {
             }
         });
 
-        this.contaService.getAll().subscribe({
-            next: (contas) => {
-                this.contas.set(contas);
-                this.filtroForm.patchValue({ contaId: this.context.data?.contaId ?? null });
-            },
-            error: (error) => {
-                console.error('Erro ao carregar contas:', error);
-            }
-        });
     }
 
     onSubmit() {
-        const { categoriaId, contaId, descricao } = this.filtroForm.value;
+        const { categoriaId, descricao } = this.filtroForm.value;
         const filtro: MovimentoFiltro = {
             categoriaId: categoriaId ?? undefined,
-            contaId: contaId ?? undefined,
             descricao: (descricao || '').trim() || undefined,
         };
         this.context.completeWith(filtro);

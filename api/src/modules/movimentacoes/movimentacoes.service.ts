@@ -62,6 +62,17 @@ export interface ComparativoPorTipoResponse {
   reservas: number[];
 }
 
+export interface SaldoInicialContaResponse extends SaldoInicial {
+  contaNome: string;
+}
+
+export interface SaldosIniciaisResponse {
+  periodo: string;
+  valorTotal: number;
+  quantidadeContas: number;
+  saldos: SaldoInicialContaResponse[];
+}
+
 @Injectable()
 export class MovimentacoesService {
   constructor(
@@ -218,6 +229,31 @@ export class MovimentacoesService {
     });
   }
 
+  private async resolverSaldoInicial(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<SaldoInicial> {
+    return (
+      (await this.encontrarSaldoInicial(periodo, contaId, usuarioId)) ||
+      ({
+        id: null,
+        usuarioId,
+        contaId,
+        periodo,
+        valor: await this.calcularSaldoInicialAutomatico(
+          periodo,
+          contaId,
+          usuarioId,
+        ),
+        origem: SaldoInicialOrigem.AUTO,
+        criadoPorManual: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial)
+    );
+  }
+
   private async calcularTotalMovimentosPeriodo(
     periodo: string,
     contaId: number,
@@ -372,25 +408,112 @@ export class MovimentacoesService {
     this.validarPeriodoSaldoInicial(periodo);
     await this.validarConta(contaId, usuarioId);
 
-    const saldoInicial =
-      (await this.encontrarSaldoInicial(periodo, contaId, usuarioId)) ||
-      ({
-        id: null,
-        usuarioId,
-        contaId,
-        periodo,
-        valor: await this.calcularSaldoInicialAutomatico(
-          periodo,
-          contaId,
-          usuarioId,
-        ),
-        origem: SaldoInicialOrigem.AUTO,
-        criadoPorManual: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as SaldoInicial);
+    return this.resolverSaldoInicial(periodo, contaId, usuarioId);
+  }
 
-    return saldoInicial;
+  async getSaldosIniciais(
+    periodo: string,
+    usuarioId: number,
+  ): Promise<SaldosIniciaisResponse> {
+    this.validarPeriodoSaldoInicial(periodo);
+    const periodoAnterior = this.getPeriodoAnterior(periodo);
+    const resultados = await this.contaRepository
+      .createQueryBuilder('conta')
+      .leftJoin(
+        SaldoInicial,
+        'saldoAtual',
+        'saldoAtual.contaId = conta.id AND saldoAtual.usuarioId = :usuarioId AND saldoAtual.periodo = :periodo',
+        { usuarioId, periodo },
+      )
+      .leftJoin(
+        SaldoInicial,
+        'saldoAnterior',
+        'saldoAnterior.contaId = conta.id AND saldoAnterior.usuarioId = :usuarioId AND saldoAnterior.periodo = :periodoAnterior',
+        { usuarioId, periodoAnterior },
+      )
+      .leftJoin(
+        Movimento,
+        'movimento',
+        'movimento.contaId = conta.id AND movimento.usuarioId = :usuarioId AND movimento.periodo = :periodoAnterior',
+        { usuarioId, periodoAnterior },
+      )
+      .leftJoin(Categoria, 'categoria', 'categoria.id = movimento.categoriaId')
+      .leftJoin(
+        OrcamentoItem,
+        'orcamentoItem',
+        'orcamentoItem.id = movimento.orcamentoItemId',
+      )
+      .leftJoin(
+        Categoria,
+        'orcamentoItemCategoria',
+        'orcamentoItemCategoria.id = orcamentoItem.categoriaId',
+      )
+      .select('conta.id', 'contaId')
+      .addSelect('conta.nome', 'contaNome')
+      .addSelect('saldoAtual.id', 'id')
+      .addSelect('saldoAtual.origem', 'origem')
+      .addSelect('saldoAtual.criadoPorManual', 'criadoPorManual')
+      .addSelect('saldoAtual.createdAt', 'createdAt')
+      .addSelect('saldoAtual.updatedAt', 'updatedAt')
+      .addSelect(
+        `COALESCE(
+          saldoAtual.valor,
+          COALESCE(saldoAnterior.valor, 0) + COALESCE(
+            SUM(
+              CASE
+                WHEN COALESCE(categoria.tipo, orcamentoItemCategoria.tipo) = :receita THEN movimento.valor
+                WHEN COALESCE(categoria.tipo, orcamentoItemCategoria.tipo) IN (:despesa, :reserva) THEN -movimento.valor
+                ELSE 0
+              END
+            ),
+            0
+          )
+        )`,
+        'valor',
+      )
+      .where('conta.usuarioId = :usuarioId', { usuarioId })
+      .setParameters({
+        receita: CategoriaTipo.RECEITA,
+        despesa: CategoriaTipo.DESPESA,
+        reserva: CategoriaTipo.RESERVA,
+      })
+      .groupBy('conta.id')
+      .addGroupBy('conta.nome')
+      .addGroupBy('saldoAtual.id')
+      .addGroupBy('saldoAtual.valor')
+      .addGroupBy('saldoAtual.origem')
+      .addGroupBy('saldoAtual.criadoPorManual')
+      .addGroupBy('saldoAtual.createdAt')
+      .addGroupBy('saldoAtual.updatedAt')
+      .addGroupBy('saldoAnterior.valor')
+      .orderBy('conta.nome', 'ASC')
+      .getRawMany();
+
+    const agora = new Date();
+    const saldos = resultados.map((resultado) => ({
+      id: resultado.id === null ? null : Number(resultado.id),
+      usuarioId,
+      contaId: Number(resultado.contaId),
+      contaNome: resultado.contaNome,
+      periodo,
+      valor: Number(resultado.valor ?? 0),
+      origem: resultado.origem ?? SaldoInicialOrigem.AUTO,
+      criadoPorManual:
+        resultado.criadoPorManual === true ||
+        Number(resultado.criadoPorManual) === 1,
+      createdAt: resultado.createdAt ?? agora,
+      updatedAt: resultado.updatedAt ?? agora,
+    })) as SaldoInicialContaResponse[];
+
+    return {
+      periodo,
+      valorTotal: saldos.reduce(
+        (total, saldo) => total + Number(saldo.valor),
+        0,
+      ),
+      quantidadeContas: saldos.length,
+      saldos,
+    };
   }
 
   async createSaldoInicial(

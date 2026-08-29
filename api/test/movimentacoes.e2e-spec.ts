@@ -53,6 +53,7 @@ describe('MovimentacoesController (e2e)', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      getSaldosIniciais: jest.fn(),
     };
 
     const mockLogsService = {
@@ -256,6 +257,32 @@ describe('MovimentacoesController (e2e)', () => {
         .expect(200);
 
       expect(movimentacoesService.findAll).toHaveBeenCalledWith('2024-12', mockUser.sub, {});
+    });
+  });
+
+  describe('/movimentacoes/:periodo/saldos-iniciais (GET)', () => {
+    it('deve retornar o agregado autenticado somente para o usuário atual', async () => {
+      const agregado = {
+        periodo: '2025-09',
+        valorTotal: 175,
+        quantidadeContas: 2,
+        saldos: [
+          { contaId: 1, contaNome: 'Banco', valor: 200, origem: 'MANUAL' },
+          { contaId: 2, contaNome: 'Carteira', valor: -25, origem: 'AUTO' },
+        ],
+      };
+      movimentacoesService.getSaldosIniciais.mockResolvedValue(agregado as any);
+
+      const response = await request(app.getHttpServer())
+        .get('/movimentacoes/2025-09/saldos-iniciais')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toEqual(agregado);
+      expect(movimentacoesService.getSaldosIniciais).toHaveBeenCalledWith(
+        '2025-09',
+        mockUser.sub,
+      );
     });
   });
 

@@ -6,17 +6,24 @@ import {TuiAccordion} from '@taiga-ui/experimental';
 import { TuiAvatar, TuiBadge, TuiChevron, TuiComboBox, TuiConfirmService } from '@taiga-ui/kit';
 import { TuiStringHandler } from '@taiga-ui/cdk';
 
-import { formatPeriod, Conta, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, SaldoInicial, ToastService } from '../../shared';
+import { formatPeriod, Conta, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, SaldoInicial, SaldosIniciaisResponse, ToastService } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { SaldoInicialDialogComponent } from './components/saldo-inicial-dialog/saldo-inicial-dialog';
 import { VisualizarComprovanteComponent } from './components/visualizar-comprovante/visualizar-comprovante';
 import { MovimentosFiltroComponent } from './components/filtro/filtro';
+import { SaldosIniciaisDialogComponent } from './components/saldos-iniciais-dialog/saldos-iniciais-dialog';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
 import { forkJoin, finalize, map } from 'rxjs';
 import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
 import { NgTemplateOutlet } from '@angular/common';
+
+export const ALL_ACCOUNTS = 'all' as const;
+type ContaSelecionada = number | typeof ALL_ACCOUNTS | null;
+type SaldoInicialResumo = Pick<SaldoInicial, 'valor'> & {
+    origem: SaldoInicial['origem'] | 'CONSOLIDADO';
+};
 
 @Component({
     selector: 'app-movimentos',
@@ -55,6 +62,7 @@ export class MovimentosComponent implements OnInit {
     private readonly promptService = inject(PromptService);
     private readonly dialogs = inject(TuiDialogService);
     private readonly toast = inject(ToastService);
+    protected readonly ALL_ACCOUNTS = ALL_ACCOUNTS;
 
     protected readonly isLoading = signal<boolean>(false);
     protected readonly chosedPeriodo = signal<string | undefined>(undefined);
@@ -62,11 +70,14 @@ export class MovimentosComponent implements OnInit {
     protected readonly movimentos = signal<Movimento[]>([]);
     protected readonly orcamento = signal<Orcamento | null>(null);
     protected readonly contas = signal<Conta[]>([]);
-    protected readonly contaId = signal<number | null>(null);
-    protected readonly saldoInicial = signal<SaldoInicial | null>(null);
+    protected readonly contaId = signal<ContaSelecionada>(null);
+    protected readonly saldoInicial = signal<SaldoInicialResumo | null>(null);
+    protected readonly saldosIniciais = signal<SaldosIniciaisResponse | null>(null);
     protected readonly isSaldoLoading = signal<boolean>(false);
-    protected readonly contaStringify: TuiStringHandler<number | null> = (id) =>
-        this.contas().find((conta) => conta.id === id)?.nome ?? '';
+    protected readonly contaStringify: TuiStringHandler<ContaSelecionada> = (id) =>
+        id === ALL_ACCOUNTS
+            ? 'Todas as contas'
+            : this.contas().find((conta) => conta.id === id)?.nome ?? '';
     protected readonly periodoStringify: TuiStringHandler<string> = (periodo) =>
         periodo ? formatPeriod(periodo) : '';
 
@@ -79,7 +90,7 @@ export class MovimentosComponent implements OnInit {
     private loadRequestId = 0;
     protected readonly hasFiltro = computed<boolean>(() => {
         const f = this.filtro();
-        return !!f && (!!f.categoriaId || !!f.contaId || !!f.descricao);
+        return !!f && (!!f.categoriaId || !!f.descricao);
     });
 
     protected readonly CATEGORIA_TIPO = CategoriaTipo; // Expor enum para template
@@ -158,8 +169,10 @@ export class MovimentosComponent implements OnInit {
         this.contaService.getAll().subscribe({
             next: (contas) => {
                 this.contas.set(contas);
-                const contaSalva = Number(sessionStorage.getItem('movimentacoes.contaId'));
-                const selecionada = contas.find((conta) => conta.id === contaSalva)?.id
+                const contaSalva = sessionStorage.getItem('movimentacoes.contaId');
+                const selecionada = contaSalva === ALL_ACCOUNTS && contas.length
+                    ? ALL_ACCOUNTS
+                    : contas.find((conta) => conta.id === Number(contaSalva))?.id
                     ?? contas[0]?.id
                     ?? null;
                 this.contaId.set(selecionada);
@@ -173,7 +186,7 @@ export class MovimentosComponent implements OnInit {
         });
     }
 
-    onContaChange(contaId: number | null) {
+    onContaChange(contaId: ContaSelecionada) {
         if (contaId === null || contaId === this.contaId()) {
             return;
         }
@@ -261,9 +274,16 @@ export class MovimentosComponent implements OnInit {
         this.movimentos.set([]);
         this.orcamento.set(null);
         this.saldoInicial.set(null);
+        this.saldosIniciais.set(null);
         this.loadOrcamento(periodo, requestId);
-        this.loadSaldoInicial(periodo, contaId, requestId);
-        this.movimentoService.getAll(periodo, { ...this.filtro(), contaId }).subscribe({
+        if (contaId === ALL_ACCOUNTS) {
+            this.loadSaldosIniciais(periodo, requestId);
+        } else {
+            this.loadSaldoInicial(periodo, contaId, requestId);
+        }
+        const { contaId: _contaLegada, ...filtro } = this.filtro() ?? {};
+        const filtroConta = contaId === ALL_ACCOUNTS ? filtro : { ...filtro, contaId };
+        this.movimentoService.getAll(periodo, filtroConta).subscribe({
             next: (movimentos) => {
                 if (requestId !== this.loadRequestId) {
                     return;
@@ -308,11 +328,57 @@ export class MovimentosComponent implements OnInit {
             });
     }
 
+    loadSaldosIniciais(periodo: string, requestId: number) {
+        this.isSaldoLoading.set(true);
+        this.saldoInicial.set(null);
+        this.saldosIniciais.set(null);
+        this.movimentoService.getSaldosIniciais(periodo)
+            .pipe(finalize(() => {
+                if (requestId === this.loadRequestId) {
+                    this.isSaldoLoading.set(false);
+                }
+            }))
+            .subscribe({
+                next: (agregado) => {
+                    if (requestId === this.loadRequestId) {
+                        this.saldosIniciais.set(agregado);
+                        this.saldoInicial.set({
+                            valor: agregado.valorTotal,
+                            origem: 'CONSOLIDADO',
+                        });
+                    }
+                },
+                error: (error) => {
+                    if (requestId === this.loadRequestId) {
+                        console.error('Erro ao carregar saldos iniciais:', error);
+                        this.toast.error('Não foi possível carregar os saldos iniciais das contas.');
+                    }
+                },
+            });
+    }
+
     openSaldoInicialModal() {
         const saldoInicial = this.saldoInicial();
         const contaId = this.contaId();
         const periodo = this.chosedPeriodo();
         if (!saldoInicial || contaId === null || !periodo) {
+            return;
+        }
+
+        if (contaId === ALL_ACCOUNTS) {
+            const agregado = this.saldosIniciais();
+            if (!agregado) {
+                return;
+            }
+
+            this.dialogs.open(
+                new PolymorpheusComponent(SaldosIniciaisDialogComponent),
+                {
+                    label: 'Saldos iniciais por conta',
+                    size: 'm',
+                    data: { agregado, periodo },
+                },
+            ).pipe(finalize(() => this.loadMovimentos(periodo))).subscribe();
             return;
         }
 

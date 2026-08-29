@@ -1,0 +1,45 @@
+<div class="aggregate-summary">
+  <span>Total inicial</span>
+  <strong>{{ agregado().valorTotal | currency }}</strong>
+  <small>{{ agregado().quantidadeContas }} conta(s)</small>
+</div>
+
+@if (isLoading()) {
+  <div class="loading"><tui-loader size="s" /></div>
+}
+
+<div class="accounts-list">
+  @for (saldo of agregado().saldos; track saldo.contaId) {
+    <div class="account-row">
+      <div class="account-balance">
+        <strong>{{ saldo.contaNome }}</strong>
+        <span [class.negative]="saldo.valor < 0">{{ saldo.valor | currency }}</span>
+        <tui-badge size="s" [appearance]="saldo.origem === 'AUTO' ? 'info' : 'warning'">
+          {{ saldo.origem }}
+        </tui-badge>
+      </div>
+      <div class="account-actions">
+        <button
+          tuiIconButton
+          type="button"
+          appearance="secondary"
+          iconStart="@tui.pencil"
+          [attr.aria-label]="'Editar saldo inicial de ' + saldo.contaNome"
+          [disabled]="isLoading() || contaEmAtualizacao() !== null"
+          (click)="editar(saldo)"
+        ></button>
+        <button
+          tuiIconButton
+          type="button"
+          appearance="secondary"
+          iconStart="@tui.rotate-ccw"
+          [attr.aria-label]="'Restaurar saldo automático de ' + saldo.contaNome"
+          [disabled]="isLoading() || contaEmAtualizacao() !== null"
+          (click)="restaurar(saldo)"
+        ></button>
+      </div>
+    </div>
+  } @empty {
+    <p class="empty">Nenhuma conta disponível.</p>
+  }
+</div>

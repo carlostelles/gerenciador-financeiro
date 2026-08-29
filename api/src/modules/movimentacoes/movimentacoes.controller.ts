@@ -175,6 +175,22 @@ export class MovimentacoesController {
     return result.body;
   }
 
+  @Get(':periodo/saldos-iniciais')
+  @ApiOperation({
+    summary: 'Obter saldos iniciais de todas as contas do período',
+  })
+  @ApiParam({ name: 'periodo', description: 'Período dos saldos (yyyy-mm)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Saldos iniciais consolidados retornados com sucesso',
+  })
+  getSaldosIniciais(
+    @Param('periodo') periodo: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.movimentacoesService.getSaldosIniciais(periodo, user.sub);
+  }
+
   @Get(':periodo/saldo-inicial')
   @ApiOperation({ summary: 'Obter saldo inicial do período para a conta' })
   @ApiParam({ name: 'periodo', description: 'Período do saldo (yyyy-mm)' })

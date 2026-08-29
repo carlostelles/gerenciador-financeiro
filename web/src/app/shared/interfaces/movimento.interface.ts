@@ -73,6 +73,17 @@ export interface SaldoInicial {
   updatedAt?: string;
 }
 
+export interface SaldoInicialConta extends SaldoInicial {
+  contaNome: string;
+}
+
+export interface SaldosIniciaisResponse {
+  periodo: string;
+  valorTotal: number;
+  quantidadeContas: number;
+  saldos: SaldoInicialConta[];
+}
+
 /** Item de resumo de uma categoria (soma das movimentações) */
 export interface ResumoCategoriaItem {
   categoriaId: number;

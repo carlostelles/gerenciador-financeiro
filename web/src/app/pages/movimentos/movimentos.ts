@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiAppearance, TuiButton, TuiDataList, TuiDialogService, TuiHint, TuiLoader, TuiTextfield, TuiTitle } from '@taiga-ui/core';
 import {TuiAccordion} from '@taiga-ui/experimental';
-import { TuiAvatar, TuiBadge, TuiChevron, TuiComboBox, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
+import { TuiAvatar, TuiBadge, TuiChevron, TuiComboBox, TuiConfirmService } from '@taiga-ui/kit';
 import { TuiStringHandler } from '@taiga-ui/cdk';
 
 import { formatPeriod, Conta, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, SaldoInicial, ToastService } from '../../shared';
@@ -27,7 +27,6 @@ import { NgTemplateOutlet } from '@angular/common';
         TuiAvatar,
         CurrencyPipe,
         FormatPeriodPipe,
-        TuiTabs,
         TuiTitle,
         TuiCardLarge,
         TuiAppearance,
@@ -57,7 +56,6 @@ export class MovimentosComponent implements OnInit {
     private readonly dialogs = inject(TuiDialogService);
     private readonly toast = inject(ToastService);
 
-    protected activeItemIndex = 0;
     protected readonly isLoading = signal<boolean>(false);
     protected readonly chosedPeriodo = signal<string | undefined>(undefined);
     protected readonly periodos = signal<string[]>([]);
@@ -69,6 +67,8 @@ export class MovimentosComponent implements OnInit {
     protected readonly isSaldoLoading = signal<boolean>(false);
     protected readonly contaStringify: TuiStringHandler<number | null> = (id) =>
         this.contas().find((conta) => conta.id === id)?.nome ?? '';
+    protected readonly periodoStringify: TuiStringHandler<string> = (periodo) =>
+        periodo ? formatPeriod(periodo) : '';
 
     protected readonly showFutureItens = signal<boolean>(false);
     protected readonly showTodayItens = signal<boolean>(true);
@@ -186,49 +186,55 @@ export class MovimentosComponent implements OnInit {
         }
     }
 
+    onPeriodoChange(periodo: string | null) {
+        if (!periodo || periodo === this.chosedPeriodo()) {
+            return;
+        }
+
+        this.loadMovimentos(periodo);
+    }
+
     loadPeriodos() {
         this.isLoading.set(true);
 
-        // Buscar períodos de orçamentos E de movimentações, mesclar e deduplificar
         forkJoin([
             this.orcamentoService.findPeriodos(),
             this.movimentoService.findPeriodos(),
         ])
             .pipe(
-                finalize(() => this.isLoading.set(false)),
                 map(([periodosOrcamento, periodosMovimento]) => {
                     const allPeriodos = new Set([...periodosOrcamento, ...periodosMovimento]);
-                    if (!allPeriodos.has(this.currentPeriodo)) {
-                        allPeriodos.add(this.currentPeriodo);
-                    }
-                    return Array.from(allPeriodos).sort();
+                    allPeriodos.add(this.currentPeriodo);
+                    return Array.from(allPeriodos).sort((first, second) =>
+                        second.localeCompare(first),
+                    );
                 })
             )
             .subscribe({
                 next: (periodos) => {
                     this.periodos.set(periodos);
-
-                    if (periodos.length > 0 && !this.chosedPeriodo()) {
-                        this.activeItemIndex = periodos.indexOf(this.chosedPeriodo() || this.currentPeriodo);
-                        this.chosedPeriodo.set(this.currentPeriodo);
-                        this.loadMovimentos(this.chosedPeriodo()!);
-                    }
+                    this.chosedPeriodo.set(this.currentPeriodo);
+                    this.loadMovimentos(this.currentPeriodo);
                 },
                 error: (error) => {
                     console.error('Erro ao carregar períodos:', error);
+                    this.periodos.set([this.currentPeriodo]);
+                    this.chosedPeriodo.set(this.currentPeriodo);
+                    this.toast.error('Não foi possível carregar os períodos. Exibindo o mês atual.');
+                    this.loadMovimentos(this.currentPeriodo);
                 }
             });
     }
 
-    loadOrcamento(periodo: string) {
+    loadOrcamento(periodo: string, requestId: number) {
         this.orcamentoService.findByPeriodo(periodo).subscribe({
             next: (orcamento) => {
-                if (this.chosedPeriodo() === periodo) {
+                if (requestId === this.loadRequestId) {
                     this.orcamento.set(orcamento);
                 }
             },
             error: (error) => {
-                if (this.chosedPeriodo() === periodo) {
+                if (requestId === this.loadRequestId) {
                     this.orcamento.set(null);
                     console.error('Erro ao carregar orçamento:', error);
                 }
@@ -240,8 +246,11 @@ export class MovimentosComponent implements OnInit {
         const contaId = this.contaId();
         if (contaId === null) {
             this.loadRequestId++;
+            this.chosedPeriodo.set(periodo);
             this.movimentos.set([]);
+            this.orcamento.set(null);
             this.saldoInicial.set(null);
+            this.isLoading.set(false);
             return;
         }
 
@@ -249,7 +258,10 @@ export class MovimentosComponent implements OnInit {
         this.saveScrollPosition();
         this.isLoading.set(true);
         this.chosedPeriodo.set(periodo);
-        this.loadOrcamento(periodo);
+        this.movimentos.set([]);
+        this.orcamento.set(null);
+        this.saldoInicial.set(null);
+        this.loadOrcamento(periodo, requestId);
         this.loadSaldoInicial(periodo, contaId, requestId);
         this.movimentoService.getAll(periodo, { ...this.filtro(), contaId }).subscribe({
             next: (movimentos) => {

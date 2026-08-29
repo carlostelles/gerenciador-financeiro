@@ -14,41 +14,49 @@
         </app-button-float>
     </div>
 
-    @if (contas().length) {
-        <div class="account-selector">
-            <tui-textfield tuiChevron [stringify]="contaStringify">
-                <label tuiLabel for="contaId">Conta</label>
-                <input
-                    tuiComboBox
-                    id="contaId"
-                    [strict]="true"
-                    [ngModel]="contaId()"
-                    (ngModelChange)="onContaChange($event)"
-                />
-                <tui-data-list *tuiTextfieldDropdown>
-                    @for (conta of contas(); track conta.id) {
-                        <button new tuiOption type="button" [value]="conta.id">{{ conta.nome }}</button>
-                    }
-                </tui-data-list>
-            </tui-textfield>
-        </div>
-    } @else if (!isLoading()) {
+    <div class="selectors">
+        <tui-textfield tuiChevron [stringify]="periodoStringify">
+            <label tuiLabel for="periodo">Período</label>
+            <input
+                tuiComboBox
+                id="periodo"
+                [strict]="true"
+                [disabled]="!contas().length"
+                [ngModel]="chosedPeriodo()"
+                (ngModelChange)="onPeriodoChange($event)"
+            />
+            <tui-data-list *tuiTextfieldDropdown>
+                @for (periodo of periodos(); track periodo) {
+                    <button new tuiOption type="button" [value]="periodo">
+                        {{ periodo | formatPeriod }}
+                    </button>
+                }
+            </tui-data-list>
+        </tui-textfield>
+
+        <tui-textfield tuiChevron [stringify]="contaStringify">
+            <label tuiLabel for="contaId">Conta</label>
+            <input
+                tuiComboBox
+                id="contaId"
+                [strict]="true"
+                [disabled]="!contas().length"
+                [ngModel]="contaId()"
+                (ngModelChange)="onContaChange($event)"
+            />
+            <tui-data-list *tuiTextfieldDropdown>
+                @for (conta of contas(); track conta.id) {
+                    <button new tuiOption type="button" [value]="conta.id">{{ conta.nome }}</button>
+                }
+            </tui-data-list>
+        </tui-textfield>
+    </div>
+
+    @if (!contas().length && !isLoading()) {
         <div tuiAppearance="floating" tuiCardLarge class="empty-accounts">
             <strong>Nenhuma conta cadastrada</strong>
             <span>Cadastre uma conta para acompanhar movimentações e saldo inicial.</span>
         </div>
-    }
-
-    @if (periodos().length) {
-        <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" [itemsLimit]="5">
-            @for (periodo of periodos(); track periodo) {
-                <button *tuiItem tuiTab type="button" (click)="loadMovimentos(periodo)">
-                    <tui-badge appearance="neutral" iconStart="@tui.calendar">
-                        {{ periodo | formatPeriod }}
-                    </tui-badge>
-                </button>
-            }
-        </tui-tabs-with-more>
     }
 
     @if (!isLoading()) {

@@ -1,15 +1,19 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
-import { TuiAppearance, TuiButton, TuiDialogService, TuiHint, TuiTitle } from '@taiga-ui/core';
+import { TuiAppearance, TuiButton, TuiDataList, TuiDialogService, TuiHint, TuiLoader, TuiTextfield, TuiTitle } from '@taiga-ui/core';
 import {TuiAccordion} from '@taiga-ui/experimental';
-import { TuiAvatar, TuiBadge, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
+import { TuiAvatar, TuiBadge, TuiChevron, TuiComboBox, TuiConfirmService, TuiTabs } from '@taiga-ui/kit';
+import { TuiStringHandler } from '@taiga-ui/cdk';
 
-import { formatPeriod, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, ToastService } from '../../shared';
+import { formatPeriod, Conta, CurrencyPipe, Movimento, MovimentoFiltro, PromptService, FormatPeriodPipe, Orcamento, ButtonFloatComponent, CategoriaTipo, TimelineComponent, TimelineItem, getTodayUTC, isTodayUTC, isFutureUTC, isPastUTC, SaldoInicial, ToastService } from '../../shared';
 import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
+import { SaldoInicialDialogComponent } from './components/saldo-inicial-dialog/saldo-inicial-dialog';
 import { VisualizarComprovanteComponent } from './components/visualizar-comprovante/visualizar-comprovante';
 import { MovimentosFiltroComponent } from './components/filtro/filtro';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
+import { ContaService } from '../../core/services/conta.service';
 import { forkJoin, finalize, map } from 'rxjs';
 import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
 import { NgTemplateOutlet } from '@angular/common';
@@ -33,6 +37,12 @@ import { NgTemplateOutlet } from '@angular/common';
         TuiCell,
         TuiAccordion,
         NgTemplateOutlet,
+        FormsModule,
+        TuiTextfield,
+        TuiChevron,
+        TuiComboBox,
+        TuiDataList,
+        TuiLoader,
     ],
     providers: [TuiConfirmService],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +52,7 @@ import { NgTemplateOutlet } from '@angular/common';
 export class MovimentosComponent implements OnInit {
     private readonly movimentoService = inject(MovimentoService);
     private readonly orcamentoService = inject(OrcamentoService);
+    private readonly contaService = inject(ContaService);
     private readonly promptService = inject(PromptService);
     private readonly dialogs = inject(TuiDialogService);
     private readonly toast = inject(ToastService);
@@ -52,6 +63,12 @@ export class MovimentosComponent implements OnInit {
     protected readonly periodos = signal<string[]>([]);
     protected readonly movimentos = signal<Movimento[]>([]);
     protected readonly orcamento = signal<Orcamento | null>(null);
+    protected readonly contas = signal<Conta[]>([]);
+    protected readonly contaId = signal<number | null>(null);
+    protected readonly saldoInicial = signal<SaldoInicial | null>(null);
+    protected readonly isSaldoLoading = signal<boolean>(false);
+    protected readonly contaStringify: TuiStringHandler<number | null> = (id) =>
+        this.contas().find((conta) => conta.id === id)?.nome ?? '';
 
     protected readonly showFutureItens = signal<boolean>(false);
     protected readonly showTodayItens = signal<boolean>(true);
@@ -59,6 +76,7 @@ export class MovimentosComponent implements OnInit {
 
     protected readonly filtro = signal<MovimentoFiltro | undefined>(undefined);
     private scrollPositionBeforeReload: number | null = null;
+    private loadRequestId = 0;
     protected readonly hasFiltro = computed<boolean>(() => {
         const f = this.filtro();
         return !!f && (!!f.categoriaId || !!f.contaId || !!f.descricao);
@@ -67,7 +85,7 @@ export class MovimentosComponent implements OnInit {
     protected readonly CATEGORIA_TIPO = CategoriaTipo; // Expor enum para template
 
     ngOnInit() {
-        this.loadPeriodos();
+        this.loadContas();
     }
 
     get currentPeriodo(): string {
@@ -102,8 +120,17 @@ export class MovimentosComponent implements OnInit {
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }
 
+    get totalReservas(): number {
+        return this.movimentos()
+            .filter(mov => this.getCategoriaTipo(mov) === 'RESERVA')
+            .reduce((sum, mov) => sum + Number(mov.valor), 0);
+    }
+
     get saldo(): number {
-        return this.totalReceitas - this.totalDespesas;
+        return Number(this.saldoInicial()?.valor ?? 0)
+            + this.totalReceitas
+            - this.totalDespesas
+            - this.totalReservas;
     }
 
     get totalOrcamentoDespesa(): number {
@@ -124,6 +151,39 @@ export class MovimentosComponent implements OnInit {
 
     get hasOrcamento(): boolean {
         return this.orcamento() !== null;
+    }
+
+    loadContas() {
+        this.isLoading.set(true);
+        this.contaService.getAll().subscribe({
+            next: (contas) => {
+                this.contas.set(contas);
+                const contaSalva = Number(sessionStorage.getItem('movimentacoes.contaId'));
+                const selecionada = contas.find((conta) => conta.id === contaSalva)?.id
+                    ?? contas[0]?.id
+                    ?? null;
+                this.contaId.set(selecionada);
+                this.loadPeriodos();
+            },
+            error: (error) => {
+                console.error('Erro ao carregar contas:', error);
+                this.isLoading.set(false);
+                this.toast.error('Não foi possível carregar suas contas.');
+            },
+        });
+    }
+
+    onContaChange(contaId: number | null) {
+        if (contaId === null || contaId === this.contaId()) {
+            return;
+        }
+
+        this.contaId.set(contaId);
+        sessionStorage.setItem('movimentacoes.contaId', String(contaId));
+        const periodo = this.chosedPeriodo();
+        if (periodo) {
+            this.loadMovimentos(periodo);
+        }
     }
 
     loadPeriodos() {
@@ -152,7 +212,6 @@ export class MovimentosComponent implements OnInit {
                         this.activeItemIndex = periodos.indexOf(this.chosedPeriodo() || this.currentPeriodo);
                         this.chosedPeriodo.set(this.currentPeriodo);
                         this.loadMovimentos(this.chosedPeriodo()!);
-                        this.loadOrcamento(this.chosedPeriodo()!);
                     }
                 },
                 error: (error) => {
@@ -164,33 +223,96 @@ export class MovimentosComponent implements OnInit {
     loadOrcamento(periodo: string) {
         this.orcamentoService.findByPeriodo(periodo).subscribe({
             next: (orcamento) => {
-                this.orcamento.set(orcamento);
+                if (this.chosedPeriodo() === periodo) {
+                    this.orcamento.set(orcamento);
+                }
             },
             error: (error) => {
-                // Se não encontrou orçamento, apenas setar null
-                this.orcamento.set(null);
-                console.error('Erro ao carregar orçamento:', error);
+                if (this.chosedPeriodo() === periodo) {
+                    this.orcamento.set(null);
+                    console.error('Erro ao carregar orçamento:', error);
+                }
             }
         });
     }
 
     loadMovimentos(periodo: string) {
+        const contaId = this.contaId();
+        if (contaId === null) {
+            this.loadRequestId++;
+            this.movimentos.set([]);
+            this.saldoInicial.set(null);
+            return;
+        }
+
+        const requestId = ++this.loadRequestId;
         this.saveScrollPosition();
         this.isLoading.set(true);
         this.chosedPeriodo.set(periodo);
         this.loadOrcamento(periodo);
-        this.movimentoService.getAll(periodo, this.filtro()).subscribe({
+        this.loadSaldoInicial(periodo, contaId, requestId);
+        this.movimentoService.getAll(periodo, { ...this.filtro(), contaId }).subscribe({
             next: (movimentos) => {
+                if (requestId !== this.loadRequestId) {
+                    return;
+                }
                 this.movimentos.set(movimentos);
                 this.handleAutoShowFutureItens();
                 this.isLoading.set(false);
                 this.restoreScrollPosition();
             },
             error: (error) => {
+                if (requestId !== this.loadRequestId) {
+                    return;
+                }
                 console.error('Erro ao carregar movimentações:', error);
                 this.isLoading.set(false);
                 this.scrollPositionBeforeReload = null;
             }
+        });
+    }
+
+    loadSaldoInicial(periodo: string, contaId: number, requestId: number) {
+        this.isSaldoLoading.set(true);
+        this.saldoInicial.set(null);
+        this.movimentoService.getSaldoInicial(periodo, contaId)
+            .pipe(finalize(() => {
+                if (requestId === this.loadRequestId) {
+                    this.isSaldoLoading.set(false);
+                }
+            }))
+            .subscribe({
+                next: (saldoInicial) => {
+                    if (requestId === this.loadRequestId) {
+                        this.saldoInicial.set(saldoInicial);
+                    }
+                },
+                error: (error) => {
+                    if (requestId === this.loadRequestId) {
+                        console.error('Erro ao carregar saldo inicial:', error);
+                        this.toast.error('Não foi possível carregar o saldo inicial desta conta.');
+                    }
+                },
+            });
+    }
+
+    openSaldoInicialModal() {
+        const saldoInicial = this.saldoInicial();
+        const contaId = this.contaId();
+        const periodo = this.chosedPeriodo();
+        if (!saldoInicial || contaId === null || !periodo) {
+            return;
+        }
+
+        this.dialogs.open<SaldoInicial>(
+            new PolymorpheusComponent(SaldoInicialDialogComponent),
+            {
+                label: 'Editar saldo inicial',
+                size: 's',
+                data: { saldoInicial, contaId, periodo },
+            },
+        ).subscribe({
+            next: (atualizado) => this.saldoInicial.set(atualizado),
         });
     }
 

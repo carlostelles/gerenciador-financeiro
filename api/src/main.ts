@@ -32,8 +32,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
 
   // Swagger configuration - apenas em desenvolvimento
-  const enableSwagger = process.env.ENABLE_SWAGGER === 'true' || process.env.NODE_ENV === 'development';
-  
+  const enableSwagger =
+    process.env.ENABLE_SWAGGER === 'true' ||
+    process.env.NODE_ENV === 'development';
+
   if (enableSwagger) {
     const config = new DocumentBuilder()
       .setTitle('Gerenciador Financeiro API')
@@ -60,7 +62,7 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
-    
+
     console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
   }
 

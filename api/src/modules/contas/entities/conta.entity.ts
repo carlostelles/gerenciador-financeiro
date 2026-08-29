@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Movimento } from '../../movimentacoes/entities/movimento.entity';
+import { SaldoInicial } from '../../movimentacoes/entities/saldo-inicial.entity';
 
 @Entity('contas')
 export class Conta {
@@ -37,4 +38,7 @@ export class Conta {
 
   @OneToMany(() => Movimento, (movimento) => movimento.conta)
   movimentos: Movimento[];
+
+  @OneToMany(() => SaldoInicial, (saldoInicial) => saldoInicial.conta)
+  saldosIniciais: SaldoInicial[];
 }

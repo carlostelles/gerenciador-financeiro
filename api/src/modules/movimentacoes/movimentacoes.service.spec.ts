@@ -20,6 +20,10 @@ import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
 import { MovimentoComprovanteAiService } from './services/movimento-comprovante-ai.service';
 import { MovimentoComprovanteStorageService } from './services/movimento-comprovante-storage.service';
+import {
+  SaldoInicial,
+  SaldoInicialOrigem,
+} from './entities/saldo-inicial.entity';
 
 describe('MovimentacoesService', () => {
   let service: MovimentacoesService;
@@ -28,6 +32,7 @@ describe('MovimentacoesService', () => {
   let categoriaRepository: jest.Mocked<Repository<Categoria>>;
   let orcamentoItemRepository: jest.Mocked<Repository<OrcamentoItem>>;
   let contaRepository: jest.Mocked<Repository<Conta>>;
+  let saldoInicialRepository: jest.Mocked<Repository<SaldoInicial>>;
   let logsService: { create: jest.Mock };
   let comprovanteStorageService: { uploadComprovante: jest.Mock };
   let comprovanteAiService: { analisarComprovante: jest.Mock };
@@ -38,7 +43,7 @@ describe('MovimentacoesService', () => {
     periodo: '2024-01',
     data: new Date('2024-01-15'),
     descricao: 'Test movimento',
-    valor: 100.50,
+    valor: 100.5,
     orcamentoItemId: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -52,14 +57,14 @@ describe('MovimentacoesService', () => {
   const mockCreateMovimentoDto: CreateMovimentoDto = {
     data: '2024-01-15',
     descricao: 'Test movimento',
-    valor: 100.50,
+    valor: 100.5,
     orcamentoItemId: 1,
     categoriaId: 10,
   };
 
   const mockUpdateMovimentoDto: UpdateMovimentoDto = {
     descricao: 'Updated movimento',
-    valor: 200.00,
+    valor: 200.0,
   };
 
   const usuarioId = 1;
@@ -94,8 +99,20 @@ describe('MovimentacoesService', () => {
     };
 
     const mockContaRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 7,
+        usuarioId,
+        nome: 'Conta Corrente',
+      } as Conta),
+      find: jest.fn(),
+    };
+
+    const mockSaldoInicialRepository = {
+      create: jest.fn(),
+      save: jest.fn(),
       findOne: jest.fn(),
       find: jest.fn(),
+      update: jest.fn(),
     };
 
     const mockLogsService = {
@@ -147,6 +164,10 @@ describe('MovimentacoesService', () => {
           useValue: mockContaRepository,
         },
         {
+          provide: getRepositoryToken(SaldoInicial),
+          useValue: mockSaldoInicialRepository,
+        },
+        {
           provide: LogsService,
           useValue: mockLogsService,
         },
@@ -167,10 +188,13 @@ describe('MovimentacoesService', () => {
 
     service = module.get<MovimentacoesService>(MovimentacoesService);
     movimentoRepository = module.get(getRepositoryToken(Movimento));
-    comprovanteRepository = module.get(getRepositoryToken(MovimentoComprovante));
+    comprovanteRepository = module.get(
+      getRepositoryToken(MovimentoComprovante),
+    );
     categoriaRepository = module.get(getRepositoryToken(Categoria));
     orcamentoItemRepository = module.get(getRepositoryToken(OrcamentoItem));
     contaRepository = module.get(getRepositoryToken(Conta));
+    saldoInicialRepository = module.get(getRepositoryToken(SaldoInicial));
     logsService = module.get(LogsService);
     comprovanteStorageService = module.get(MovimentoComprovanteStorageService);
     comprovanteAiService = module.get(MovimentoComprovanteAiService);
@@ -186,7 +210,10 @@ describe('MovimentacoesService', () => {
 
   describe('create', () => {
     it('deve criar novo movimento com sucesso', async () => {
-      const movimentoComCategoria = { ...mockMovimento, categoriaId: 10 } as Movimento;
+      const movimentoComCategoria = {
+        ...mockMovimento,
+        categoriaId: 10,
+      } as Movimento;
       orcamentoItemRepository.findOne.mockResolvedValue({
         id: 1,
         categoriaId: 10,
@@ -195,23 +222,35 @@ describe('MovimentacoesService', () => {
       movimentoRepository.save.mockResolvedValue(movimentoComCategoria);
       movimentoRepository.findOne.mockResolvedValue(movimentoComCategoria);
 
-      const result = await service.create(periodo, mockCreateMovimentoDto, usuarioId);
-
-      expect(movimentoRepository.create).toHaveBeenCalledWith(expect.objectContaining({
-        periodo: '2024-01',
+      const result = await service.create(
+        periodo,
+        mockCreateMovimentoDto,
         usuarioId,
-        categoriaId: 10,
-      }));
+      );
+
+      expect(movimentoRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          periodo: '2024-01',
+          usuarioId,
+          categoriaId: 10,
+        }),
+      );
       expect(movimentoRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.any(Date) }),
       );
-      expect(movimentoRepository.save).toHaveBeenCalledWith(movimentoComCategoria);
+      expect(movimentoRepository.save).toHaveBeenCalledWith(
+        movimentoComCategoria,
+      );
       expect(logsService.create).toHaveBeenCalled();
       expect(result).toEqual(movimentoComCategoria);
     });
 
     it('deve vincular comprovante ao primeiro movimento criado', async () => {
-      const movimentoComCategoria = { ...mockMovimento, id: 99, categoriaId: 10 } as Movimento;
+      const movimentoComCategoria = {
+        ...mockMovimento,
+        id: 99,
+        categoriaId: 10,
+      } as Movimento;
       orcamentoItemRepository.findOne.mockResolvedValue({
         id: 1,
         categoriaId: 10,
@@ -230,10 +269,14 @@ describe('MovimentacoesService', () => {
         movimentoId: 99,
       } as MovimentoComprovante);
 
-      await service.create(periodo, {
-        ...mockCreateMovimentoDto,
-        comprovanteId: 33,
-      }, usuarioId);
+      await service.create(
+        periodo,
+        {
+          ...mockCreateMovimentoDto,
+          comprovanteId: 33,
+        },
+        usuarioId,
+      );
 
       expect(comprovanteRepository.findOne).toHaveBeenCalledWith({
         where: { id: 33, usuarioId },
@@ -296,7 +339,9 @@ describe('MovimentacoesService', () => {
         categoriaId: 7,
         contaId: 2,
       });
-      comprovanteRepository.create.mockImplementation((payload) => payload as any);
+      comprovanteRepository.create.mockImplementation(
+        (payload) => payload as any,
+      );
       comprovanteRepository.save.mockResolvedValue({
         id: 10,
         usuarioId,
@@ -316,7 +361,9 @@ describe('MovimentacoesService', () => {
         usuarioId,
         nome: 'Conta Corrente',
       } as Conta);
-      movimentoRepository.create.mockImplementation((payload) => payload as any);
+      movimentoRepository.create.mockImplementation(
+        (payload) => payload as any,
+      );
       movimentoRepository.save.mockResolvedValue({
         id: 88,
         usuarioId,
@@ -336,9 +383,15 @@ describe('MovimentacoesService', () => {
         categoriaId: 7,
       } as unknown as Movimento);
 
-      const result = await service.analisarComprovante(arquivo as any, usuarioId);
+      const result = await service.analisarComprovante(
+        arquivo as any,
+        usuarioId,
+      );
 
-      expect(comprovanteStorageService.uploadComprovante).toHaveBeenCalledWith(usuarioId, arquivo);
+      expect(comprovanteStorageService.uploadComprovante).toHaveBeenCalledWith(
+        usuarioId,
+        arquivo,
+      );
       expect(comprovanteAiService.analisarComprovante).toHaveBeenCalled();
       expect(result.statusCode).toBe(201);
       expect(result.body.sugestao.data).toBe('2026-07-13');
@@ -371,7 +424,9 @@ describe('MovimentacoesService', () => {
         categoriaId: 7,
         contaId: 2,
       });
-      comprovanteRepository.create.mockImplementation((payload) => payload as any);
+      comprovanteRepository.create.mockImplementation(
+        (payload) => payload as any,
+      );
       comprovanteRepository.save.mockResolvedValue({
         id: 10,
         usuarioId,
@@ -386,7 +441,9 @@ describe('MovimentacoesService', () => {
         usuarioId,
         movimentoId: null,
       } as MovimentoComprovante);
-      movimentoRepository.create.mockImplementation((payload) => payload as any);
+      movimentoRepository.create.mockImplementation(
+        (payload) => payload as any,
+      );
       movimentoRepository.save.mockResolvedValue({
         id: 89,
         usuarioId,
@@ -399,23 +456,34 @@ describe('MovimentacoesService', () => {
         revisado: false,
       } as Movimento);
 
-      const result = await service.analisarComprovante(arquivo as any, usuarioId);
+      const result = await service.analisarComprovante(
+        arquivo as any,
+        usuarioId,
+      );
 
       expect(result.statusCode).toBe(201);
       expect(result.body.camposObrigatoriosFaltantes).toContain('data');
-      expect(result.body.salvamento).toEqual({ status: 'criado', movimentoId: 89 });
-      expect(movimentoRepository.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: null,
-        valor: 123.45,
-        categoriaId: 7,
-        contaId: 2,
-        revisado: false,
-      }));
+      expect(result.body.salvamento).toEqual({
+        status: 'criado',
+        movimentoId: 89,
+      });
+      expect(movimentoRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: null,
+          valor: 123.45,
+          categoriaId: 7,
+          contaId: 2,
+          revisado: false,
+        }),
+      );
     });
 
     it('deve rejeitar arquivo com tipo não suportado', async () => {
       await expect(
-        service.analisarComprovante({ ...arquivo, mimetype: 'text/plain' } as any, usuarioId),
+        service.analisarComprovante(
+          { ...arquivo, mimetype: 'text/plain' } as any,
+          usuarioId,
+        ),
       ).rejects.toThrow(UnsupportedMediaTypeException);
     });
   });
@@ -434,7 +502,9 @@ describe('MovimentacoesService', () => {
 
       const result = await service.findAll(periodo, usuarioId);
 
-      expect(movimentoRepository.createQueryBuilder).toHaveBeenCalledWith('movimento');
+      expect(movimentoRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'movimento',
+      );
       expect(qb.getMany).toHaveBeenCalled();
       expect(result).toEqual(mockMovimentos);
     });
@@ -448,7 +518,13 @@ describe('MovimentacoesService', () => {
 
       expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
+        relations: [
+          'orcamentoItem',
+          'orcamentoItem.categoria',
+          'categoria',
+          'conta',
+          'comprovante',
+        ],
       });
       expect(result).toEqual(mockMovimento);
     });
@@ -468,11 +544,22 @@ describe('MovimentacoesService', () => {
       const updatedMovimento = { ...mockMovimento, ...mockUpdateMovimentoDto };
       movimentoRepository.save.mockResolvedValue(updatedMovimento as Movimento);
 
-      const result = await service.update(periodo, 1, mockUpdateMovimentoDto, usuarioId);
+      const result = await service.update(
+        periodo,
+        1,
+        mockUpdateMovimentoDto,
+        usuarioId,
+      );
 
       expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
+        relations: [
+          'orcamentoItem',
+          'orcamentoItem.categoria',
+          'categoria',
+          'conta',
+          'comprovante',
+        ],
       });
       expect(movimentoRepository.save).toHaveBeenCalled();
       expect(logsService.create).toHaveBeenCalled();
@@ -509,14 +596,11 @@ describe('MovimentacoesService', () => {
 
       movimentoRepository.findOne.mockResolvedValue(movimentoComContaAntiga);
       contaRepository.findOne.mockResolvedValue({ id: 2 } as Conta);
-      movimentoRepository.save.mockImplementation(async (payload) => payload as Movimento);
-
-      await service.update(
-        periodo,
-        1,
-        { contaId: 2 },
-        usuarioId,
+      movimentoRepository.save.mockImplementation(
+        async (payload) => payload as Movimento,
       );
+
+      await service.update(periodo, 1, { contaId: 2 }, usuarioId);
 
       expect(movimentoRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ contaId: 2 }),
@@ -535,9 +619,364 @@ describe('MovimentacoesService', () => {
         orcamentoItemId: null,
       } as Movimento);
 
-      await expect(service.update(periodo, 1, { revisado: true }, usuarioId))
-        .rejects.toThrow('Preencha data, valor e categoria antes de marcar a movimentação como revisada');
+      await expect(
+        service.update(periodo, 1, { revisado: true }, usuarioId),
+      ).rejects.toThrow(
+        'Preencha data, valor e categoria antes de marcar a movimentação como revisada',
+      );
       expect(movimentoRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('saldo inicial', () => {
+    it('deve incluir períodos que existem somente em saldos iniciais', async () => {
+      movimentoRepository.find.mockResolvedValue([
+        { periodo: '2024-03' },
+        { periodo: '2024-02' },
+      ] as Movimento[]);
+      saldoInicialRepository.find.mockResolvedValue([
+        { periodo: '2024-04' },
+        { periodo: '2024-03' },
+      ] as SaldoInicial[]);
+
+      await expect(service.findPeriodos(usuarioId)).resolves.toEqual([
+        '2024-04',
+        '2024-03',
+        '2024-02',
+      ]);
+      expect(saldoInicialRepository.find).toHaveBeenCalledWith({
+        where: { usuarioId },
+        select: { periodo: true },
+      });
+    });
+
+    it('deve criar saldo inicial básico com valor informado', async () => {
+      const saldoInicial = {
+        id: 1,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: 150,
+        origem: SaldoInicialOrigem.MANUAL,
+        criadoPorManual: true,
+      } as SaldoInicial;
+
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      saldoInicialRepository.create.mockReturnValue(saldoInicial);
+      saldoInicialRepository.save.mockResolvedValue(saldoInicial);
+
+      const result = await service.createSaldoInicial(
+        '2024-02',
+        { contaId: 7, valor: 150, origem: SaldoInicialOrigem.MANUAL },
+        usuarioId,
+      );
+
+      expect(result).toEqual(saldoInicial);
+      expect(saldoInicialRepository.save).toHaveBeenCalledWith(saldoInicial);
+    });
+
+    it('deve persistir saldo inicial manual negativo', async () => {
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      saldoInicialRepository.create.mockImplementation(
+        (dados) => dados as SaldoInicial,
+      );
+      saldoInicialRepository.save.mockImplementation(
+        async (saldo) => ({ ...saldo, id: 9 }) as SaldoInicial,
+      );
+
+      const result = await service.createSaldoInicial(
+        '2024-02',
+        { contaId: 7, valor: -150.75, origem: SaldoInicialOrigem.MANUAL },
+        usuarioId,
+      );
+
+      expect(result.valor).toBe(-150.75);
+      expect(saldoInicialRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          valor: -150.75,
+          origem: SaldoInicialOrigem.MANUAL,
+        }),
+      );
+    });
+
+    it('deve rejeitar período inválido antes de consultar a conta', async () => {
+      await expect(
+        service.createSaldoInicial(
+          '2024-13',
+          { contaId: 7, valor: 100, origem: SaldoInicialOrigem.MANUAL },
+          usuarioId,
+        ),
+      ).rejects.toThrow('O período deve estar no formato YYYY-MM');
+      expect(contaRepository.findOne).not.toHaveBeenCalled();
+      expect(saldoInicialRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('deve impedir duplicidade de saldo inicial por usuário e conta no mesmo período', async () => {
+      saldoInicialRepository.findOne.mockResolvedValue({
+        id: 88,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: 120,
+        origem: SaldoInicialOrigem.AUTO,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial);
+      saldoInicialRepository.save.mockResolvedValue({
+        id: 88,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: 120,
+        origem: SaldoInicialOrigem.AUTO,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial);
+
+      await expect(
+        service.createSaldoInicial(
+          '2024-02',
+          { contaId: 7, valor: 100, origem: SaldoInicialOrigem.AUTO },
+          usuarioId,
+        ),
+      ).rejects.toThrow(
+        'Saldo inicial já cadastrado para esta conta no período',
+      );
+    });
+
+    it('deve calcular saldo inicial automaticamente com base no período anterior e movimentos', async () => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '400.00' }),
+      };
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      movimentoRepository.createQueryBuilder.mockReturnValue(qb as any);
+
+      const resultado = await service.calcularSaldoInicialAutomatico(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(resultado).toBe(400);
+    });
+
+    it('deve carregar o saldo inicial anterior no cálculo automático', async () => {
+      saldoInicialRepository.findOne.mockResolvedValue({
+        valor: 100,
+      } as SaldoInicial);
+      movimentoRepository.createQueryBuilder.mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '400.00' }),
+      } as any);
+
+      const resultado = await service.calcularSaldoInicialAutomatico(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(resultado).toBe(500);
+      expect(saldoInicialRepository.findOne).toHaveBeenCalledWith({
+        where: { periodo: '2024-01', contaId: 7, usuarioId },
+      });
+    });
+
+    it('deve considerar receitas positivas e despesas/reservas negativas no cálculo automático do saldo inicial', async () => {
+      let selectExpression = '';
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockImplementation((expression: string) => {
+          selectExpression = expression;
+          return qb;
+        }),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockImplementation(() => {
+          if (selectExpression.includes('CASE')) {
+            return { total: '350.00' };
+          }
+          return { total: '0.00' };
+        }),
+      };
+
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      movimentoRepository.createQueryBuilder.mockReturnValue(qb as any);
+
+      const resultado = await service.calcularSaldoInicialAutomatico(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(resultado).toBe(350);
+      expect(qb.leftJoinAndSelect).toHaveBeenCalled();
+      expect(selectExpression).toContain('CASE');
+    });
+
+    it('deve permitir sobrescrita manual mesmo quando o valor diverge do cálculo automático', async () => {
+      const saldoInicial = {
+        id: 3,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: 250,
+        origem: SaldoInicialOrigem.MANUAL,
+        criadoPorManual: true,
+      } as SaldoInicial;
+
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      saldoInicialRepository.create.mockReturnValue(saldoInicial);
+      saldoInicialRepository.save.mockResolvedValue(saldoInicial);
+      movimentoRepository.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '310.00' }),
+      } as any);
+
+      const result = await service.createSaldoInicial(
+        '2024-02',
+        { contaId: 7, valor: 250, origem: SaldoInicialOrigem.MANUAL },
+        usuarioId,
+      );
+
+      expect(result.valor).toBe(250);
+      expect(result.origem).toBe(SaldoInicialOrigem.MANUAL);
+    });
+
+    it('deve usar zero quando não há lançamentos no período anterior', async () => {
+      saldoInicialRepository.findOne.mockResolvedValue(null);
+      movimentoRepository.createQueryBuilder.mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: null }),
+      } as any);
+
+      const resultado = await service.calcularSaldoInicialAutomatico(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(resultado).toBe(0);
+    });
+
+    it('deve editar saldo inicial existente e manter origem/timestamps', async () => {
+      const saldoInicial = {
+        id: 2,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: 100,
+        origem: SaldoInicialOrigem.AUTO,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial;
+
+      saldoInicialRepository.findOne.mockResolvedValue(saldoInicial);
+      saldoInicialRepository.save.mockResolvedValue({
+        ...saldoInicial,
+        valor: 175,
+        origem: SaldoInicialOrigem.MANUAL,
+      } as SaldoInicial);
+
+      const result = await service.updateSaldoInicial(
+        '2024-02',
+        7,
+        { valor: 175, origem: SaldoInicialOrigem.MANUAL },
+        usuarioId,
+      );
+
+      expect(result.valor).toBe(175);
+      expect(result.origem).toBe(SaldoInicialOrigem.MANUAL);
+      expect(saldoInicialRepository.save).toHaveBeenCalled();
+    });
+
+    it('deve restaurar saldo manual para o cálculo automático atual', async () => {
+      const saldoInicial = {
+        id: 2,
+        usuarioId,
+        contaId: 7,
+        periodo: '2024-02',
+        valor: -50,
+        origem: SaldoInicialOrigem.MANUAL,
+        criadoPorManual: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial;
+      saldoInicialRepository.findOne
+        .mockResolvedValueOnce(saldoInicial)
+        .mockResolvedValueOnce(null);
+      movimentoRepository.createQueryBuilder.mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '325.50' }),
+      } as any);
+      saldoInicialRepository.save.mockImplementation(
+        async (saldo) => saldo as SaldoInicial,
+      );
+
+      const result = await service.restaurarSaldoInicialAutomatico(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          valor: 325.5,
+          origem: SaldoInicialOrigem.AUTO,
+          criadoPorManual: false,
+        }),
+      );
+      expect(saldoInicialRepository.save).toHaveBeenCalledWith(saldoInicial);
+    });
+
+    it('deve validar a propriedade da conta ao restaurar o saldo automático', async () => {
+      contaRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.restaurarSaldoInicialAutomatico('2024-02', 99, usuarioId),
+      ).rejects.toThrow('A conta informada não existe');
+      expect(saldoInicialRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('deve calcular saldo final incluindo reservas do período', async () => {
+      movimentoRepository.createQueryBuilder.mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '1250.00' }),
+      } as any);
+      saldoInicialRepository.findOne.mockResolvedValue({
+        valor: 300,
+      } as SaldoInicial);
+
+      const resultado = await service.calcularSaldoFinal(
+        '2024-02',
+        7,
+        usuarioId,
+      );
+
+      expect(resultado).toBe(1550);
     });
   });
 
@@ -550,7 +989,13 @@ describe('MovimentacoesService', () => {
 
       expect(movimentoRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, periodo, usuarioId },
-        relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
+        relations: [
+          'orcamentoItem',
+          'orcamentoItem.categoria',
+          'categoria',
+          'conta',
+          'comprovante',
+        ],
       });
       expect(movimentoRepository.remove).toHaveBeenCalledWith(mockMovimento);
       expect(logsService.create).toHaveBeenCalled();

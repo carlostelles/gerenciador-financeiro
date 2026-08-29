@@ -59,6 +59,20 @@ export interface MovimentoFiltro {
   descricao?: string;
 }
 
+export type SaldoInicialOrigem = 'AUTO' | 'MANUAL';
+
+export interface SaldoInicial {
+  id: number | null;
+  usuarioId: number;
+  contaId: number;
+  periodo: string;
+  valor: number;
+  origem: SaldoInicialOrigem;
+  criadoPorManual: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 /** Item de resumo de uma categoria (soma das movimentações) */
 export interface ResumoCategoriaItem {
   categoriaId: number;

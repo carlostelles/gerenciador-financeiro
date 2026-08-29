@@ -1,0 +1,23 @@
+<form tuiForm="l" [formGroup]="form" (ngSubmit)="salvar()">
+    <p class="current-value">Valor atual: <strong>{{ context.data.saldoInicial.valor | currency }}</strong></p>
+
+    <tui-textfield>
+        <label tuiLabel for="saldoInicialValor">Novo saldo inicial</label>
+        <input
+            tuiInputNumber
+            id="saldoInicialValor"
+            formControlName="valor"
+            [tuiNumberFormat]="{thousandSeparator: '.', decimalSeparator: ',', decimalMode: 'always'}"
+            [prefix]="('BRL' | tuiCurrency) + ' '"
+        />
+    </tui-textfield>
+
+    <div class="actions">
+        <button tuiButton type="button" appearance="secondary" [disabled]="isSubmitting()" (click)="restaurarAutomatico()">
+            Restaurar automático
+        </button>
+        <button tuiButton type="submit" appearance="primary" [disabled]="form.invalid || isSubmitting()">
+            Salvar
+        </button>
+    </div>
+</form>

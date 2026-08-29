@@ -155,6 +155,32 @@ make prod-logs    # Ver logs
 make prod-rebuild # Rebuild containers
 ```
 
+### Migrações de banco
+
+Em produção, o TypeORM não sincroniza o schema automaticamente. Depois de gerar
+a nova imagem da API e antes de iniciar essa versão, execute as migrações
+pendentes com as mesmas variáveis de ambiente do serviço:
+
+```bash
+docker compose build api
+docker compose run --rm api npm run migration:run:prod
+docker compose up -d
+```
+
+Para a feature de saldo inicial, esse comando cria `saldo_iniciais` e preenche os
+períodos que já possuem movimentações. Faça backup do MySQL antes da execução e
+confirme a conclusão da migração antes de subir a API e o frontend.
+
+Em caso de rollback, pare a API nova, reverta a última migração e restaure a
+imagem anterior:
+
+```bash
+docker compose stop api
+docker compose run --rm api npm run migration:revert:prod
+# Restaure a tag anterior da imagem da API antes de reiniciar os serviços.
+docker compose up -d
+```
+
 **URLs de Produção:**
 - 🌐 **Aplicação**: http://localhost
 - 🔗 **API**: http://localhost/api

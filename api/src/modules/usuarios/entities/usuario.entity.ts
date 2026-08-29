@@ -11,6 +11,7 @@ import { Categoria } from '../../categorias/entities/categoria.entity';
 import { Orcamento } from '../../orcamentos/entities/orcamento.entity';
 import { Movimento } from '../../movimentacoes/entities/movimento.entity';
 import { Reserva } from '../../reservas/entities/reserva.entity';
+import { SaldoInicial } from '../../movimentacoes/entities/saldo-inicial.entity';
 
 @Entity('usuarios')
 export class Usuario {
@@ -56,4 +57,7 @@ export class Usuario {
 
   @OneToMany(() => Reserva, (reserva) => reserva.usuario)
   reservas: Reserva[];
+
+  @OneToMany(() => SaldoInicial, (saldoInicial) => saldoInicial.usuario)
+  saldosIniciais: SaldoInicial[];
 }

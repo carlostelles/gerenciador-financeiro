@@ -21,6 +21,49 @@ describe('MovimentoService', () => {
     httpMock.verify();
   });
 
+  it('should load the initial balance for an account and period', () => {
+    service.getSaldoInicial('2026-08', 7).subscribe((saldo) => {
+      expect(saldo.valor).toBe(-25.5);
+      expect(saldo.origem).toBe('MANUAL');
+    });
+
+    const req = httpMock.expectOne(
+      'http://localhost:3000/movimentacoes/2026-08/saldo-inicial?contaId=7',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      id: 1,
+      usuarioId: 2,
+      contaId: 7,
+      periodo: '2026-08',
+      valor: -25.5,
+      origem: 'MANUAL',
+      criadoPorManual: true,
+    });
+  });
+
+  it('should save a negative manual initial balance', () => {
+    service.updateSaldoInicial('2026-08', 7, -150).subscribe();
+
+    const req = httpMock.expectOne(
+      'http://localhost:3000/movimentacoes/2026-08/saldo-inicial/7',
+    );
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ valor: -150, origem: 'MANUAL' });
+    req.flush({});
+  });
+
+  it('should restore automatic initial balance using the dedicated endpoint', () => {
+    service.restaurarSaldoInicialAutomatico('2026-08', 7).subscribe();
+
+    const req = httpMock.expectOne(
+      'http://localhost:3000/movimentacoes/2026-08/saldo-inicial/7/restaurar-automatico',
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({});
+  });
+
   it('should upload receipt for analysis using multipart form data', () => {
     const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' });
 

@@ -99,7 +99,7 @@ export class ReservasService {
 
   async remove(id: number, usuarioId: number): Promise<void> {
     const reserva = await this.findOne(id, usuarioId);
-    
+
     await this.reservaRepository.remove(reserva);
 
     // Log da exclusão

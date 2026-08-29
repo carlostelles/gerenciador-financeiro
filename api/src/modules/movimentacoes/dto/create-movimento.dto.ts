@@ -36,7 +36,8 @@ export class CreateMovimentoDto {
   valor: number;
 
   @ApiPropertyOptional({
-    description: 'ID do item de orçamento (opcional se categoriaId for informado)',
+    description:
+      'ID do item de orçamento (opcional se categoriaId for informado)',
     example: 1,
   })
   @IsOptional()

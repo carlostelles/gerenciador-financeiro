@@ -14,6 +14,31 @@
         </app-button-float>
     </div>
 
+    @if (contas().length) {
+        <div class="account-selector">
+            <tui-textfield tuiChevron [stringify]="contaStringify">
+                <label tuiLabel for="contaId">Conta</label>
+                <input
+                    tuiComboBox
+                    id="contaId"
+                    [strict]="true"
+                    [ngModel]="contaId()"
+                    (ngModelChange)="onContaChange($event)"
+                />
+                <tui-data-list *tuiTextfieldDropdown>
+                    @for (conta of contas(); track conta.id) {
+                        <button new tuiOption type="button" [value]="conta.id">{{ conta.nome }}</button>
+                    }
+                </tui-data-list>
+            </tui-textfield>
+        </div>
+    } @else if (!isLoading()) {
+        <div tuiAppearance="floating" tuiCardLarge class="empty-accounts">
+            <strong>Nenhuma conta cadastrada</strong>
+            <span>Cadastre uma conta para acompanhar movimentações e saldo inicial.</span>
+        </div>
+    }
+
     @if (periodos().length) {
         <tui-tabs-with-more [(activeItemIndex)]="activeItemIndex" [itemsLimit]="5">
             @for (periodo of periodos(); track periodo) {
@@ -29,6 +54,36 @@
     @if (!isLoading()) {
         <div class="content">
             <div class="summary">
+                <div tuiAppearance="floating" tuiCardLarge tuiCell class="initial-balance-card">
+                    <tui-avatar [appearance]="(saldoInicial()?.valor ?? 0) >= 0 ? 'positive' : 'negative'" src="@tui.landmark" />
+                    <div tuiTitle>
+                        @if (isSaldoLoading()) {
+                            <tui-loader size="s" />
+                        } @else if (saldoInicial(); as inicial) {
+                            <strong [class.negative]="inicial.valor < 0" [class.positive]="inicial.valor >= 0">
+                                {{ inicial.valor | currency }}
+                            </strong>
+                            <div tuiSubtitle>
+                                Saldo inicial
+                                <tui-badge size="s" [appearance]="inicial.origem === 'AUTO' ? 'info' : 'warning'">
+                                    {{ inicial.origem }}
+                                </tui-badge>
+                            </div>
+                        } @else {
+                            <strong>Indisponível</strong>
+                            <div tuiSubtitle>Saldo inicial</div>
+                        }
+                    </div>
+                    <button
+                        tuiIconButton
+                        type="button"
+                        appearance="secondary"
+                        iconStart="@tui.pencil"
+                        aria-label="Editar saldo inicial"
+                        [disabled]="!saldoInicial() || isSaldoLoading()"
+                        (click)="openSaldoInicialModal()"
+                    ></button>
+                </div>
                 <div tuiAppearance="floating" tuiCardLarge tuiCell [tuiHint]="receitasTooltip" tuiHintAppearance="dark" tuiHintDirection="bottom">
                     <tui-avatar appearance="info" src="@tui.banknote-arrow-up" />
                     <div tuiTitle>
@@ -47,7 +102,7 @@
                     <tui-avatar [appearance]="saldo >= 0 ? 'positive' : 'negative'" src="@tui.dollar-sign" />
                     <div tuiTitle>
                         <strong [class.negative]="saldo < 0" [class.positive]="saldo >= 0">{{ saldo | currency }}</strong>
-                        <div tuiSubtitle>Saldo</div>
+                        <div tuiSubtitle>Saldo da conta</div>
                     </div>
                 </div>
                 @if (hasOrcamento) {

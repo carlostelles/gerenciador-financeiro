@@ -62,7 +62,9 @@ export class OrcamentosController {
   }
 
   @Get('periodos')
-  @ApiOperation({ summary: 'Listar períodos já utilizados nos orçamentos do usuário' })
+  @ApiOperation({
+    summary: 'Listar períodos já utilizados nos orçamentos do usuário',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de períodos retornada com sucesso',
@@ -74,10 +76,10 @@ export class OrcamentosController {
 
   @Get('periodo/:periodo')
   @ApiOperation({ summary: 'Buscar orçamento por período' })
-  @ApiParam({ 
-    name: 'periodo', 
+  @ApiParam({
+    name: 'periodo',
     description: 'Período do orçamento (formato yyyy-mm)',
-    example: '2024-01'
+    example: '2024-01',
   })
   @ApiResponse({
     status: 200,
@@ -88,10 +90,7 @@ export class OrcamentosController {
     status: 404,
     description: 'Orçamento não encontrado para o período informado',
   })
-  findByPeriodo(
-    @Param('periodo') periodo: string,
-    @CurrentUser() user: any,
-  ) {
+  findByPeriodo(@Param('periodo') periodo: string, @CurrentUser() user: any) {
     return this.orcamentosService.findByPeriodo(periodo, user.sub);
   }
 
@@ -221,7 +220,12 @@ export class OrcamentosController {
     @Body() updateItemDto: UpdateOrcamentoItemDto,
     @CurrentUser() user: any,
   ) {
-    return this.orcamentosService.updateItem(id, itemId, updateItemDto, user.sub);
+    return this.orcamentosService.updateItem(
+      id,
+      itemId,
+      updateItemDto,
+      user.sub,
+    );
   }
 
   @Delete(':id/itens/:itemId')

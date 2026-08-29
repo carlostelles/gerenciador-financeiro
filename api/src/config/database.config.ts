@@ -10,6 +10,7 @@ import { Movimento } from '../modules/movimentacoes/entities/movimento.entity';
 import { MovimentoComprovante } from '../modules/movimentacoes/entities/movimento-comprovante.entity';
 import { Reserva } from '../modules/reservas/entities/reserva.entity';
 import { Conta } from '../modules/contas/entities/conta.entity';
+import { SaldoInicial } from '../modules/movimentacoes/entities/saldo-inicial.entity';
 import { WhatsappWebhookEvent } from '../modules/whatsapp/entities/whatsapp-webhook-event.entity';
 import { WhatsappInboundMessage } from '../modules/whatsapp/entities/whatsapp-inbound-message.entity';
 
@@ -32,6 +33,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         OrcamentoItem,
         Movimento,
         MovimentoComprovante,
+        SaldoInicial,
         Reserva,
         Conta,
         WhatsappWebhookEvent,

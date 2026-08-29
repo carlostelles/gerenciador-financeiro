@@ -1,0 +1,13 @@
+:host {
+    .current-value {
+        margin-block: 0;
+        color: var(--tui-text-secondary);
+    }
+
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+}

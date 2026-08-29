@@ -1,4 +1,15 @@
 :host {
+    .account-selector {
+        inline-size: min(100%, 24rem);
+        margin-block: 1rem 0;
+    }
+
+    .empty-accounts {
+        display: grid;
+        gap: 0.5rem;
+        margin-block: 1rem;
+    }
+
     .summary {
         display: flex;
         flex-direction: row;
@@ -13,6 +24,10 @@
 
         .negative {
             color: var(--tui-text-negative);
+        }
+
+        .initial-balance-card {
+            min-inline-size: 17rem;
         }
 
         @media screen and (max-width: 540px) {

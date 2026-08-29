@@ -18,16 +18,28 @@ import { OrcamentoItem } from '../orcamentos/entities/orcamento-item.entity';
 import { Orcamento } from '../orcamentos/entities/orcamento.entity';
 import { Conta } from '../contas/entities/conta.entity';
 import { MovimentoComprovante } from './entities/movimento-comprovante.entity';
+import {
+  SaldoInicial,
+  SaldoInicialOrigem,
+} from './entities/saldo-inicial.entity';
+import { CreateSaldoInicialDto } from './dto/create-saldo-inicial.dto';
+import { UpdateSaldoInicialDto } from './dto/update-saldo-inicial.dto';
 import { FindMovimentosQueryDto } from './dto/find-movimentos-query.dto';
 import { FindResumoQueryDto } from './dto/find-resumo-query.dto';
-import { contemTodasAsPalavras, normalizarTexto } from '../../common/utils/normalize-text.util';
+import {
+  contemTodasAsPalavras,
+  normalizarTexto,
+} from '../../common/utils/normalize-text.util';
 import { MovimentoComprovanteStorageService } from './services/movimento-comprovante-storage.service';
 import {
   AnaliseComprovanteResultado,
   AnaliseLancamentoExtrato,
   MovimentoComprovanteAiService,
 } from './services/movimento-comprovante-ai.service';
-import { AnalisarComprovanteResponseDto, AnalisarComprovantesLoteResponseDto } from './dto/analisar-comprovante-response.dto';
+import {
+  AnalisarComprovanteResponseDto,
+  AnalisarComprovantesLoteResponseDto,
+} from './dto/analisar-comprovante-response.dto';
 import { AnalisarComprovanteRequestDto } from './dto/analisar-comprovante-request.dto';
 import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 
@@ -63,6 +75,8 @@ export class MovimentacoesService {
     private orcamentoRepository: Repository<Orcamento>,
     @InjectRepository(Conta)
     private contaRepository: Repository<Conta>,
+    @InjectRepository(SaldoInicial)
+    private saldoInicialRepository: Repository<SaldoInicial>,
     @InjectRepository(MovimentoComprovante)
     private comprovanteRepository: Repository<MovimentoComprovante>,
     private readonly configService: ConfigService,
@@ -93,7 +107,10 @@ export class MovimentacoesService {
   /**
    * Valida se a conta informada existe e pertence ao usuário.
    */
-  private async validarConta(contaId: number, usuarioId: number): Promise<void> {
+  private async validarConta(
+    contaId: number,
+    usuarioId: number,
+  ): Promise<void> {
     const conta = await this.contaRepository.findOne({
       where: { id: contaId, usuarioId },
     });
@@ -110,7 +127,9 @@ export class MovimentacoesService {
     );
   }
 
-  private validarArquivoComprovante(arquivo?: ComprovanteUploadFile): asserts arquivo is ComprovanteUploadFile {
+  private validarArquivoComprovante(
+    arquivo?: ComprovanteUploadFile,
+  ): asserts arquivo is ComprovanteUploadFile {
     if (!arquivo) {
       throw new BadRequestException('Arquivo de comprovante não informado');
     }
@@ -138,14 +157,19 @@ export class MovimentacoesService {
     });
 
     if (!comprovante) {
-      throw new BadRequestException('O comprovante informado não foi encontrado');
+      throw new BadRequestException(
+        'O comprovante informado não foi encontrado',
+      );
     }
 
     comprovante.movimentoId = movimentoId;
     await this.comprovanteRepository.save(comprovante);
   }
 
-  async obterUrlComprovante(comprovanteId: number, usuarioId: number): Promise<{ url: string }> {
+  async obterUrlComprovante(
+    comprovanteId: number,
+    usuarioId: number,
+  ): Promise<{ url: string }> {
     const comprovante = await this.comprovanteRepository.findOne({
       where: { id: comprovanteId, usuarioId },
     });
@@ -154,13 +178,81 @@ export class MovimentacoesService {
     }
 
     return {
-      url: await this.comprovanteStorageService.obterUrlVisualizacao(comprovante.caminhoArquivo),
+      url: await this.comprovanteStorageService.obterUrlVisualizacao(
+        comprovante.caminhoArquivo,
+      ),
     };
   }
 
   private getPeriodoAtual(): string {
     const hoje = new Date();
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private validarPeriodoSaldoInicial(periodo: string): void {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo)) {
+      throw new BadRequestException('O período deve estar no formato YYYY-MM');
+    }
+  }
+
+  private getPeriodoAnterior(periodo: string): string {
+    const [ano, mes] = periodo.split('-').map(Number);
+    let anoAnterior = ano;
+    let mesAnterior = mes - 1;
+
+    if (mesAnterior === 0) {
+      mesAnterior = 12;
+      anoAnterior -= 1;
+    }
+
+    return `${anoAnterior}-${String(mesAnterior).padStart(2, '0')}`;
+  }
+
+  private async encontrarSaldoInicial(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<SaldoInicial | null> {
+    return this.saldoInicialRepository.findOne({
+      where: { periodo, contaId, usuarioId },
+    });
+  }
+
+  private async calcularTotalMovimentosPeriodo(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<number> {
+    const resultado = await this.movimentoRepository
+      .createQueryBuilder('movimento')
+      .leftJoinAndSelect('movimento.categoria', 'categoria')
+      .leftJoinAndSelect('movimento.orcamentoItem', 'orcamentoItem')
+      .leftJoinAndSelect('orcamentoItem.categoria', 'orcamentoItemCategoria')
+      .select(
+        `COALESCE(
+          SUM(
+            CASE
+              WHEN COALESCE(categoria.tipo, orcamentoItemCategoria.tipo) = :receita THEN movimento.valor
+              WHEN COALESCE(categoria.tipo, orcamentoItemCategoria.tipo) = :despesa THEN -movimento.valor
+              WHEN COALESCE(categoria.tipo, orcamentoItemCategoria.tipo) = :reserva THEN -movimento.valor
+              ELSE 0
+            END
+          ),
+          0
+        )`,
+        'total',
+      )
+      .where('movimento.usuarioId = :usuarioId', { usuarioId })
+      .andWhere('movimento.contaId = :contaId', { contaId })
+      .andWhere('movimento.periodo = :periodo', { periodo })
+      .setParameters({
+        receita: CategoriaTipo.RECEITA,
+        despesa: CategoriaTipo.DESPESA,
+        reserva: CategoriaTipo.RESERVA,
+      })
+      .getRawOne();
+
+    return Number(resultado?.total ?? 0);
   }
 
   private async criarMovimentoParcialPorComprovante(
@@ -197,31 +289,51 @@ export class MovimentacoesService {
     return movimentoSalvo;
   }
 
-  private descricoesSemelhantes(primeira: string | null, segunda: string | null): boolean {
-    const palavrasPrimeira = new Set(normalizarTexto(primeira || '').split(' ').filter(Boolean));
-    const palavrasSegunda = new Set(normalizarTexto(segunda || '').split(' ').filter(Boolean));
+  private descricoesSemelhantes(
+    primeira: string | null,
+    segunda: string | null,
+  ): boolean {
+    const palavrasPrimeira = new Set(
+      normalizarTexto(primeira || '')
+        .split(' ')
+        .filter(Boolean),
+    );
+    const palavrasSegunda = new Set(
+      normalizarTexto(segunda || '')
+        .split(' ')
+        .filter(Boolean),
+    );
     if (!palavrasPrimeira.size || !palavrasSegunda.size) {
       return false;
     }
-    const intersecao = [...palavrasPrimeira].filter((palavra) => palavrasSegunda.has(palavra)).length;
-    return intersecao / Math.max(palavrasPrimeira.size, palavrasSegunda.size) >= 0.5;
+    const intersecao = [...palavrasPrimeira].filter((palavra) =>
+      palavrasSegunda.has(palavra),
+    ).length;
+    return (
+      intersecao / Math.max(palavrasPrimeira.size, palavrasSegunda.size) >= 0.5
+    );
   }
 
   private async existeMovimentoEquivalente(
     usuarioId: number,
     lancamento: AnaliseLancamentoExtrato,
   ): Promise<boolean> {
-    if (!lancamento.data || lancamento.valor === null || !lancamento.categoriaId) {
+    if (
+      !lancamento.data ||
+      lancamento.valor === null ||
+      !lancamento.categoriaId
+    ) {
       return false;
     }
 
     const movimentos = await this.movimentoRepository.find({
       where: { usuarioId, periodo: lancamento.data.slice(0, 7) },
     });
-    return movimentos.some((movimento) =>
-      movimento.categoriaId === lancamento.categoriaId &&
-      Number(movimento.valor) === Number(lancamento.valor) &&
-      this.descricoesSemelhantes(movimento.descricao, lancamento.descricao),
+    return movimentos.some(
+      (movimento) =>
+        movimento.categoriaId === lancamento.categoriaId &&
+        Number(movimento.valor) === Number(lancamento.valor) &&
+        this.descricoesSemelhantes(movimento.descricao, lancamento.descricao),
     );
   }
 
@@ -229,7 +341,8 @@ export class MovimentacoesService {
     primeiro: AnaliseLancamentoExtrato,
     segundo: AnaliseLancamentoExtrato,
   ): boolean {
-    return !!primeiro.data &&
+    return (
+      !!primeiro.data &&
       primeiro.data === segundo.data &&
       primeiro.valor !== null &&
       primeiro.valor === segundo.valor &&
@@ -237,7 +350,319 @@ export class MovimentacoesService {
       primeiro.tipo !== segundo.tipo &&
       !!primeiro.contaId &&
       !!segundo.contaId &&
-      primeiro.contaId === segundo.contaId;
+      primeiro.contaId === segundo.contaId
+    );
+  }
+
+  async calcularSaldoInicialAutomatico(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<number> {
+    this.validarPeriodoSaldoInicial(periodo);
+    const periodoAnterior = this.getPeriodoAnterior(periodo);
+    return this.calcularSaldoFinal(periodoAnterior, contaId, usuarioId);
+  }
+
+  async getSaldoInicial(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<SaldoInicial> {
+    this.validarPeriodoSaldoInicial(periodo);
+    await this.validarConta(contaId, usuarioId);
+
+    const saldoInicial =
+      (await this.encontrarSaldoInicial(periodo, contaId, usuarioId)) ||
+      ({
+        id: null,
+        usuarioId,
+        contaId,
+        periodo,
+        valor: await this.calcularSaldoInicialAutomatico(
+          periodo,
+          contaId,
+          usuarioId,
+        ),
+        origem: SaldoInicialOrigem.AUTO,
+        criadoPorManual: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as SaldoInicial);
+
+    return saldoInicial;
+  }
+
+  async createSaldoInicial(
+    periodo: string,
+    createSaldoInicialDto: CreateSaldoInicialDto,
+    usuarioId: number,
+  ): Promise<SaldoInicial> {
+    this.validarPeriodoSaldoInicial(periodo);
+    const { contaId, valor, origem } = createSaldoInicialDto;
+    await this.validarConta(contaId, usuarioId);
+
+    const saldoExistente = await this.encontrarSaldoInicial(
+      periodo,
+      contaId,
+      usuarioId,
+    );
+
+    if (saldoExistente) {
+      if (origem !== SaldoInicialOrigem.MANUAL) {
+        throw new BadRequestException(
+          'Saldo inicial já cadastrado para esta conta no período',
+        );
+      }
+
+      const anterior = {
+        valor: saldoExistente.valor,
+        origem: saldoExistente.origem,
+        createdAt: saldoExistente.createdAt,
+        updatedAt: saldoExistente.updatedAt,
+      };
+
+      Object.assign(saldoExistente, {
+        valor: Number(valor),
+        origem: SaldoInicialOrigem.MANUAL,
+        criadoPorManual: true,
+      });
+
+      const atualizado = await this.saldoInicialRepository.save(saldoExistente);
+
+      await this.logsService.create({
+        data: new Date(),
+        usuarioId,
+        descricao: `Saldo inicial atualizado para ${periodo} na conta ${contaId}`,
+        acao: LogAcao.UPDATE,
+        entidade: 'SaldoInicial',
+        entidadeId: atualizado.id.toString(),
+        dadosAnteriores: anterior,
+        dadosNovos: {
+          valor: atualizado.valor,
+          origem: atualizado.origem,
+          createdAt: atualizado.createdAt,
+          updatedAt: atualizado.updatedAt,
+        },
+      });
+
+      return atualizado;
+    }
+
+    const saldoInicial = this.saldoInicialRepository.create({
+      usuarioId,
+      contaId,
+      periodo,
+      valor: Number(valor),
+      origem: origem ?? SaldoInicialOrigem.AUTO,
+      criadoPorManual: origem === SaldoInicialOrigem.MANUAL,
+    });
+
+    const salvo = await this.saldoInicialRepository.save(saldoInicial);
+
+    await this.logsService.create({
+      data: new Date(),
+      usuarioId,
+      descricao: `Saldo inicial criado para ${periodo} na conta ${contaId}`,
+      acao: LogAcao.CREATE,
+      entidade: 'SaldoInicial',
+      entidadeId: salvo.id.toString(),
+      dadosNovos: {
+        valor: salvo.valor,
+        origem: salvo.origem,
+        createdAt: salvo.createdAt,
+        updatedAt: salvo.updatedAt,
+      },
+    });
+
+    return salvo;
+  }
+
+  async updateSaldoInicial(
+    periodo: string,
+    contaId: number,
+    updateSaldoInicialDto: UpdateSaldoInicialDto,
+    usuarioId: number,
+  ): Promise<SaldoInicial> {
+    this.validarPeriodoSaldoInicial(periodo);
+    const saldoInicial =
+      (await this.encontrarSaldoInicial(periodo, contaId, usuarioId)) ||
+      (await this.createSaldoInicial(
+        periodo,
+        {
+          contaId,
+          valor: await this.calcularSaldoInicialAutomatico(
+            periodo,
+            contaId,
+            usuarioId,
+          ),
+          origem: SaldoInicialOrigem.AUTO,
+        },
+        usuarioId,
+      ));
+
+    const valor = updateSaldoInicialDto.valor ?? saldoInicial.valor ?? 0;
+    const origem =
+      updateSaldoInicialDto.origem ??
+      saldoInicial.origem ??
+      SaldoInicialOrigem.AUTO;
+
+    const anterior = {
+      valor: saldoInicial.valor,
+      origem: saldoInicial.origem,
+      createdAt: saldoInicial.createdAt,
+      updatedAt: saldoInicial.updatedAt,
+    };
+
+    Object.assign(saldoInicial, {
+      valor: Number(valor),
+      origem,
+      criadoPorManual:
+        origem === SaldoInicialOrigem.MANUAL || saldoInicial.criadoPorManual,
+    });
+
+    const atualizado = await this.saldoInicialRepository.save(saldoInicial);
+
+    await this.logsService.create({
+      data: new Date(),
+      usuarioId,
+      descricao: `Saldo inicial atualizado para ${periodo} na conta ${contaId}`,
+      acao: LogAcao.UPDATE,
+      entidade: 'SaldoInicial',
+      entidadeId: atualizado.id.toString(),
+      dadosAnteriores: anterior,
+      dadosNovos: {
+        valor: atualizado.valor,
+        origem: atualizado.origem,
+        createdAt: atualizado.createdAt,
+        updatedAt: atualizado.updatedAt,
+      },
+    });
+
+    return atualizado;
+  }
+
+  async restaurarSaldoInicialAutomatico(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<SaldoInicial> {
+    this.validarPeriodoSaldoInicial(periodo);
+    await this.validarConta(contaId, usuarioId);
+
+    const saldoInicial = await this.getSaldoInicial(
+      periodo,
+      contaId,
+      usuarioId,
+    );
+    const anterior = {
+      valor: saldoInicial.valor,
+      origem: saldoInicial.origem,
+      criadoPorManual: saldoInicial.criadoPorManual,
+    };
+
+    Object.assign(saldoInicial, {
+      valor: await this.calcularSaldoInicialAutomatico(
+        periodo,
+        contaId,
+        usuarioId,
+      ),
+      origem: SaldoInicialOrigem.AUTO,
+      criadoPorManual: false,
+    });
+
+    const atualizado = await this.saldoInicialRepository.save(saldoInicial);
+    await this.logsService.create({
+      data: new Date(),
+      usuarioId,
+      descricao: `Saldo inicial restaurado para cálculo automático em ${periodo} na conta ${contaId}`,
+      acao: LogAcao.UPDATE,
+      entidade: 'SaldoInicial',
+      entidadeId: atualizado.id?.toString() ?? `${periodo}:${contaId}`,
+      dadosAnteriores: anterior,
+      dadosNovos: {
+        valor: atualizado.valor,
+        origem: atualizado.origem,
+        criadoPorManual: atualizado.criadoPorManual,
+      },
+    });
+
+    return atualizado;
+  }
+
+  async calcularSaldoFinal(
+    periodo: string,
+    contaId: number,
+    usuarioId: number,
+  ): Promise<number> {
+    this.validarPeriodoSaldoInicial(periodo);
+    const saldoInicial = await this.encontrarSaldoInicial(
+      periodo,
+      contaId,
+      usuarioId,
+    );
+    const valorSaldoInicial = saldoInicial ? Number(saldoInicial.valor) : 0;
+    const valorMovimentos = await this.calcularTotalMovimentosPeriodo(
+      periodo,
+      contaId,
+      usuarioId,
+    );
+
+    return valorSaldoInicial + valorMovimentos;
+  }
+
+  async backfillSaldosIniciais(
+    usuarioId: number,
+    contaId?: number,
+  ): Promise<SaldoInicial[]> {
+    const contas = contaId
+      ? [{ id: contaId }]
+      : await this.contaRepository.find({ where: { usuarioId } });
+
+    const periodos = await this.movimentoRepository
+      .createQueryBuilder('movimento')
+      .select('DISTINCT movimento.periodo', 'periodo')
+      .where('movimento.usuarioId = :usuarioId', { usuarioId })
+      .andWhere(contaId ? 'movimento.contaId = :contaId' : '1 = 1', {
+        contaId,
+      })
+      .orderBy('movimento.periodo', 'ASC')
+      .getRawMany();
+
+    const todos: SaldoInicial[] = [];
+    for (const conta of contas) {
+      for (const item of periodos) {
+        const periodo = item.periodo;
+        const existente = await this.encontrarSaldoInicial(
+          periodo,
+          conta.id,
+          usuarioId,
+        );
+
+        if (existente) {
+          continue;
+        }
+
+        const valorPadrao = await this.calcularSaldoInicialAutomatico(
+          periodo,
+          conta.id,
+          usuarioId,
+        );
+
+        const saldo = this.saldoInicialRepository.create({
+          usuarioId,
+          contaId: conta.id,
+          periodo,
+          valor: valorPadrao,
+          origem: SaldoInicialOrigem.AUTO,
+          criadoPorManual: false,
+        });
+
+        todos.push(await this.saldoInicialRepository.save(saldo));
+      }
+    }
+
+    return todos;
   }
 
   async analisarExtratos(
@@ -249,16 +674,33 @@ export class MovimentacoesService {
     }
 
     arquivos.forEach((arquivo) => this.validarArquivoComprovante(arquivo));
-    const categorias = await this.categoriaRepository.find({ where: { usuarioId }, order: { nome: 'ASC' } });
-    const contas = await this.contaRepository.find({ where: { usuarioId }, order: { nome: 'ASC' } });
-    const analisados = await Promise.all(arquivos.map(async (arquivo) => ({
-      arquivo,
-      upload: await this.comprovanteStorageService.uploadComprovante(usuarioId, arquivo),
-      analise: await this.comprovanteAiService.analisarComprovante(arquivo, categorias, contas),
-    })));
+    const categorias = await this.categoriaRepository.find({
+      where: { usuarioId },
+      order: { nome: 'ASC' },
+    });
+    const contas = await this.contaRepository.find({
+      where: { usuarioId },
+      order: { nome: 'ASC' },
+    });
+    const analisados = await Promise.all(
+      arquivos.map(async (arquivo) => ({
+        arquivo,
+        upload: await this.comprovanteStorageService.uploadComprovante(
+          usuarioId,
+          arquivo,
+        ),
+        analise: await this.comprovanteAiService.analisarComprovante(
+          arquivo,
+          categorias,
+          contas,
+        ),
+      })),
+    );
 
     if (analisados.some(({ analise }) => analise.tipoDocumento !== 'extrato')) {
-      throw new BadRequestException('O envio em lote aceita apenas extratos bancários. Envie comprovantes individualmente.');
+      throw new BadRequestException(
+        'O envio em lote aceita apenas extratos bancários. Envie comprovantes individualmente.',
+      );
     }
 
     const todosLancamentos = analisados.flatMap((item, indiceArquivo) =>
@@ -272,8 +714,12 @@ export class MovimentacoesService {
     todosLancamentos.forEach((lancamento, indice) => {
       todosLancamentos.slice(indice + 1).forEach((outro) => {
         if (this.saoDadosDeTransferencia(lancamento, outro)) {
-          transferencias.add(`${lancamento.indiceArquivo}:${lancamento.indiceLancamento}`);
-          transferencias.add(`${outro.indiceArquivo}:${outro.indiceLancamento}`);
+          transferencias.add(
+            `${lancamento.indiceArquivo}:${lancamento.indiceLancamento}`,
+          );
+          transferencias.add(
+            `${outro.indiceArquivo}:${outro.indiceLancamento}`,
+          );
         }
       });
     });
@@ -283,30 +729,38 @@ export class MovimentacoesService {
     let transferenciasIgnoradas = 0;
     for (const item of analisados) {
       const indiceArquivo = analisados.indexOf(item);
-      for (const [indiceLancamento, lancamento] of item.analise.lancamentos.entries()) {
+      for (const [
+        indiceLancamento,
+        lancamento,
+      ] of item.analise.lancamentos.entries()) {
         if (transferencias.has(`${indiceArquivo}:${indiceLancamento}`)) {
           transferenciasIgnoradas++;
           continue;
         }
         const categoria = lancamento.categoriaId
-          ? categorias.find((itemCategoria) => itemCategoria.id === lancamento.categoriaId) || null
+          ? categorias.find(
+              (itemCategoria) => itemCategoria.id === lancamento.categoriaId,
+            ) || null
           : null;
         const conta = lancamento.contaId
-          ? contas.find((itemConta) => itemConta.id === lancamento.contaId) || null
+          ? contas.find((itemConta) => itemConta.id === lancamento.contaId) ||
+            null
           : null;
         if (await this.existeMovimentoEquivalente(usuarioId, lancamento)) {
           movimentosIgnorados++;
           continue;
         }
 
-        const comprovante = await this.comprovanteRepository.save(this.comprovanteRepository.create({
-          usuarioId,
-          movimentoId: null,
-          caminhoArquivo: item.upload.caminhoArquivo,
-          nomeArquivo: item.arquivo.originalname,
-          tipoArquivo: item.arquivo.mimetype,
-          tamanhoArquivo: item.arquivo.size,
-        }));
+        const comprovante = await this.comprovanteRepository.save(
+          this.comprovanteRepository.create({
+            usuarioId,
+            movimentoId: null,
+            caminhoArquivo: item.upload.caminhoArquivo,
+            nomeArquivo: item.arquivo.originalname,
+            tipoArquivo: item.arquivo.mimetype,
+            tamanhoArquivo: item.arquivo.size,
+          }),
+        );
         const analise: AnaliseComprovanteResultado = {
           ...lancamento,
           periodo: lancamento.data ? lancamento.data.slice(0, 7) : null,
@@ -322,18 +776,29 @@ export class MovimentacoesService {
         let movimento: Movimento;
         if (camposObrigatoriosFaltantes.length) {
           movimento = await this.criarMovimentoParcialPorComprovante(
-            periodo, analise, categoria?.id || null, conta?.id || null, comprovante.id, usuarioId,
+            periodo,
+            analise,
+            categoria?.id || null,
+            conta?.id || null,
+            comprovante.id,
+            usuarioId,
           );
         } else {
-          movimento = await this.create(periodo, {
-            data: lancamento.data!,
-            valor: lancamento.valor!,
-            descricao: lancamento.descricao || 'Movimento importado de extrato bancário',
-            categoriaId: categoria!.id,
-            contaId: conta?.id,
-            comprovanteId: comprovante.id,
-            revisado: false,
-          }, usuarioId);
+          movimento = await this.create(
+            periodo,
+            {
+              data: lancamento.data!,
+              valor: lancamento.valor!,
+              descricao:
+                lancamento.descricao ||
+                'Movimento importado de extrato bancário',
+              categoriaId: categoria!.id,
+              contaId: conta?.id,
+              comprovanteId: comprovante.id,
+              revisado: false,
+            },
+            usuarioId,
+          );
         }
         resultados.push({
           comprovanteId: comprovante.id,
@@ -341,20 +806,37 @@ export class MovimentacoesService {
           tipoArquivo: comprovante.tipoArquivo,
           tamanhoArquivo: comprovante.tamanhoArquivo,
           caminhoArquivo: comprovante.caminhoArquivo,
-          sugestao: { data: lancamento.data, periodo: analise.periodo, valor: lancamento.valor, descricao: lancamento.descricao, categoriaId: categoria?.id || null, categoriaNome: categoria?.nome || null, contaId: conta?.id || null, contaNome: conta?.nome || null },
+          sugestao: {
+            data: lancamento.data,
+            periodo: analise.periodo,
+            valor: lancamento.valor,
+            descricao: lancamento.descricao,
+            categoriaId: categoria?.id || null,
+            categoriaNome: categoria?.nome || null,
+            contaId: conta?.id || null,
+            contaNome: conta?.nome || null,
+          },
           camposObrigatoriosFaltantes,
           salvamento: { status: 'criado', movimentoId: movimento.id },
         });
       }
     }
-    return { resultados, movimentosCriados: resultados.length, movimentosIgnorados, transferenciasIgnoradas };
+    return {
+      resultados,
+      movimentosCriados: resultados.length,
+      movimentosIgnorados,
+      transferenciasIgnoradas,
+    };
   }
 
   async analisarComprovante(
     arquivo: ComprovanteUploadFile,
     usuarioId: number,
     request?: AnalisarComprovanteRequestDto,
-  ): Promise<{ statusCode: 200 | 201 | 202; body: AnalisarComprovanteResponseDto }> {
+  ): Promise<{
+    statusCode: 200 | 201 | 202;
+    body: AnalisarComprovanteResponseDto;
+  }> {
     this.validarArquivoComprovante(arquivo);
 
     const categorias = await this.categoriaRepository.find({
@@ -372,7 +854,11 @@ export class MovimentacoesService {
     );
 
     const analise: AnaliseComprovanteResultado =
-      await this.comprovanteAiService.analisarComprovante(arquivo, categorias, contas);
+      await this.comprovanteAiService.analisarComprovante(
+        arquivo,
+        categorias,
+        contas,
+      );
 
     const comprovante = await this.comprovanteRepository.save(
       this.comprovanteRepository.create({
@@ -392,13 +878,17 @@ export class MovimentacoesService {
       ? contas.find((item) => item.id === analise.contaId) || null
       : null;
 
-    const periodoAlvo = request?.periodo || analise.periodo || this.getPeriodoAtual();
+    const periodoAlvo =
+      request?.periodo || analise.periodo || this.getPeriodoAtual();
 
     const camposObrigatoriosFaltantes = [
       !analise.data ? 'data' : null,
       analise.valor === null ? 'valor' : null,
       !categoria ? 'categoriaId' : null,
-      request?.movimentoId && request?.periodo && analise.periodo && analise.periodo !== request.periodo
+      request?.movimentoId &&
+      request?.periodo &&
+      analise.periodo &&
+      analise.periodo !== request.periodo
         ? 'data'
         : null,
     ].filter((campo): campo is string => !!campo);
@@ -431,7 +921,9 @@ export class MovimentacoesService {
       });
 
       if (!movimentoAtual) {
-        throw new NotFoundException('Movimentação não encontrada para atualização automática');
+        throw new NotFoundException(
+          'Movimentação não encontrada para atualização automática',
+        );
       }
 
       const periodoAtualizacao = request.periodo || movimentoAtual.periodo;
@@ -440,7 +932,9 @@ export class MovimentacoesService {
       };
 
       const dataCompativelComPeriodo =
-        !request.periodo || !analise.periodo || analise.periodo === request.periodo;
+        !request.periodo ||
+        !analise.periodo ||
+        analise.periodo === request.periodo;
 
       if (analise.data && dataCompativelComPeriodo) {
         updateDto.data = analise.data;
@@ -466,7 +960,11 @@ export class MovimentacoesService {
         usuarioId,
       );
 
-      await this.vincularComprovante(comprovante.id, movimentoAtualizado.id, usuarioId);
+      await this.vincularComprovante(
+        comprovante.id,
+        movimentoAtualizado.id,
+        usuarioId,
+      );
 
       body.salvamento = {
         status: 'atualizado',
@@ -513,7 +1011,11 @@ export class MovimentacoesService {
       revisado: false,
     };
 
-    const movimentoCriado = await this.create(periodoAlvo, createDto, usuarioId);
+    const movimentoCriado = await this.create(
+      periodoAlvo,
+      createDto,
+      usuarioId,
+    );
 
     body.salvamento = {
       status: 'criado',
@@ -578,7 +1080,11 @@ export class MovimentacoesService {
           dataParcelada.getMonth() + 1,
         ).padStart(2, '0')}`,
         usuarioId,
-        descricao: createMovimentoDto.descricao + (createMovimentoDto.parcelas ? ` (Parcela ${i + 1}/${createMovimentoDto.parcelas})` : ''),
+        descricao:
+          createMovimentoDto.descricao +
+          (createMovimentoDto.parcelas
+            ? ` (Parcela ${i + 1}/${createMovimentoDto.parcelas})`
+            : ''),
       });
 
       const savedMovimento = await this.movimentoRepository.save(movimento);
@@ -609,7 +1115,13 @@ export class MovimentacoesService {
 
     return this.movimentoRepository.findOne({
       where: { id: primeiroMovimentoId!, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
+      relations: [
+        'orcamentoItem',
+        'orcamentoItem.categoria',
+        'categoria',
+        'conta',
+        'comprovante',
+      ],
     });
   }
 
@@ -681,7 +1193,8 @@ export class MovimentacoesService {
     };
 
     for (const movimento of movimentos) {
-      const categoria = movimento.orcamentoItem?.categoria || movimento.categoria;
+      const categoria =
+        movimento.orcamentoItem?.categoria || movimento.categoria;
 
       if (!categoria) {
         continue;
@@ -720,7 +1233,13 @@ export class MovimentacoesService {
   ): Promise<Movimento> {
     const movimento = await this.movimentoRepository.findOne({
       where: { id, periodo, usuarioId },
-      relations: ['orcamentoItem', 'orcamentoItem.categoria', 'categoria', 'conta', 'comprovante'],
+      relations: [
+        'orcamentoItem',
+        'orcamentoItem.categoria',
+        'categoria',
+        'conta',
+        'comprovante',
+      ],
     });
 
     if (!movimento) {
@@ -795,14 +1314,22 @@ export class MovimentacoesService {
   }
 
   async findPeriodos(usuarioId: number): Promise<string[]> {
-    const result = await this.movimentoRepository
-      .createQueryBuilder('movimento')
-      .select('DISTINCT movimento.periodo', 'periodo')
-      .where('movimento.usuarioId = :usuarioId', { usuarioId })
-      .orderBy('movimento.periodo', 'DESC')
-      .getRawMany();
+    const [movimentos, saldosIniciais] = await Promise.all([
+      this.movimentoRepository.find({
+        where: { usuarioId },
+        select: { periodo: true },
+      }),
+      this.saldoInicialRepository.find({
+        where: { usuarioId },
+        select: { periodo: true },
+      }),
+    ]);
 
-    return result.map((r) => r.periodo);
+    return [
+      ...new Set(
+        [...movimentos, ...saldosIniciais].map(({ periodo }) => periodo),
+      ),
+    ].sort((primeiro, segundo) => segundo.localeCompare(primeiro));
   }
 
   /**
@@ -917,10 +1444,17 @@ export class MovimentacoesService {
     if (updateMovimentoDto.revisado === true) {
       const data = updateMovimentoDto.data ?? movimento.data;
       const valor = updateMovimentoDto.valor ?? movimento.valor;
-      const categoriaId = updateMovimentoDto.categoriaId ?? movimento.categoriaId;
-      const orcamentoItemId = updateMovimentoDto.orcamentoItemId ?? movimento.orcamentoItemId;
+      const categoriaId =
+        updateMovimentoDto.categoriaId ?? movimento.categoriaId;
+      const orcamentoItemId =
+        updateMovimentoDto.orcamentoItemId ?? movimento.orcamentoItemId;
 
-      if (!data || valor === null || Number(valor) <= 0 || (!categoriaId && !orcamentoItemId)) {
+      if (
+        !data ||
+        valor === null ||
+        Number(valor) <= 0 ||
+        (!categoriaId && !orcamentoItemId)
+      ) {
         throw new BadRequestException(
           'Preencha data, valor e categoria antes de marcar a movimentação como revisada',
         );
@@ -930,8 +1464,9 @@ export class MovimentacoesService {
     const dadosAnteriores = JSON.parse(JSON.stringify(movimento));
     const { orcamentoItem, categoria, conta, ...movimentoData } = movimento;
     Object.assign(movimentoData, updateMovimentoDto);
-    
-    const movimentoAtualizado = await this.movimentoRepository.save(movimentoData);
+
+    const movimentoAtualizado =
+      await this.movimentoRepository.save(movimentoData);
 
     // Log da atualização
     await this.logsService.create({
@@ -944,13 +1479,13 @@ export class MovimentacoesService {
       dadosAnteriores,
       dadosNovos: movimentoAtualizado,
     });
-    
+
     return movimentoAtualizado;
   }
 
   async remove(periodo: string, id: number, usuarioId: number): Promise<void> {
     const movimento = await this.findOne(periodo, id, usuarioId);
-    
+
     await this.movimentoRepository.remove(movimento);
 
     // Log da exclusão

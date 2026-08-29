@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse, AnalisarExtratosResponse } from '../../shared';
+import { CreateMovimentoDto, Movimento, UpdateMovimentoDto, CategoriasForPeriodoResponse, MovimentoFiltro, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, AnalisarComprovanteResponse, AnalisarExtratosResponse, SaldoInicial } from '../../shared';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -44,6 +44,35 @@ export class MovimentoService {
 
   findPeriodos(): Observable<string[]> {
     return this.http.get<string[]>(`${this.baseUrl}/movimentacoes/periodos`);
+  }
+
+  getSaldoInicial(periodo: string, contaId: number): Observable<SaldoInicial> {
+    const params = new HttpParams().set('contaId', contaId);
+    return this.http.get<SaldoInicial>(
+      `${this.baseUrl}/movimentacoes/${periodo}/saldo-inicial`,
+      { params },
+    );
+  }
+
+  updateSaldoInicial(
+    periodo: string,
+    contaId: number,
+    valor: number,
+  ): Observable<SaldoInicial> {
+    return this.http.patch<SaldoInicial>(
+      `${this.baseUrl}/movimentacoes/${periodo}/saldo-inicial/${contaId}`,
+      { valor, origem: 'MANUAL' },
+    );
+  }
+
+  restaurarSaldoInicialAutomatico(
+    periodo: string,
+    contaId: number,
+  ): Observable<SaldoInicial> {
+    return this.http.post<SaldoInicial>(
+      `${this.baseUrl}/movimentacoes/${periodo}/saldo-inicial/${contaId}/restaurar-automatico`,
+      {},
+    );
   }
 
   findCategoriasForPeriodo(periodo: string): Observable<CategoriasForPeriodoResponse> {

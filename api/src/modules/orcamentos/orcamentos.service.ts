@@ -35,9 +35,7 @@ export class OrcamentosService {
     });
 
     if (existingOrcamento) {
-      throw new ConflictException(
-        'Já existe um orçamento para este período',
-      );
+      throw new ConflictException('Já existe um orçamento para este período');
     }
 
     const orcamento = this.orcamentoRepository.create({
@@ -81,7 +79,7 @@ export class OrcamentosService {
       order: { periodo: 'DESC' },
     });
 
-    return orcamentos.map(orcamento => orcamento.periodo);
+    return orcamentos.map((orcamento) => orcamento.periodo);
   }
 
   async findByPeriodo(
@@ -145,9 +143,7 @@ export class OrcamentosService {
       });
 
       if (existingOrcamento && existingOrcamento.id !== id) {
-        throw new ConflictException(
-          'Já existe um orçamento para este período',
-        );
+        throw new ConflictException('Já existe um orçamento para este período');
       }
     }
 
@@ -168,7 +164,10 @@ export class OrcamentosService {
         dadosNovos: orcamentoAtualizado,
       });
     } catch (error) {
-      console.error('Erro ao registrar log de atualização de orçamento:', error);
+      console.error(
+        'Erro ao registrar log de atualização de orçamento:',
+        error,
+      );
     }
 
     return orcamentoAtualizado;
@@ -213,9 +212,7 @@ export class OrcamentosService {
     });
 
     if (existingOrcamento) {
-      throw new ConflictException(
-        'Já existe um orçamento para este período',
-      );
+      throw new ConflictException('Já existe um orçamento para este período');
     }
 
     const novoOrcamento = this.orcamentoRepository.create({
@@ -285,13 +282,19 @@ export class OrcamentosService {
         dadosNovos: savedItem,
       });
     } catch (error) {
-      console.error('Erro ao registrar log de criação de item de orçamento:', error);
+      console.error(
+        'Erro ao registrar log de criação de item de orçamento:',
+        error,
+      );
     }
 
     return savedItem;
   }
 
-  async findItems(orcamentoId: number, usuarioId: number): Promise<OrcamentoItem[]> {
+  async findItems(
+    orcamentoId: number,
+    usuarioId: number,
+  ): Promise<OrcamentoItem[]> {
     await this.findOne(orcamentoId, usuarioId);
 
     return this.orcamentoItemRepository.find({
@@ -344,7 +347,10 @@ export class OrcamentosService {
         dadosNovos: itemAtualizado,
       });
     } catch (error) {
-      console.error('Erro ao registrar log de atualização de item de orçamento:', error);
+      console.error(
+        'Erro ao registrar log de atualização de item de orçamento:',
+        error,
+      );
     }
 
     return itemAtualizado;
@@ -378,7 +384,10 @@ export class OrcamentosService {
         dadosAnteriores: item,
       });
     } catch (error) {
-      console.error('Erro ao registrar log de exclusão de item de orçamento:', error);
+      console.error(
+        'Erro ao registrar log de exclusão de item de orçamento:',
+        error,
+      );
     }
   }
 }

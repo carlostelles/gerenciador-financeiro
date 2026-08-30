@@ -18,6 +18,25 @@ describe('EspacoService', () => {
 
   afterEach(() => http.verify());
 
+  it('cria, renomeia e exclui espaços pelos endpoints dedicados', () => {
+    service.create('Família').subscribe();
+    const create = http.expectOne('http://localhost:3000/espacos');
+    expect(create.request.method).toBe('POST');
+    expect(create.request.body).toEqual({ nome: 'Família' });
+    create.flush({ id: 7, nome: 'Família', tipo: 'SHARED' });
+
+    service.rename(7, 'Casa').subscribe();
+    const rename = http.expectOne('http://localhost:3000/espacos/7');
+    expect(rename.request.method).toBe('PATCH');
+    expect(rename.request.body).toEqual({ nome: 'Casa' });
+    rename.flush({ id: 7, nome: 'Casa', tipo: 'SHARED' });
+
+    service.remove(7).subscribe();
+    const remove = http.expectOne('http://localhost:3000/espacos/7');
+    expect(remove.request.method).toBe('DELETE');
+    remove.flush(null);
+  });
+
   it('inclui membro por email exato e papel', () => {
     service.addMember(7, 'pessoa@example.com', 'EDITOR').subscribe();
 

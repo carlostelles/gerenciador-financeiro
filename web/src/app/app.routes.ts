@@ -26,6 +26,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/contas/contas').then(m => m.ContasComponent)
       },
       {
+        path: 'espacos',
+        loadComponent: () => import('./pages/espacos/espacos').then(m => m.EspacosComponent)
+      },
+      {
         path: 'usuarios',
         loadComponent: () => import('./pages/usuarios/usuarios').then(m => m.UsuariosComponent),
         canActivate: [AdminGuard]

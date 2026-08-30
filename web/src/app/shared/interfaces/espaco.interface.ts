@@ -1,9 +1,11 @@
 export type EspacoPapel = 'OWNER' | 'EDITOR' | 'VIEWER';
+export type EspacoTipo = 'PERSONAL' | 'SHARED';
 
 export interface Espaco {
   id: number;
   nome: string;
-  ownerUsuarioId?: number;
+  tipo: EspacoTipo;
+  ownerUsuarioId: number;
   papel: EspacoPapel;
 }
 

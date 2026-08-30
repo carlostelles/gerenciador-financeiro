@@ -13,8 +13,8 @@ import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
-import { CategoriasService } from '../categorias/categorias.service';
 import { EspacosService } from '../espacos/espacos.service';
+import { EspacoTipo } from '../espacos/entities/espaco.entity';
 
 @Injectable()
 export class UsuariosService {
@@ -22,7 +22,6 @@ export class UsuariosService {
     @InjectRepository(Usuario)
     private usuariosRepository: Repository<Usuario>,
     private logsService: LogsService,
-    private categoriasService: CategoriasService,
     private espacosService: EspacosService,
   ) {}
 
@@ -65,13 +64,10 @@ export class UsuariosService {
       dadosNovos: { ...savedUsuario, senha: '[HIDDEN]' },
     });
 
-    const espaco = await this.espacosService.create(
+    await this.espacosService.create(
       { nome: `Espaço pessoal de ${savedUsuario.nome}` },
       savedUsuario.id,
-    );
-    await this.categoriasService.createDefaultCategories(
-      savedUsuario.id,
-      espaco.id,
+      EspacoTipo.PERSONAL,
     );
 
     return savedUsuario;

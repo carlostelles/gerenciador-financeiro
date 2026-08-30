@@ -2,9 +2,6 @@
     <div class="header">
         <h2>Gerenciar Contas</h2>
         <div class="header-actions">
-            <button tuiButton appearance="secondary" size="m" type="button" (click)="toggleMembers()">
-                <tui-icon icon="@tui.users" /> Membros
-            </button>
             @if (espacoContext.canEdit()) {
                 <app-button-float appearance="primary" size="l" (click)="openFormModal()">
                     Nova Conta
@@ -12,70 +9,6 @@
             }
         </div>
     </div>
-
-    @if (showMembers()) {
-        <section class="members-panel" aria-labelledby="members-title">
-            <div class="members-heading">
-                <h3 id="members-title">Membros de {{ espacoContext.selected()?.nome }}</h3>
-                @if (!espacoContext.isOwner()) {
-                    <button tuiButton appearance="secondary-destructive" size="s" type="button" (click)="leaveSpace()">
-                        Sair do espaço
-                    </button>
-                }
-            </div>
-
-            @if (espacoContext.isOwner()) {
-                <div class="member-form">
-                    <input tuiTextfield type="email" [(ngModel)]="memberEmail" placeholder="E-mail exato do usuário" aria-label="E-mail do usuário" />
-                    <tui-textfield tuiChevron [stringify]="roleStringify">
-                        <label tuiLabel for="memberRole">Papel</label>
-                        <input tuiComboBox id="memberRole" [strict]="true" [(ngModel)]="memberRole" />
-                        <tui-data-list *tuiTextfieldDropdown>
-                            <button new tuiOption type="button" value="EDITOR">Editor</button>
-                            <button new tuiOption type="button" value="VIEWER">Visualizador</button>
-                        </tui-data-list>
-                    </tui-textfield>
-                    <button tuiButton appearance="primary" size="s" type="button" (click)="addMember()">Adicionar</button>
-                </div>
-            }
-
-            @if (espacoContext.isOwner()) {
-                @if (membersError()) {
-                    <p class="members-error" role="alert">{{ membersError() }}</p>
-                }
-                @if (membersLoading()) {
-                    <p>Carregando membros...</p>
-                } @else {
-                    <div class="member-list">
-                        @for (member of members(); track member.usuarioId) {
-                            <div class="member-row">
-                                <div>
-                                    <strong>{{ member.usuario?.nome }}</strong>
-                                    <span>{{ member.usuario?.email }}</span>
-                                </div>
-                                <tui-badge appearance="neutral">{{ member.papel }}</tui-badge>
-                                @if (member.papel !== 'OWNER') {
-                                    <tui-textfield tuiChevron [stringify]="roleStringify">
-                                        <input tuiComboBox [strict]="true" [ngModel]="member.papel"
-                                            (ngModelChange)="changeRole(member, $event)" aria-label="Alterar papel" />
-                                        <tui-data-list *tuiTextfieldDropdown>
-                                            <button new tuiOption type="button" value="EDITOR">Editor</button>
-                                            <button new tuiOption type="button" value="VIEWER">Visualizador</button>
-                                        </tui-data-list>
-                                    </tui-textfield>
-                                    <button tuiButton appearance="secondary" size="s" type="button" (click)="transfer(member)">Transferir</button>
-                                    <button tuiIconButton iconStart="@tui.user-minus" appearance="destructive" size="s" type="button"
-                                        tuiTooltip="Remover membro" aria-label="Remover membro" (click)="removeMember(member)"></button>
-                                }
-                            </div>
-                        } @empty {
-                            <p>Nenhum membro encontrado.</p>
-                        }
-                    </div>
-                }
-            }
-        </section>
-    }
 
     <div class="content" *ngIf="!isLoading()">
         <div class="table-container">

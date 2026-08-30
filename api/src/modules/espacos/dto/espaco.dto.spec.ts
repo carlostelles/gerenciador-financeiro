@@ -1,7 +1,38 @@
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { AddEspacoMembroDto, UpdateEspacoMembroDto } from './espaco.dto';
+import {
+  AddEspacoMembroDto,
+  CreateEspacoDto,
+  UpdateEspacoMembroDto,
+} from './espaco.dto';
 import { EspacoPapel } from '../entities/espaco-membro.entity';
+
+describe('DTOs do espaço', () => {
+  it('remove espaços nas extremidades do nome', async () => {
+    const dto = plainToInstance(CreateEspacoDto, {
+      nome: '  Família  ',
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.nome).toBe('Família');
+  });
+
+  it('rejeita nome vazio após normalização', async () => {
+    const dto = plainToInstance(CreateEspacoDto, { nome: '   ' });
+
+    await expect(validate(dto)).resolves.not.toHaveLength(0);
+  });
+
+  it('aceita nome normalizado com exatamente 120 caracteres', async () => {
+    const dto = plainToInstance(CreateEspacoDto, {
+      nome: ` ${'a'.repeat(120)} `,
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.nome).toHaveLength(120);
+  });
+});
 
 describe('DTOs de membros do espaço', () => {
   it.each([EspacoPapel.EDITOR, EspacoPapel.VIEWER])(

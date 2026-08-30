@@ -55,7 +55,7 @@ import { EspacoContextService } from '../../core/services/espaco-context.service
 })
 export class TemplateComponent implements OnInit {
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
+  protected readonly router = inject(Router);
   protected readonly espacoContext = inject(EspacoContextService);
 
   protected readonly breadcrumbs = ['Home', 'Dashboard'];
@@ -109,6 +109,7 @@ export class TemplateComponent implements OnInit {
   private updatePageTitle(url: string): void {
     const routeTitles: { [key: string]: string } = {
       '/home': 'Dashboard',
+      '/espacos': 'Espaços financeiros',
       '/categorias': 'Categorias',
       '/orcamentos': 'Orçamentos',
       '/movimentacoes': 'Movimentações',

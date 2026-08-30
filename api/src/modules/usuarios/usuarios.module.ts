@@ -6,7 +6,6 @@ import { UsuariosService } from './usuarios.service';
 import { UsuariosController } from './usuarios.controller';
 import { Usuario } from './entities/usuario.entity';
 import { LogsModule } from '../logs/logs.module';
-import { CategoriasModule } from '../categorias/categorias.module';
 import { EspacosModule } from '../espacos/espacos.module';
 
 @Module({
@@ -14,7 +13,6 @@ import { EspacosModule } from '../espacos/espacos.module';
     TypeOrmModule.forFeature([Usuario]),
     JwtModule,
     forwardRef(() => LogsModule),
-    CategoriasModule,
     EspacosModule,
   ],
   controllers: [UsuariosController],

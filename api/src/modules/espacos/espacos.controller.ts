@@ -7,13 +7,13 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
   AddEspacoMembroDto,
@@ -42,11 +42,7 @@ export class EspacosController {
   }
 
   @Get('contexto')
-  contexto(
-    @Query('espacoId') value: string | undefined,
-    @CurrentUser() user: any,
-  ) {
-    const espacoId = value === undefined ? undefined : Number(value);
+  contexto(@EspacoId() espacoId: number | undefined, @CurrentUser() user: any) {
     return this.service.resolveContext(espacoId, user.sub);
   }
 

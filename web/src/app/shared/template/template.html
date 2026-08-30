@@ -15,6 +15,8 @@
             }
         </tui-data-list>
     </tui-textfield>
+    <a tuiIconButton iconStart="@tui.settings" appearance="secondary" routerLink="/espacos"
+        tuiTooltip="Gerenciar espaços" aria-label="Gerenciar espaços"></a>
     <button iconStart="@tui.power" tuiIconButton type="button" (click)="logout()">
         Sair
     </button>
@@ -31,6 +33,9 @@
         </button>
         <button iconStart="@tui.wallet" tuiAsideItem routerLink="/contas" type="button">
             <span tuiFade>Contas</span>
+        </button>
+        <button iconStart="@tui.layout-grid" tuiAsideItem routerLink="/espacos" type="button">
+            <span tuiFade>Espaços</span>
         </button>
         <button iconStart="@tui.chart-column-big" tuiAsideItem routerLink="/orcamentos" type="button">
             <span tuiFade>Orçamento</span>
@@ -61,6 +66,12 @@
         @if (espacoContext.error()) {
             <div class="space-error" role="alert">{{ espacoContext.error() }}</div>
         }
+        @if (!espacoContext.loading() && !espacoContext.error() && espacoContext.spaces().length === 0 && router.url !== '/espacos') {
+            <div class="space-empty">
+                <span>Nenhum espaço disponível.</span>
+                <a tuiButton appearance="primary" size="s" routerLink="/espacos">Criar espaço</a>
+            </div>
+        }
         <nav compact tuiSubheader [style.position]="'sticky'">
             <tui-breadcrumbs [itemsLimit]="10">
                 <ng-container *ngFor="let item of breadcrumbs; let last = last">
@@ -77,6 +88,8 @@
                 </ng-container>
             </tui-breadcrumbs>
         </nav>
-        <router-outlet></router-outlet>
+        @if (router.url === '/espacos' || (!espacoContext.loading() && espacoContext.selected())) {
+            <router-outlet></router-outlet>
+        }
     </main>
 </div>

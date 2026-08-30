@@ -67,4 +67,18 @@ export class EspacoContextService {
     this.selected.set(selected);
     sessionStorage.setItem('espacoId', String(espacoId));
   }
+
+  removeLocal(espacoId: number): void {
+    const spaces = this.spaces().filter((space) => space.id !== espacoId);
+    this.spaces.set(spaces);
+    if (this.selected()?.id !== espacoId) return;
+
+    const selected = spaces[0] ?? null;
+    this.selected.set(selected);
+    if (selected) {
+      sessionStorage.setItem('espacoId', String(selected.id));
+    } else {
+      sessionStorage.removeItem('espacoId');
+    }
+  }
 }

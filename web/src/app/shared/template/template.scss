@@ -18,6 +18,15 @@ main {
   background: var(--tui-background-negative-1);
 }
 
+.space-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--tui-border-normal);
+}
+
 .navigation-layout {
   display: flex;
 }

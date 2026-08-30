@@ -491,98 +491,6 @@ describe('MovimentacoesService', () => {
       );
     });
 
-    it('deve reutilizar movimento parcial após crash posterior à criação', async () => {
-      const upload = {
-        bucket: 'bucket-teste',
-        key: 'movimentacoes/1/checkpoint.pdf',
-        caminhoArquivo: 's3://bucket-teste/movimentacoes/1/checkpoint.pdf',
-      };
-      const analise = {
-        tipoDocumento: 'comprovante' as const,
-        data: null,
-        periodo: null,
-        valor: 25,
-        descricao: 'Movimento parcial',
-        categoriaId: null,
-        contaId: null,
-        lancamentos: [],
-      };
-      const comprovante = {
-        id: 70,
-        usuarioId,
-        movimentoId: null,
-        idempotencyKey: 'whatsapp:wamid-parcial:arquivo:0',
-        caminhoArquivo: upload.caminhoArquivo,
-        nomeArquivo: arquivo.originalname,
-        tipoArquivo: arquivo.mimetype,
-        tamanhoArquivo: arquivo.size,
-      } as MovimentoComprovante;
-      const movimento = {
-        id: 71,
-        usuarioId,
-        periodo: new Date().toISOString().slice(0, 7),
-        data: null,
-        valor: 25,
-        categoriaId: null,
-        comprovanteId: 70,
-        idempotencyKey: 'whatsapp:wamid-parcial:resultado:0',
-      } as Movimento;
-      let comprovantePersistido: MovimentoComprovante | null = null;
-      let movimentoPersistido: Movimento | null = null;
-
-      categoriaRepository.find.mockResolvedValue([]);
-      contaRepository.find.mockResolvedValue([]);
-      comprovanteRepository.create.mockImplementation(
-        (payload) => payload as MovimentoComprovante,
-      );
-      comprovanteRepository.findOne.mockImplementation(async ({ where }) => {
-        const filtro = where as { id?: number; idempotencyKey?: string };
-        if (filtro.idempotencyKey) return comprovantePersistido;
-        return comprovantePersistido?.id === filtro.id
-          ? comprovantePersistido
-          : null;
-      });
-      comprovanteRepository.save.mockImplementation(async () => {
-        comprovantePersistido = comprovante;
-        return comprovante;
-      });
-      movimentoRepository.create.mockImplementation(
-        (payload) => payload as Movimento,
-      );
-      movimentoRepository.findOne.mockImplementation(async ({ where }) => {
-        const filtro = where as { idempotencyKey?: string };
-        return filtro.idempotencyKey ? movimentoPersistido : null;
-      });
-      movimentoRepository.save.mockImplementation(async () => {
-        movimentoPersistido = movimento;
-        return movimento;
-      });
-      logsService.create
-        .mockRejectedValueOnce(new Error('crash apos criacao parcial'))
-        .mockResolvedValue(undefined);
-
-      const executar = () =>
-        service.analisarComprovante(
-          arquivo,
-          usuarioId,
-          undefined,
-          { upload, analise },
-          { idempotencyKeyPrefix: 'whatsapp:wamid-parcial' },
-        );
-
-      await expect(executar()).rejects.toThrow('crash apos criacao parcial');
-      await expect(executar()).resolves.toEqual(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            comprovanteId: 70,
-            salvamento: { status: 'criado', movimentoId: 71 },
-          }),
-        }),
-      );
-      expect(comprovanteRepository.save).toHaveBeenCalledTimes(1);
-      expect(movimentoRepository.save).toHaveBeenCalledTimes(1);
-    });
-
     it('deve rejeitar arquivo com tipo não suportado', async () => {
       await expect(
         service.analisarComprovante(
@@ -590,56 +498,6 @@ describe('MovimentacoesService', () => {
           usuarioId,
         ),
       ).rejects.toThrow(UnsupportedMediaTypeException);
-    });
-
-    it('deve classificar com legenda sem duplicar upload ou analise', async () => {
-      categoriaRepository.find.mockResolvedValue([]);
-      contaRepository.find.mockResolvedValue([]);
-      comprovanteStorageService.uploadComprovante.mockResolvedValue({
-        bucket: 'bucket-teste',
-        key: 'movimentacoes/1/extrato.pdf',
-        caminhoArquivo: 's3://bucket-teste/movimentacoes/1/extrato.pdf',
-      });
-      const analise = {
-        tipoDocumento: 'extrato',
-        data: null,
-        periodo: null,
-        valor: null,
-        descricao: null,
-        categoriaId: null,
-        contaId: null,
-        lancamentos: [],
-      } as const;
-      comprovanteAiService.analisarComprovante.mockResolvedValue(analise);
-      const analisarExtratos = jest
-        .spyOn(service, 'analisarExtratos')
-        .mockResolvedValue({
-          resultados: [],
-          movimentosCriados: 0,
-          movimentosIgnorados: 0,
-          transferenciasIgnoradas: 0,
-        });
-
-      const result = await service.analisarArquivoAutomaticamente(
-        arquivo,
-        usuarioId,
-        'este arquivo e o extrato de agosto',
-      );
-
-      expect(comprovanteStorageService.uploadComprovante).toHaveBeenCalledTimes(
-        1,
-      );
-      expect(comprovanteAiService.analisarComprovante).toHaveBeenCalledTimes(1);
-      expect(comprovanteAiService.analisarComprovante).toHaveBeenCalledWith(
-        arquivo,
-        [],
-        [],
-        'este arquivo e o extrato de agosto',
-      );
-      expect(analisarExtratos).toHaveBeenCalledWith([arquivo], usuarioId, [
-        expect.objectContaining({ analise }),
-      ]);
-      expect(result.tipoDocumento).toBe('extrato');
     });
 
     it('deve criar um unico comprovante para varios movimentos do extrato', async () => {
@@ -651,20 +509,52 @@ describe('MovimentacoesService', () => {
         id: 80,
         usuarioId,
         movimentoId: null,
-        idempotencyKey: 'whatsapp:wamid-extrato:arquivo:0',
         caminhoArquivo: 's3://bucket/extrato.pdf',
         nomeArquivo: 'comprovante.pdf',
         tipoArquivo: 'application/pdf',
         tamanhoArquivo: 2048,
       } as MovimentoComprovante;
+      comprovanteStorageService.uploadComprovante.mockResolvedValue({
+        bucket: 'bucket',
+        key: 'extrato.pdf',
+        caminhoArquivo: 's3://bucket/extrato.pdf',
+      });
+      comprovanteAiService.analisarComprovante.mockResolvedValue({
+        tipoDocumento: 'extrato',
+        data: null,
+        periodo: null,
+        valor: null,
+        descricao: null,
+        categoriaId: null,
+        contaId: null,
+        lancamentos: [
+          {
+            data: '2026-08-10',
+            valor: 10,
+            descricao: 'Compra A',
+            categoriaId: 7,
+            contaId: null,
+            tipo: 'saida',
+          },
+          {
+            data: '2026-08-11',
+            valor: 20,
+            descricao: 'Compra B',
+            categoriaId: 7,
+            contaId: null,
+            tipo: 'saida',
+          },
+        ],
+      });
       comprovanteRepository.create.mockImplementation(
         (payload) => payload as MovimentoComprovante,
       );
       comprovanteRepository.findOne.mockImplementation(async ({ where }) => {
-        const filtro = where as { id?: number; idempotencyKey?: string };
+        const filtro = where as { id?: number };
         return filtro.id === 80 ? comprovante : null;
       });
       comprovanteRepository.save.mockResolvedValue(comprovante);
+      movimentoRepository.find.mockResolvedValue([]);
       movimentoRepository.create.mockImplementation(
         (payload) => payload as Movimento,
       );
@@ -680,47 +570,7 @@ describe('MovimentacoesService', () => {
         return filtro.id ? movimentos.get(filtro.id) || null : null;
       });
 
-      const resultado = await service.analisarExtratos(
-        [arquivo],
-        usuarioId,
-        [
-          {
-            upload: {
-              bucket: 'bucket',
-              key: 'extrato.pdf',
-              caminhoArquivo: 's3://bucket/extrato.pdf',
-            },
-            analise: {
-              tipoDocumento: 'extrato',
-              data: null,
-              periodo: null,
-              valor: null,
-              descricao: null,
-              categoriaId: null,
-              contaId: null,
-              lancamentos: [
-                {
-                  data: '2026-08-10',
-                  valor: 10,
-                  descricao: 'Compra A',
-                  categoriaId: 7,
-                  contaId: null,
-                  tipo: 'saida',
-                },
-                {
-                  data: '2026-08-11',
-                  valor: 20,
-                  descricao: 'Compra B',
-                  categoriaId: 7,
-                  contaId: null,
-                  tipo: 'saida',
-                },
-              ],
-            },
-          },
-        ],
-        { idempotencyKeyPrefix: 'whatsapp:wamid-extrato' },
-      );
+      const resultado = await service.analisarExtratos([arquivo], usuarioId);
 
       expect(comprovanteRepository.save).toHaveBeenCalledTimes(1);
       expect(movimentoRepository.create).toHaveBeenCalledTimes(2);

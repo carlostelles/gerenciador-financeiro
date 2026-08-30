@@ -47,10 +47,6 @@ export class Movimento {
   @Column({ nullable: true })
   comprovanteId: number | null;
 
-  @Index({ unique: true })
-  @Column({ length: 190, nullable: true })
-  idempotencyKey: string | null;
-
   @Column({ default: false })
   revisado: boolean;
 

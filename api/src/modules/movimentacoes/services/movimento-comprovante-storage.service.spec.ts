@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { MovimentoComprovanteStorageService } from './movimento-comprovante-storage.service';
 
 describe('MovimentoComprovanteStorageService', () => {
-  it('usa a mesma chave S3 para a mesma chave de idempotencia', async () => {
+  it('envia o comprovante para uma chave única da movimentação', async () => {
     const config = {
       get: jest.fn((key: string) =>
         key === 'AWS_S3_BUCKET_NAME' ? 'bucket-teste' : undefined,
@@ -18,23 +18,21 @@ describe('MovimentoComprovanteStorageService', () => {
       buffer: Buffer.from('pdf'),
     };
 
-    const primeiro = await service.uploadComprovante(
-      1,
-      arquivo,
-      'whatsapp:wamid-1:hash',
-    );
-    const segundo = await service.uploadComprovante(
-      1,
-      arquivo,
-      'whatsapp:wamid-1:hash',
-    );
+    const primeiro = await service.uploadComprovante(1, arquivo);
+    const segundo = await service.uploadComprovante(1, arquivo);
 
-    expect(primeiro.key).toBe(segundo.key);
     expect(primeiro.key).toMatch(
-      /^movimentacoes\/1\/idempotente\/[a-f0-9]{64}-extrato-agosto\.pdf$/,
+      /^movimentacoes\/1\/\d{4}\/\d{2}\/[0-9a-f-]{36}-extrato-agosto\.pdf$/,
     );
-    expect(send.mock.calls[0][0].input.Key).toBe(
-      send.mock.calls[1][0].input.Key,
+    expect(segundo.key).not.toBe(primeiro.key);
+    expect(primeiro.caminhoArquivo).toBe(`s3://bucket-teste/${primeiro.key}`);
+    expect(send.mock.calls[0][0].input).toEqual(
+      expect.objectContaining({
+        Bucket: 'bucket-teste',
+        Key: primeiro.key,
+        Body: arquivo.buffer,
+        ContentType: 'application/pdf',
+      }),
     );
   });
 });

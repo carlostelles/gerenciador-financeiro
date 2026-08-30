@@ -2,7 +2,7 @@
 
 ## Escopo
 
-Esta atualização foi executada separadamente da correção de idempotência e cardinalidade do fluxo WhatsApp. O manifesto e o lockfile da API foram atualizados de forma coordenada e validada.
+O manifesto e o lockfile da API foram atualizados de forma coordenada e validada.
 
 ## Estado anterior em 2026-08-29
 

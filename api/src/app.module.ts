@@ -16,7 +16,6 @@ import { OrcamentosModule } from './modules/orcamentos/orcamentos.module';
 import { MovimentacoesModule } from './modules/movimentacoes/movimentacoes.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
 import { ContasModule } from './modules/contas/contas.module';
-import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -44,7 +43,6 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     MovimentacoesModule,
     ReservasModule,
     ContasModule,
-    WhatsappModule,
   ],
   controllers: [HealthController],
   providers: [

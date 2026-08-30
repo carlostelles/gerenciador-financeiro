@@ -2,7 +2,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  Index,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -16,10 +15,6 @@ export class MovimentoComprovante {
 
   @Column({ nullable: true })
   movimentoId: number | null;
-
-  @Index({ unique: true })
-  @Column({ length: 190, nullable: true })
-  idempotencyKey: string | null;
 
   @Column()
   usuarioId: number;

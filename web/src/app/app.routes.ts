@@ -42,10 +42,6 @@ export const routes: Routes = [
       {
         path: 'movimentacoes',
         loadComponent: () => import('./pages/movimentos/movimentos').then(m => m.MovimentosComponent)
-      },
-      {
-        path: 'whatsapp',
-        loadComponent: () => import('./pages/whatsapp/whatsapp').then(m => m.WhatsappComponent)
       }
     ]
   },

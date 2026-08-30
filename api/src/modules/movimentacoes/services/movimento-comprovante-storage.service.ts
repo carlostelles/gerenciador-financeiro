@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { extname } from 'path';
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { ComprovanteUploadFile } from '../types/comprovante-upload-file.type';
 
 @Injectable()
@@ -35,7 +35,6 @@ export class MovimentoComprovanteStorageService {
   async uploadComprovante(
     usuarioId: number,
     arquivo: ComprovanteUploadFile,
-    idempotencyKey?: string,
   ): Promise<{ bucket: string; key: string; caminhoArquivo: string }> {
     if (!this.bucket) {
       throw new InternalServerErrorException(
@@ -56,11 +55,7 @@ export class MovimentoComprovanteStorageService {
         .replace(/-{2,}/g, '-')
         .replace(/^-|-$/g, '') || 'comprovante';
 
-    const key = idempotencyKey
-      ? `movimentacoes/${usuarioId}/idempotente/${createHash('sha256')
-          .update(idempotencyKey)
-          .digest('hex')}-${nomeBase}${extensao}`
-      : `movimentacoes/${usuarioId}/${ano}/${mes}/${randomUUID()}-${nomeBase}${extensao}`;
+    const key = `movimentacoes/${usuarioId}/${ano}/${mes}/${randomUUID()}-${nomeBase}${extensao}`;
 
     await this.client.send(
       new PutObjectCommand({
@@ -68,50 +63,6 @@ export class MovimentoComprovanteStorageService {
         Key: key,
         Body: arquivo.buffer,
         ContentType: arquivo.mimetype,
-      }),
-    );
-
-    return {
-      bucket: this.bucket,
-      key,
-      caminhoArquivo: `s3://${this.bucket}/${key}`,
-    };
-  }
-
-  async uploadArquivoTemporario(
-    usuarioId: number,
-    buffer: Buffer,
-    nomeArquivo: string,
-    contentType: string,
-    prefix = 'whatsapp/extratos',
-  ): Promise<{ bucket: string; key: string; caminhoArquivo: string }> {
-    if (!this.bucket) {
-      throw new InternalServerErrorException(
-        'Bucket S3 não configurado para upload de arquivos temporários',
-      );
-    }
-
-    const agora = new Date();
-    const ano = agora.getUTCFullYear();
-    const mes = String(agora.getUTCMonth() + 1).padStart(2, '0');
-    const extensao = extname(nomeArquivo) || '';
-    const nomeBase =
-      nomeArquivo
-        .replace(extensao, '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-_]+/g, '-')
-        .replace(/-{2,}/g, '-')
-        .replace(/^-|-$/g, '') || 'arquivo';
-
-    const key = `${prefix}/${usuarioId}/${ano}/${mes}/${randomUUID()}-${nomeBase}${extensao}`;
-
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
       }),
     );
 

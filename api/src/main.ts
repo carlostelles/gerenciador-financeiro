@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser());
 
@@ -57,7 +57,6 @@ async function bootstrap() {
       .addTag('movimentacoes', 'Gestão de Movimentações')
       .addTag('reservas', 'Gestão de Reservas')
       .addTag('logs', 'Logs do Sistema')
-      .addTag('whatsapp', 'Integração WhatsApp Cloud API')
       .build();
 
     const document = SwaggerModule.createDocument(app, config);

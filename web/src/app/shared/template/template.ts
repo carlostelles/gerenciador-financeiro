@@ -95,7 +95,6 @@ export class TemplateComponent implements OnInit {
       '/categorias': 'Categorias',
       '/orcamentos': 'Orçamentos',
       '/movimentacoes': 'Movimentações',
-      '/whatsapp': 'WhatsApp',
       '/reservas': 'Reservas',
       '/usuarios': 'Usuários',
       '/logs': 'Logs'

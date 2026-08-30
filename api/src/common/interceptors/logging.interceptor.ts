@@ -48,8 +48,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     this.logger.log(`${method} ${path} - ${userInfo}`);
 
-    const isWhatsappWebhook = path.endsWith('/whatsapp/webhook');
-    if (!isWhatsappWebhook && body && Object.keys(body).length > 0) {
+    if (body && Object.keys(body).length > 0) {
       this.logger.debug(
         `Request Body: ${JSON.stringify(redactSensitiveData(body))}`,
       );

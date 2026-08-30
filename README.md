@@ -49,6 +49,7 @@ O **Gerenciador Financeiro** é uma solução completa para controle de finança
 ### Características Principais
 
 - 🔐 **Autenticação JWT** completa com refresh token
+- 👥 **Espaços Financeiros Compartilhados** com papéis OWNER, EDITOR e VIEWER
 - 🏷️ **Gestão de Categorias** para organização financeira
 - 💰 **Orçamentos por Período** com controle detalhado
 - 📝 **Movimentações Financeiras** com categorização
@@ -107,6 +108,13 @@ O **Gerenciador Financeiro** é uma solução completa para controle de finança
 - Controle de acesso baseado em roles (USER/ADMIN)
 - Rate limiting e proteção contra ataques
 - Headers de segurança configurados
+
+### 👥 Espaços Financeiros Compartilhados
+- Um OWNER por espaço, com transferência obrigatória antes da saída
+- Convite e vínculo imediato de membros por e-mail exato
+- Papéis EDITOR e VIEWER aplicados aos recursos do espaço
+- Contas, categorias, orçamentos, reservas e movimentações compartilhados
+- Contexto de espaço ativo explícito, sem acesso implícito para ADMIN
 
 ### 🏷️ Gestão de Categorias
 - CRUD completo de categorias financeiras

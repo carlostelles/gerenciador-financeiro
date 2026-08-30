@@ -158,28 +158,79 @@ make prod-rebuild # Rebuild containers
 ### Migrações de banco
 
 Em produção, o TypeORM não sincroniza o schema automaticamente. Depois de gerar
-a nova imagem da API e antes de iniciar essa versão, execute as migrações
-pendentes com as mesmas variáveis de ambiente do serviço:
+a nova imagem da API, execute as migrações pendentes com as mesmas variáveis de
+ambiente do serviço.
+
+Esta entrega contém duas migrações irreversíveis, nesta ordem:
+
+1. `1798588800000-remove-whatsapp-integration`: remove tabelas operacionais e
+     colunas exclusivas da integração WhatsApp.
+2. `1798675200000-create-financial-spaces`: cria espaços pessoais, vincula os
+     dados existentes ao OWNER correspondente e consolida saldos iniciais
+     duplicados antes de criar a nova restrição única.
+
+Não use `migration:revert:prod` para esta entrega. O rollback exige restaurar o
+backup completo do MySQL e as imagens anteriores. Planeje uma janela de
+manutenção, pois a API anterior não grava os novos campos obrigatórios.
+
+#### Backup e deploy
+
+Defina fora do repositório um caminho protegido para o backup. O comando abaixo
+usa as credenciais já presentes no container e não as imprime no terminal:
 
 ```bash
-docker compose build api
-docker compose run --rm api npm run migration:run:prod
-docker compose up -d
+export BACKUP_FILE="/caminho/seguro/mysql-antes-espacos-$(date +%Y%m%d%H%M%S).sql"
+docker compose exec -T mysql sh -c \
+    'exec mysqldump --single-transaction --routines --triggers -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+    > "$BACKUP_FILE"
+test -s "$BACKUP_FILE"
 ```
 
-Para a feature de saldo inicial, esse comando cria `saldo_iniciais` e preenche os
-períodos que já possuem movimentações. Faça backup do MySQL antes da execução e
-confirme a conclusão da migração antes de subir a API e o frontend.
-
-Em caso de rollback, pare a API nova, reverta a última migração e restaure a
-imagem anterior:
+Construa as novas imagens antes da janela. Preserve a referência imutável das
+imagens atualmente implantadas para rollback e, então, pare as escritas, rode
+as migrações e suba a nova versão:
 
 ```bash
+docker compose build api web
 docker compose stop api
-docker compose run --rm api npm run migration:revert:prod
-# Restaure a tag anterior da imagem da API antes de reiniciar os serviços.
-docker compose up -d
+docker compose run --rm api npm run migration:run:prod
+docker compose up -d api web nginx
 ```
+
+Confirme no output que as duas migrations terminaram sem erro. Não reinicie a
+API se houver falha parcial; preserve os logs e siga o rollback abaixo.
+
+#### Verificação pós-deploy
+
+```bash
+docker compose ps
+curl --fail http://localhost/health
+docker compose logs --since=10m api
+```
+
+Faça smoke tests de login, seleção e troca do espaço ativo, convite por e-mail,
+permissões de OWNER/EDITOR/VIEWER, criação de uma movimentação e visualização de
+saldo. Monitore respostas `403`/`404` inesperadas, erros de chave estrangeira e
+falhas ao resolver o contexto do espaço. Não registre tokens, e-mails completos
+ou dados financeiros nos logs de diagnóstico.
+
+#### Rollback
+
+Como houve remoção e consolidação de dados, restaure o backup em vez de executar
+o `down` das migrations. Mantenha API e web parados durante toda a restauração:
+
+```bash
+docker compose stop api web
+docker compose exec -T mysql sh -c \
+    'exec mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+    < "$BACKUP_FILE"
+# Reconfigure api/web para as referências imutáveis preservadas anteriormente.
+docker compose up -d api web nginx
+curl --fail http://localhost/health
+```
+
+Valide login, movimentações e saldos após a restauração. Retenha o backup até o
+fim da janela de observação definida para o release.
 
 **URLs de Produção:**
 - 🌐 **Aplicação**: http://localhost

@@ -122,7 +122,7 @@ describe('AuthService', () => {
 
   it('should emit authentication state changes', () => {
     let authState: boolean | undefined;
-    
+
     service.isAuthenticated$.subscribe(state => {
       authState = state;
     });
@@ -139,7 +139,7 @@ describe('AuthService', () => {
     };
 
     service.login({ email: 'test@test.com', senha: 'password' }).subscribe();
-    
+
     const req = httpMock.expectOne('http://localhost:3000/auth/login');
     req.flush(mockResponse);
 

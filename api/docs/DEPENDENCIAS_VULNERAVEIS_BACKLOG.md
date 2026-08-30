@@ -1,14 +1,14 @@
-# Backlog de dependências vulneráveis
+# Atualização de dependências vulneráveis
 
 ## Escopo
 
-Esta atualização deve ser entregue separadamente da correção de idempotência e cardinalidade do fluxo WhatsApp. Nenhuma versão ou lockfile foi alterado nesta fase.
+Esta atualização foi executada separadamente da correção de idempotência e cardinalidade do fluxo WhatsApp. O manifesto e o lockfile da API foram atualizados de forma coordenada e validada.
 
-## Estado em 2026-08-29
+## Estado anterior em 2026-08-29
 
 O comando `npm audit --json` executado em `api/` reportou 36 ocorrências: 1 crítica, 17 altas, 16 moderadas e 2 baixas.
 
-O comando `npm audit --omit=dev --json` ainda reportou 19 ocorrências no grafo de produção: 1 crítica, 7 altas e 11 moderadas. A imagem final foi ajustada para instalar com `npm ci --omit=dev`, removendo `sqlite3`, mas ainda contém `tar@6.2.1` por meio de `bcrypt -> @mapbox/node-pre-gyp`. O runtime também contém versões vulneráveis de `multer`, alcançáveis pelos endpoints autenticados de upload de comprovantes.
+O comando `npm audit --omit=dev --json` reportava 19 ocorrências no grafo de produção: 1 crítica, 7 altas e 11 moderadas. O runtime continha versões vulneráveis de `multer` e a cadeia `bcrypt -> @mapbox/node-pre-gyp -> tar`.
 
 Dependências diretas envolvidas:
 
@@ -24,18 +24,27 @@ Dependências diretas envolvidas:
 - `@typescript-eslint/eslint-plugin` e `@typescript-eslint/parser`: altas, com correção disponível a avaliar.
 - `sqlite3`: alta e origem transitiva do achado crítico em `tar`; a correção indicada exige `sqlite3` 6.
 
-## Entrega recomendada
+## Atualização executada
 
-1. Separar dependências de runtime das ferramentas de desenvolvimento e confirmar se `sqlite3` ainda é necessário.
-2. Aplicar primeiro correções sem mudança major, uma família por vez, executando build e suítes unitária/e2e.
-3. Planejar a atualização coordenada do NestJS e pacotes relacionados, validando os respectivos guias de migração.
-4. Reexecutar `npm audit` e registrar os riscos residuais antes do merge dessa entrega.
+1. `sqlite3` foi removido das dependências de desenvolvimento por não possuir uso no código ou na configuração atual baseada em MySQL.
+2. `bcrypt` foi atualizado para 6.0.0, eliminando a cadeia vulnerável de instalação nativa. Um teste específico confirma compatibilidade com hashes legados e novos.
+3. A família NestJS foi atualizada de forma coordenada para a versão 11, incluindo `common`, `core`, `config`, `jwt`, `mongoose`, `passport`, `platform-express`, `swagger`, `typeorm`, `testing` e `schematics`.
+4. `@nestjs/platform-express` passou a usar `multer` 2.2.0.
+5. `@typescript-eslint/parser` e `@typescript-eslint/eslint-plugin` foram atualizados para a família 8.
+6. As versões transitivas vulneráveis de `js-yaml` foram atualizadas para 4.3.2 e 3.15.2.
+7. Os estágios de build e produção do Docker passaram a instalar dependências com `npm ci`; a imagem final instala somente dependências de produção.
 
-## Decisão de risco recomendada
+## Validação final
 
-Não liberar em produção sem uma destas decisões registradas:
+- `npm audit`: 0 vulnerabilidades.
+- `npm audit --omit=dev`: 0 vulnerabilidades.
+- Build da API: aprovado.
+- Testes unitários: 16 suítes e 176 testes aprovados.
+- Testes E2E: 8 suítes e 239 testes aprovados.
+- Compatibilidade do bcrypt: hashes legados e novos validados.
+- `npm ci --dry-run`: aprovado, confirmando sincronismo entre `package.json` e `package-lock.json`.
+- `sqlite3` não está presente no grafo instalado.
 
-1. corrigir as dependências de runtime, com prioridade para `multer`/`@nestjs/platform-express` e para a cadeia de instalação do `bcrypt`; ou
-2. obter aceite formal e temporário do risco, restringindo tamanho e taxa de uploads no proxy/API, monitorando consumo de recursos e definindo prazo curto para a atualização.
+## Risco residual
 
-O backlog separado evita misturar uma atualização coordenada de dependências com a feature, mas não elimina o risco de disponibilidade dos endpoints de upload.
+Não há achados conhecidos no audit atual. Atualizações major opcionais posteriores, como NestJS 12, ESLint 10, Jest 30 e Mongoose 9, ficaram fora do escopo porque não são necessárias para eliminar vulnerabilidades e exigem ciclos de migração próprios.

@@ -79,7 +79,9 @@ describe('AuthService', () => {
     it('deve retornar tokens quando credenciais forem válidas', async () => {
       usuariosService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      jwtService.signAsync.mockResolvedValueOnce('access-token').mockResolvedValueOnce('refresh-token');
+      jwtService.signAsync
+        .mockResolvedValueOnce('access-token')
+        .mockResolvedValueOnce('refresh-token');
 
       const result = await service.login(loginDto);
 
@@ -95,21 +97,27 @@ describe('AuthService', () => {
     it('deve lançar UnauthorizedException quando usuário não for encontrado', async () => {
       usuariosService.findByEmail.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('deve lançar UnauthorizedException quando senha for inválida', async () => {
       usuariosService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('deve lançar UnauthorizedException quando usuário estiver inativo', async () => {
       const inactiveUser = { ...mockUser, ativo: false };
       usuariosService.findByEmail.mockResolvedValue(inactiveUser as any);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -120,7 +128,9 @@ describe('AuthService', () => {
       const payload = { sub: 1 };
       jwtService.verifyAsync.mockResolvedValue(payload);
       usuariosService.findOne.mockResolvedValue(mockUser as any);
-      jwtService.signAsync.mockResolvedValueOnce('new-access-token').mockResolvedValueOnce('new-refresh-token');
+      jwtService.signAsync
+        .mockResolvedValueOnce('new-access-token')
+        .mockResolvedValueOnce('new-refresh-token');
 
       const result = await service.refresh(refreshTokenDto);
 
@@ -135,7 +145,9 @@ describe('AuthService', () => {
     it('deve lançar UnauthorizedException quando refresh token for inválido', async () => {
       jwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
 
-      await expect(service.refresh(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh(refreshTokenDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -155,25 +167,34 @@ describe('AuthService', () => {
         message: 'Senha alterada com sucesso',
       });
 
-      expect(usuariosService.updatePassword).toHaveBeenCalledWith(1, 'NovaSenha1!');
-      expect(logsService.create).toHaveBeenCalledWith(expect.objectContaining({
-        usuarioId: 1,
-        acao: 'UPDATE',
-      }));
+      expect(usuariosService.updatePassword).toHaveBeenCalledWith(
+        1,
+        'NovaSenha1!',
+      );
+      expect(logsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          usuarioId: 1,
+          acao: 'UPDATE',
+        }),
+      );
     });
 
     it('deve rejeitar quando a confirmação da nova senha for diferente', async () => {
-      await expect(service.alterarSenha({
-        ...alterarSenhaDto,
-        confirmarSenha: 'OutraSenha1!',
-      })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.alterarSenha({
+          ...alterarSenhaDto,
+          confirmarSenha: 'OutraSenha1!',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('deve rejeitar quando a senha atual for inválida', async () => {
       usuariosService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.alterarSenha(alterarSenhaDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.alterarSenha(alterarSenhaDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 

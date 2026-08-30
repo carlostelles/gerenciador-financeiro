@@ -162,7 +162,16 @@ describe('UsuariosService', () => {
       const result = await service.findAll();
 
       expect(repository.find).toHaveBeenCalledWith({
-        select: ['id', 'nome', 'email', 'telefone', 'role', 'ativo', 'createdAt', 'updatedAt'],
+        select: [
+          'id',
+          'nome',
+          'email',
+          'telefone',
+          'role',
+          'ativo',
+          'createdAt',
+          'updatedAt',
+        ],
       });
       expect(result).toEqual(mockUsers);
     });
@@ -176,7 +185,16 @@ describe('UsuariosService', () => {
 
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        select: ['id', 'nome', 'email', 'telefone', 'role', 'ativo', 'createdAt', 'updatedAt'],
+        select: [
+          'id',
+          'nome',
+          'email',
+          'telefone',
+          'role',
+          'ativo',
+          'createdAt',
+          'updatedAt',
+        ],
       });
       expect(result).toEqual(mockUsuario);
     });
@@ -217,7 +235,7 @@ describe('UsuariosService', () => {
     it('deve atualizar usuário com sucesso como admin', async () => {
       repository.findOne.mockResolvedValue(mockUsuario);
       repository.update.mockResolvedValue(undefined);
-      
+
       const updatedUser = { ...mockUsuario, nome: 'Updated Name' };
       jest.spyOn(service, 'findOne').mockResolvedValue(updatedUser);
       logsService.create.mockResolvedValue(undefined);

@@ -46,7 +46,7 @@ describe('WhatsappController (e2e)', () => {
       .useValue({ canActivate: jest.fn(() => true) })
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ rawBody: true });
     app.use((req, _res, next) => {
       req.user = mockUser;
       next();
@@ -96,16 +96,18 @@ describe('WhatsappController (e2e)', () => {
 
   it('deve processar webhook POST publicamente', async () => {
     whatsappService.processWebhookPayload.mockResolvedValue(undefined);
+    const payload = { object: 'whatsapp_business_account', entry: [] };
 
     await request(app.getHttpServer())
       .post('/whatsapp/webhook')
-      .send({ entry: [] })
+      .set('x-hub-signature-256', 'sha256=assinatura')
+      .send(payload)
       .expect(200);
 
-    expect(whatsappService.processWebhookPayload).toHaveBeenCalledWith(
-      { entry: [] },
-      undefined,
-      undefined,
-    );
+    const call = whatsappService.processWebhookPayload.mock.calls[0];
+    expect(call[0]).toEqual(payload);
+    expect(call[1]).toBe('sha256=assinatura');
+    expect(call[2]).toBeInstanceOf(Buffer);
+    expect(JSON.parse(call[2]!.toString('utf8'))).toEqual(payload);
   });
 });

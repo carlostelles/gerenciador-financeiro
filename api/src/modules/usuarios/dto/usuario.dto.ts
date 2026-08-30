@@ -1,9 +1,8 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
   IsEnum,
-  IsPhoneNumber,
   MinLength,
   MaxLength,
   Matches,
@@ -28,7 +27,8 @@ export class CreateUsuarioDto {
   email: string;
 
   @ApiProperty({
-    description: 'Senha do usuário (8-16 caracteres alfanuméricos e especiais seguros)',
+    description:
+      'Senha do usuário (8-16 caracteres alfanuméricos e especiais seguros)',
     example: 'Senha123!',
     minLength: 8,
     maxLength: 16,
@@ -81,7 +81,8 @@ export class UpdateUsuarioDto {
   email?: string;
 
   @ApiProperty({
-    description: 'Senha do usuário (8-16 caracteres alfanuméricos e especiais seguros)',
+    description:
+      'Senha do usuário (8-16 caracteres alfanuméricos e especiais seguros)',
     example: 'Senha123!',
     minLength: 8,
     maxLength: 16,

@@ -8,9 +8,20 @@ export enum WhatsappInboundMessageType {
 
 export enum WhatsappInboundProcessingStatus {
   RECEBIDA = 'RECEBIDA',
+  PROCESSANDO = 'PROCESSANDO',
+  AGUARDANDO_RETRY = 'AGUARDANDO_RETRY',
   PROCESSADA = 'PROCESSADA',
   IGNORADA_NAO_SUPORTADA = 'IGNORADA_NAO_SUPORTADA',
   FALHA = 'FALHA',
+}
+
+export enum WhatsappJobStatus {
+  PENDENTE = 'PENDENTE',
+  PROCESSANDO = 'PROCESSANDO',
+  AGUARDANDO_RETRY = 'AGUARDANDO_RETRY',
+  CONCLUIDO = 'CONCLUIDO',
+  FALHA = 'FALHA',
+  IGNORADO = 'IGNORADO',
 }
 
 export enum WhatsappIntentType {

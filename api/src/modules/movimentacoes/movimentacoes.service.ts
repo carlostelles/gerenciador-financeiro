@@ -73,6 +73,30 @@ export interface SaldosIniciaisResponse {
   saldos: SaldoInicialContaResponse[];
 }
 
+export interface AnaliseArquivoPreparada {
+  upload: { bucket: string; key: string; caminhoArquivo: string };
+  analise: AnaliseComprovanteResultado;
+}
+
+export interface ProcessamentoArquivoOptions {
+  idempotencyKeyPrefix?: string;
+  storageIdempotencyKey?: string;
+  preparado?: Partial<AnaliseArquivoPreparada>;
+  onUploadConcluido?: (
+    upload: AnaliseArquivoPreparada['upload'],
+  ) => Promise<void>;
+  onAnaliseConcluida?: (analise: AnaliseComprovanteResultado) => Promise<void>;
+  onResultadoConcluido?: (
+    resultado: AnalisarComprovanteResponseDto,
+    ordinal: number,
+  ) => Promise<void>;
+}
+
+export interface AnaliseArquivoAutomaticoResultado {
+  tipoDocumento: 'comprovante' | 'extrato';
+  resultados: AnalisarComprovanteResponseDto[];
+}
+
 @Injectable()
 export class MovimentacoesService {
   constructor(
@@ -158,11 +182,10 @@ export class MovimentacoesService {
     }
   }
 
-  private async vincularComprovante(
+  private async validarComprovante(
     comprovanteId: number,
-    movimentoId: number,
     usuarioId: number,
-  ): Promise<void> {
+  ): Promise<MovimentoComprovante> {
     const comprovante = await this.comprovanteRepository.findOne({
       where: { id: comprovanteId, usuarioId },
     });
@@ -173,8 +196,17 @@ export class MovimentacoesService {
       );
     }
 
-    comprovante.movimentoId = movimentoId;
-    await this.comprovanteRepository.save(comprovante);
+    return comprovante;
+  }
+
+  private async vincularComprovante(
+    comprovanteId: number,
+    movimento: Movimento,
+    usuarioId: number,
+  ): Promise<Movimento> {
+    await this.validarComprovante(comprovanteId, usuarioId);
+    movimento.comprovanteId = comprovanteId;
+    return this.movimentoRepository.save(movimento);
   }
 
   async obterUrlComprovante(
@@ -298,7 +330,17 @@ export class MovimentacoesService {
     contaId: number | null,
     comprovanteId: number,
     usuarioId: number,
+    idempotencyKey?: string,
   ): Promise<Movimento> {
+    if (idempotencyKey) {
+      const existente = await this.movimentoRepository.findOne({
+        where: { usuarioId, idempotencyKey },
+      });
+      if (existente) {
+        return existente;
+      }
+    }
+
     const movimento = this.movimentoRepository.create({
       usuarioId,
       periodo,
@@ -307,11 +349,26 @@ export class MovimentacoesService {
       valor: analise.valor,
       categoriaId,
       contaId,
+      comprovanteId,
+      idempotencyKey: idempotencyKey || null,
       revisado: false,
     });
 
-    const movimentoSalvo = await this.movimentoRepository.save(movimento);
-    await this.vincularComprovante(comprovanteId, movimentoSalvo.id, usuarioId);
+    await this.validarComprovante(comprovanteId, usuarioId);
+    let movimentoSalvo: Movimento;
+    try {
+      movimentoSalvo = await this.movimentoRepository.save(movimento);
+    } catch (error) {
+      const existente = idempotencyKey
+        ? await this.movimentoRepository.findOne({
+            where: { usuarioId, idempotencyKey },
+          })
+        : null;
+      if (!existente || !this.isDuplicateEntry(error)) {
+        throw error;
+      }
+      return existente;
+    }
     await this.logsService.create({
       data: new Date(),
       usuarioId,
@@ -323,6 +380,54 @@ export class MovimentacoesService {
     });
 
     return movimentoSalvo;
+  }
+
+  private isDuplicateEntry(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === 'ER_DUP_ENTRY'
+    );
+  }
+
+  private async obterOuCriarComprovante(
+    usuarioId: number,
+    arquivo: ComprovanteUploadFile,
+    upload: AnaliseArquivoPreparada['upload'],
+    idempotencyKey?: string,
+  ): Promise<MovimentoComprovante> {
+    if (idempotencyKey) {
+      const existente = await this.comprovanteRepository.findOne({
+        where: { usuarioId, idempotencyKey },
+      });
+      if (existente) {
+        return existente;
+      }
+    }
+
+    const comprovante = this.comprovanteRepository.create({
+      usuarioId,
+      movimentoId: null,
+      idempotencyKey: idempotencyKey || null,
+      caminhoArquivo: upload.caminhoArquivo,
+      nomeArquivo: arquivo.originalname,
+      tipoArquivo: arquivo.mimetype,
+      tamanhoArquivo: arquivo.size,
+    });
+    try {
+      return await this.comprovanteRepository.save(comprovante);
+    } catch (error) {
+      const existente = idempotencyKey
+        ? await this.comprovanteRepository.findOne({
+            where: { usuarioId, idempotencyKey },
+          })
+        : null;
+      if (!existente || !this.isDuplicateEntry(error)) {
+        throw error;
+      }
+      return existente;
+    }
   }
 
   private descricoesSemelhantes(
@@ -791,6 +896,8 @@ export class MovimentacoesService {
   async analisarExtratos(
     arquivos: ComprovanteUploadFile[],
     usuarioId: number,
+    preparados?: AnaliseArquivoPreparada[],
+    options?: ProcessamentoArquivoOptions,
   ): Promise<AnalisarComprovantesLoteResponseDto> {
     if (!arquivos.length) {
       throw new BadRequestException('Envie pelo menos um arquivo para análise');
@@ -805,20 +912,22 @@ export class MovimentacoesService {
       where: { usuarioId },
       order: { nome: 'ASC' },
     });
-    const analisados = await Promise.all(
-      arquivos.map(async (arquivo) => ({
-        arquivo,
-        upload: await this.comprovanteStorageService.uploadComprovante(
-          usuarioId,
-          arquivo,
-        ),
-        analise: await this.comprovanteAiService.analisarComprovante(
-          arquivo,
-          categorias,
-          contas,
-        ),
-      })),
-    );
+    const analisados = preparados
+      ? arquivos.map((arquivo, index) => ({ arquivo, ...preparados[index] }))
+      : await Promise.all(
+          arquivos.map(async (arquivo) => ({
+            arquivo,
+            upload: await this.comprovanteStorageService.uploadComprovante(
+              usuarioId,
+              arquivo,
+            ),
+            analise: await this.comprovanteAiService.analisarComprovante(
+              arquivo,
+              categorias,
+              contas,
+            ),
+          })),
+        );
 
     if (analisados.some(({ analise }) => analise.tipoDocumento !== 'extrato')) {
       throw new BadRequestException(
@@ -852,6 +961,7 @@ export class MovimentacoesService {
     let transferenciasIgnoradas = 0;
     for (const item of analisados) {
       const indiceArquivo = analisados.indexOf(item);
+      let comprovante: MovimentoComprovante | null = null;
       for (const [
         indiceLancamento,
         lancamento,
@@ -869,21 +979,24 @@ export class MovimentacoesService {
           ? contas.find((itemConta) => itemConta.id === lancamento.contaId) ||
             null
           : null;
-        if (await this.existeMovimentoEquivalente(usuarioId, lancamento)) {
+        if (
+          !options?.idempotencyKeyPrefix &&
+          (await this.existeMovimentoEquivalente(usuarioId, lancamento))
+        ) {
           movimentosIgnorados++;
           continue;
         }
 
-        const comprovante = await this.comprovanteRepository.save(
-          this.comprovanteRepository.create({
+        comprovante =
+          comprovante ||
+          (await this.obterOuCriarComprovante(
             usuarioId,
-            movimentoId: null,
-            caminhoArquivo: item.upload.caminhoArquivo,
-            nomeArquivo: item.arquivo.originalname,
-            tipoArquivo: item.arquivo.mimetype,
-            tamanhoArquivo: item.arquivo.size,
-          }),
-        );
+            item.arquivo,
+            item.upload,
+            options?.idempotencyKeyPrefix
+              ? `${options.idempotencyKeyPrefix}:arquivo:${indiceArquivo}`
+              : undefined,
+          ));
         const analise: AnaliseComprovanteResultado = {
           ...lancamento,
           periodo: lancamento.data ? lancamento.data.slice(0, 7) : null,
@@ -905,6 +1018,9 @@ export class MovimentacoesService {
             conta?.id || null,
             comprovante.id,
             usuarioId,
+            options?.idempotencyKeyPrefix
+              ? `${options.idempotencyKeyPrefix}:resultado:${indiceArquivo}:${indiceLancamento}`
+              : undefined,
           );
         } else {
           movimento = await this.create(
@@ -921,9 +1037,12 @@ export class MovimentacoesService {
               revisado: false,
             },
             usuarioId,
+            options?.idempotencyKeyPrefix
+              ? `${options.idempotencyKeyPrefix}:resultado:${indiceArquivo}:${indiceLancamento}`
+              : undefined,
           );
         }
-        resultados.push({
+        const resultado: AnalisarComprovanteResponseDto = {
           comprovanteId: comprovante.id,
           nomeArquivo: comprovante.nomeArquivo,
           tipoArquivo: comprovante.tipoArquivo,
@@ -941,7 +1060,16 @@ export class MovimentacoesService {
           },
           camposObrigatoriosFaltantes,
           salvamento: { status: 'criado', movimentoId: movimento.id },
-        });
+        };
+        resultados.push(resultado);
+        await options?.onResultadoConcluido?.(
+          resultado,
+          todosLancamentos.findIndex(
+            (itemLancamento) =>
+              itemLancamento.indiceArquivo === indiceArquivo &&
+              itemLancamento.indiceLancamento === indiceLancamento,
+          ),
+        );
       }
     }
     return {
@@ -952,10 +1080,79 @@ export class MovimentacoesService {
     };
   }
 
+  async analisarArquivoAutomaticamente(
+    arquivo: ComprovanteUploadFile,
+    usuarioId: number,
+    legenda?: string,
+    options?: ProcessamentoArquivoOptions,
+  ): Promise<AnaliseArquivoAutomaticoResultado> {
+    this.validarArquivoComprovante(arquivo);
+    const [categorias, contas] = await Promise.all([
+      this.categoriaRepository.find({
+        where: { usuarioId },
+        order: { nome: 'ASC' },
+      }),
+      this.contaRepository.find({
+        where: { usuarioId },
+        order: { nome: 'ASC' },
+      }),
+    ]);
+    const upload =
+      options?.preparado?.upload ||
+      (options?.storageIdempotencyKey
+        ? await this.comprovanteStorageService.uploadComprovante(
+            usuarioId,
+            arquivo,
+            options.storageIdempotencyKey,
+          )
+        : await this.comprovanteStorageService.uploadComprovante(
+            usuarioId,
+            arquivo,
+          ));
+    if (!options?.preparado?.upload) {
+      await options?.onUploadConcluido?.(upload);
+    }
+    const analise =
+      options?.preparado?.analise ||
+      (await this.comprovanteAiService.analisarComprovante(
+        arquivo,
+        categorias,
+        contas,
+        legenda,
+      ));
+    if (!options?.preparado?.analise) {
+      await options?.onAnaliseConcluida?.(analise);
+    }
+    const preparado = { upload, analise };
+
+    if (analise.tipoDocumento === 'extrato') {
+      const lote = options
+        ? await this.analisarExtratos(
+            [arquivo],
+            usuarioId,
+            [preparado],
+            options,
+          )
+        : await this.analisarExtratos([arquivo], usuarioId, [preparado]);
+      return { tipoDocumento: 'extrato', resultados: lote.resultados };
+    }
+
+    const resultado = await this.analisarComprovante(
+      arquivo,
+      usuarioId,
+      undefined,
+      preparado,
+      options,
+    );
+    return { tipoDocumento: 'comprovante', resultados: [resultado.body] };
+  }
+
   async analisarComprovante(
     arquivo: ComprovanteUploadFile,
     usuarioId: number,
     request?: AnalisarComprovanteRequestDto,
+    preparado?: AnaliseArquivoPreparada,
+    options?: ProcessamentoArquivoOptions,
   ): Promise<{
     statusCode: 200 | 201 | 202;
     body: AnalisarComprovanteResponseDto;
@@ -971,27 +1168,28 @@ export class MovimentacoesService {
       order: { nome: 'ASC' },
     });
 
-    const upload = await this.comprovanteStorageService.uploadComprovante(
-      usuarioId,
-      arquivo,
-    );
+    const upload =
+      preparado?.upload ||
+      (await this.comprovanteStorageService.uploadComprovante(
+        usuarioId,
+        arquivo,
+      ));
 
     const analise: AnaliseComprovanteResultado =
-      await this.comprovanteAiService.analisarComprovante(
+      preparado?.analise ||
+      (await this.comprovanteAiService.analisarComprovante(
         arquivo,
         categorias,
         contas,
-      );
+      ));
 
-    const comprovante = await this.comprovanteRepository.save(
-      this.comprovanteRepository.create({
-        usuarioId,
-        movimentoId: null,
-        caminhoArquivo: upload.caminhoArquivo,
-        nomeArquivo: arquivo.originalname,
-        tipoArquivo: arquivo.mimetype,
-        tamanhoArquivo: arquivo.size,
-      }),
+    const comprovante = await this.obterOuCriarComprovante(
+      usuarioId,
+      arquivo,
+      upload,
+      options?.idempotencyKeyPrefix
+        ? `${options.idempotencyKeyPrefix}:arquivo:0`
+        : undefined,
     );
 
     const categoria = analise.categoriaId
@@ -1085,7 +1283,7 @@ export class MovimentacoesService {
 
       await this.vincularComprovante(
         comprovante.id,
-        movimentoAtualizado.id,
+        movimentoAtualizado,
         usuarioId,
       );
 
@@ -1093,6 +1291,8 @@ export class MovimentacoesService {
         status: 'atualizado',
         movimentoId: movimentoAtualizado.id,
       };
+
+      await options?.onResultadoConcluido?.(body, 0);
 
       return {
         statusCode: 200,
@@ -1108,12 +1308,17 @@ export class MovimentacoesService {
         conta?.id || null,
         comprovante.id,
         usuarioId,
+        options?.idempotencyKeyPrefix
+          ? `${options.idempotencyKeyPrefix}:resultado:0`
+          : undefined,
       );
 
       body.salvamento = {
         status: 'criado',
         movimentoId: movimentoParcial.id,
       };
+
+      await options?.onResultadoConcluido?.(body, 0);
 
       return {
         statusCode: 201,
@@ -1138,12 +1343,17 @@ export class MovimentacoesService {
       periodoAlvo,
       createDto,
       usuarioId,
+      options?.idempotencyKeyPrefix
+        ? `${options.idempotencyKeyPrefix}:resultado:0`
+        : undefined,
     );
 
     body.salvamento = {
       status: 'criado',
       movimentoId: movimentoCriado.id,
     };
+
+    await options?.onResultadoConcluido?.(body, 0);
 
     return {
       statusCode: 201,
@@ -1155,10 +1365,33 @@ export class MovimentacoesService {
     periodo: string,
     createMovimentoDto: CreateMovimentoDto,
     usuarioId: number,
+    idempotencyKey?: string,
   ): Promise<Movimento> {
+    if (idempotencyKey) {
+      const existente = await this.movimentoRepository.findOne({
+        where: { usuarioId, idempotencyKey },
+        relations: [
+          'orcamentoItem',
+          'orcamentoItem.categoria',
+          'categoria',
+          'conta',
+          'comprovante',
+        ],
+      });
+      if (existente) {
+        return existente;
+      }
+    }
     if (createMovimentoDto.comprovanteId && createMovimentoDto.parcelas) {
       throw new BadRequestException(
         'Não é possível vincular o mesmo comprovante a uma criação parcelada',
+      );
+    }
+
+    if (createMovimentoDto.comprovanteId) {
+      await this.validarComprovante(
+        createMovimentoDto.comprovanteId,
+        usuarioId,
       );
     }
 
@@ -1203,6 +1436,7 @@ export class MovimentacoesService {
           dataParcelada.getMonth() + 1,
         ).padStart(2, '0')}`,
         usuarioId,
+        idempotencyKey: idempotencyKey || null,
         descricao:
           createMovimentoDto.descricao +
           (createMovimentoDto.parcelas
@@ -1210,7 +1444,20 @@ export class MovimentacoesService {
             : ''),
       });
 
-      const savedMovimento = await this.movimentoRepository.save(movimento);
+      let savedMovimento: Movimento;
+      try {
+        savedMovimento = await this.movimentoRepository.save(movimento);
+      } catch (error) {
+        const existente = idempotencyKey
+          ? await this.movimentoRepository.findOne({
+              where: { usuarioId, idempotencyKey },
+            })
+          : null;
+        if (!existente || !this.isDuplicateEntry(error)) {
+          throw error;
+        }
+        return existente;
+      }
 
       if (primeiroMovimentoId === null) {
         primeiroMovimentoId = savedMovimento.id;
@@ -1226,14 +1473,6 @@ export class MovimentacoesService {
         entidadeId: savedMovimento.id.toString(),
         dadosNovos: savedMovimento,
       });
-    }
-
-    if (createMovimentoDto.comprovanteId && primeiroMovimentoId) {
-      await this.vincularComprovante(
-        createMovimentoDto.comprovanteId,
-        primeiroMovimentoId,
-        usuarioId,
-      );
     }
 
     return this.movimentoRepository.findOne({
@@ -1554,6 +1793,13 @@ export class MovimentacoesService {
       await this.validarConta(updateMovimentoDto.contaId, usuarioId);
     }
 
+    if (updateMovimentoDto.comprovanteId !== undefined) {
+      await this.validarComprovante(
+        updateMovimentoDto.comprovanteId,
+        usuarioId,
+      );
+    }
+
     // Se orcamentoItemId informado, resolver categoriaId a partir do item
     if (updateMovimentoDto.orcamentoItemId && !updateMovimentoDto.categoriaId) {
       const orcamentoItem = await this.orcamentoItemRepository.findOne({
@@ -1585,7 +1831,11 @@ export class MovimentacoesService {
     }
 
     const dadosAnteriores = JSON.parse(JSON.stringify(movimento));
-    const { orcamentoItem, categoria, conta, ...movimentoData } = movimento;
+    const movimentoData = { ...movimento };
+    delete movimentoData.orcamentoItem;
+    delete movimentoData.categoria;
+    delete movimentoData.conta;
+    delete movimentoData.comprovante;
     Object.assign(movimentoData, updateMovimentoDto);
 
     const movimentoAtualizado =

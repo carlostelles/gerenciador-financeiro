@@ -42,13 +42,17 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const { method, url, body, user } = request;
+    const { method, body, user } = request;
+    const path = request.path || String(request.url || '').split('?')[0];
     const userInfo = user ? `User: ${user.sub}` : 'Unauthenticated';
 
-    this.logger.log(`${method} ${url} - ${userInfo}`);
+    this.logger.log(`${method} ${path} - ${userInfo}`);
 
-    if (body && Object.keys(body).length > 0) {
-      this.logger.debug(`Request Body: ${JSON.stringify(redactSensitiveData(body))}`);
+    const isWhatsappWebhook = path.endsWith('/whatsapp/webhook');
+    if (!isWhatsappWebhook && body && Object.keys(body).length > 0) {
+      this.logger.debug(
+        `Request Body: ${JSON.stringify(redactSensitiveData(body))}`,
+      );
     }
 
     const now = Date.now();
@@ -56,7 +60,7 @@ export class LoggingInterceptor implements NestInterceptor {
       tap(() => {
         const response = context.switchToHttp().getResponse();
         this.logger.log(
-          `${method} ${url} - ${response.statusCode} - ${Date.now() - now}ms`,
+          `${method} ${path} - ${response.statusCode} - ${Date.now() - now}ms`,
         );
       }),
     );

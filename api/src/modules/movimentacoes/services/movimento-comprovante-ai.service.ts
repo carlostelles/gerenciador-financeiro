@@ -33,13 +33,15 @@ export class MovimentoComprovanteAiService {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.client = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
+    this.model =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
   }
 
   async analisarComprovante(
     arquivo: ComprovanteUploadFile,
     categorias: Categoria[],
     contas: Conta[],
+    contexto?: string,
   ): Promise<AnaliseComprovanteResultado> {
     if (!this.client) {
       throw new InternalServerErrorException(
@@ -66,6 +68,9 @@ export class MovimentoComprovanteAiService {
       '- Para extratos, extraia TODOS os lançamentos de entrada e saída em lancamentos. Cada lançamento deve ter data, valor absoluto positivo, descricao, categoriaId, contaId e tipo (entrada ou saida).',
       '- Não inclua saldo inicial, saldo final, tarifas de resumo, cabeçalhos ou totais como lançamentos.',
       '- Em extratos, use a conta identificada no arquivo em cada lançamento. Classifique PIX e transferências pela natureza de entrada ou saída exibida.',
+      contexto?.trim()
+        ? `Legenda fornecida com o arquivo, use-a também na classificação: ${contexto.trim().slice(0, 1000)}`
+        : null,
       'JSON esperado:',
       '{"tipoDocumento":"comprovante"|"extrato","data":string|null,"valor":number|null,"descricao":string|null,"categoriaId":number|null,"contaId":number|null,"lancamentos":[{"data":string|null,"valor":number|null,"descricao":string|null,"categoriaId":number|null,"contaId":number|null,"tipo":"entrada"|"saida"|null}]}',
       `Categorias disponíveis: ${JSON.stringify(
@@ -80,13 +85,16 @@ export class MovimentoComprovanteAiService {
         contas.map((conta) => ({
           id: conta.id,
           nome: conta.nome,
-          tags: conta.tags
-            ?.split(',')
-            .map((tag) => tag.trim())
-            .filter(Boolean) || [],
+          tags:
+            conta.tags
+              ?.split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean) || [],
         })),
       )}`,
-    ].join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const response = await model.generateContent({
       contents: [
@@ -110,24 +118,42 @@ export class MovimentoComprovanteAiService {
 
     const rawText = response.response.text().trim();
     const parsed = JSON.parse(rawText) as Partial<AnaliseComprovanteResultado>;
-    const normalizarLancamento = (lancamento: Partial<AnaliseLancamentoExtrato>): AnaliseLancamentoExtrato => ({
-      data: lancamento.data && /^\d{4}-\d{2}-\d{2}$/.test(lancamento.data) ? lancamento.data : null,
-      valor: typeof lancamento.valor === 'number' && Number.isFinite(lancamento.valor)
-        ? Math.abs(lancamento.valor)
-        : null,
-      descricao: typeof lancamento.descricao === 'string' && lancamento.descricao.trim()
-        ? lancamento.descricao.trim()
-        : null,
-      categoriaId: typeof lancamento.categoriaId === 'number' ? lancamento.categoriaId : null,
-      contaId: typeof lancamento.contaId === 'number' ? lancamento.contaId : null,
-      tipo: lancamento.tipo === 'entrada' || lancamento.tipo === 'saida' ? lancamento.tipo : null,
+    const normalizarLancamento = (
+      lancamento: Partial<AnaliseLancamentoExtrato>,
+    ): AnaliseLancamentoExtrato => ({
+      data:
+        lancamento.data && /^\d{4}-\d{2}-\d{2}$/.test(lancamento.data)
+          ? lancamento.data
+          : null,
+      valor:
+        typeof lancamento.valor === 'number' &&
+        Number.isFinite(lancamento.valor)
+          ? Math.abs(lancamento.valor)
+          : null,
+      descricao:
+        typeof lancamento.descricao === 'string' && lancamento.descricao.trim()
+          ? lancamento.descricao.trim()
+          : null,
+      categoriaId:
+        typeof lancamento.categoriaId === 'number'
+          ? lancamento.categoriaId
+          : null,
+      contaId:
+        typeof lancamento.contaId === 'number' ? lancamento.contaId : null,
+      tipo:
+        lancamento.tipo === 'entrada' || lancamento.tipo === 'saida'
+          ? lancamento.tipo
+          : null,
     });
     const lancamentoPrincipal = normalizarLancamento(parsed);
 
     return {
       ...lancamentoPrincipal,
-      periodo: lancamentoPrincipal.data ? lancamentoPrincipal.data.slice(0, 7) : null,
-      tipoDocumento: parsed.tipoDocumento === 'extrato' ? 'extrato' : 'comprovante',
+      periodo: lancamentoPrincipal.data
+        ? lancamentoPrincipal.data.slice(0, 7)
+        : null,
+      tipoDocumento:
+        parsed.tipoDocumento === 'extrato' ? 'extrato' : 'comprovante',
       lancamentos: Array.isArray(parsed.lancamentos)
         ? parsed.lancamentos.map(normalizarLancamento)
         : [],

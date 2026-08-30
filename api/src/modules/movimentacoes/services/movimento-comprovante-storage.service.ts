@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { extname } from 'path';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { ComprovanteUploadFile } from '../types/comprovante-upload-file.type';
 
 @Injectable()
@@ -35,6 +35,7 @@ export class MovimentoComprovanteStorageService {
   async uploadComprovante(
     usuarioId: number,
     arquivo: ComprovanteUploadFile,
+    idempotencyKey?: string,
   ): Promise<{ bucket: string; key: string; caminhoArquivo: string }> {
     if (!this.bucket) {
       throw new InternalServerErrorException(
@@ -55,7 +56,11 @@ export class MovimentoComprovanteStorageService {
         .replace(/-{2,}/g, '-')
         .replace(/^-|-$/g, '') || 'comprovante';
 
-    const key = `movimentacoes/${usuarioId}/${ano}/${mes}/${randomUUID()}-${nomeBase}${extensao}`;
+    const key = idempotencyKey
+      ? `movimentacoes/${usuarioId}/idempotente/${createHash('sha256')
+          .update(idempotencyKey)
+          .digest('hex')}-${nomeBase}${extensao}`
+      : `movimentacoes/${usuarioId}/${ano}/${mes}/${randomUUID()}-${nomeBase}${extensao}`;
 
     await this.client.send(
       new PutObjectCommand({

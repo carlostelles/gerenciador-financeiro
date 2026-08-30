@@ -2,8 +2,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  OneToOne,
+  Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -16,6 +16,10 @@ export class MovimentoComprovante {
 
   @Column({ nullable: true })
   movimentoId: number | null;
+
+  @Index({ unique: true })
+  @Column({ length: 190, nullable: true })
+  idempotencyKey: string | null;
 
   @Column()
   usuarioId: number;
@@ -38,10 +42,6 @@ export class MovimentoComprovante {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToOne(() => Movimento, (movimento) => movimento.comprovante, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'movimentoId' })
-  movimento: Movimento | null;
+  @OneToMany(() => Movimento, (movimento) => movimento.comprovante)
+  movimentos: Movimento[];
 }

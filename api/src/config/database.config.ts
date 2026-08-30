@@ -13,6 +13,9 @@ import { Conta } from '../modules/contas/entities/conta.entity';
 import { SaldoInicial } from '../modules/movimentacoes/entities/saldo-inicial.entity';
 import { WhatsappWebhookEvent } from '../modules/whatsapp/entities/whatsapp-webhook-event.entity';
 import { WhatsappInboundMessage } from '../modules/whatsapp/entities/whatsapp-inbound-message.entity';
+import { WhatsappInboundJob } from '../modules/whatsapp/entities/whatsapp-inbound-job.entity';
+import { WhatsappInboundResult } from '../modules/whatsapp/entities/whatsapp-inbound-result.entity';
+import { WhatsappInboundCheckpoint } from '../modules/whatsapp/entities/whatsapp-inbound-checkpoint.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -38,6 +41,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Conta,
         WhatsappWebhookEvent,
         WhatsappInboundMessage,
+        WhatsappInboundJob,
+        WhatsappInboundResult,
+        WhatsappInboundCheckpoint,
       ],
       synchronize: this.configService.get('NODE_ENV') !== 'production',
       logging: this.configService.get('NODE_ENV') === 'development',

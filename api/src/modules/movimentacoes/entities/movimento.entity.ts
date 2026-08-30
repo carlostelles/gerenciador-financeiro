@@ -4,9 +4,9 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  OneToOne,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
@@ -43,6 +43,13 @@ export class Movimento {
   @Column({ nullable: true })
   contaId: number;
 
+  @Column({ nullable: true })
+  comprovanteId: number | null;
+
+  @Index({ unique: true })
+  @Column({ length: 190, nullable: true })
+  idempotencyKey: string | null;
+
   @Column({ default: false })
   revisado: boolean;
 
@@ -68,6 +75,14 @@ export class Movimento {
   @JoinColumn({ name: 'contaId' })
   conta: Conta;
 
-  @OneToOne(() => MovimentoComprovante, (comprovante) => comprovante.movimento)
+  @ManyToOne(
+    () => MovimentoComprovante,
+    (comprovante) => comprovante.movimentos,
+    {
+      nullable: true,
+      onDelete: 'SET NULL',
+    },
+  )
+  @JoinColumn({ name: 'comprovanteId' })
   comprovante: MovimentoComprovante | null;
 }

@@ -16,6 +16,16 @@ import { WhatsappIntentParserService } from './services/whatsapp-intent-parser.s
 import { ListWhatsappInboundQueryDto } from './dto/list-whatsapp-inbound-query.dto';
 import { WhatsappInboundMessage } from './entities/whatsapp-inbound-message.entity';
 import { CategoriaTipo } from '../../common/types';
+import { WhatsappJobQueueService } from './services/whatsapp-job-queue.service';
+import { MetaWhatsappClientService } from './services/meta-whatsapp-client.service';
+import { WhatsappInboundResult } from './entities/whatsapp-inbound-result.entity';
+import { extname } from 'path';
+import {
+  WhatsappCheckpointEtapa,
+  WhatsappInboundCheckpoint,
+} from './entities/whatsapp-inbound-checkpoint.entity';
+import { AnaliseArquivoPreparada } from '../movimentacoes/movimentacoes.service';
+import { AnalisarComprovanteResponseDto } from '../movimentacoes/dto/analisar-comprovante-response.dto';
 
 @Injectable()
 export class WhatsappService {
@@ -32,6 +42,12 @@ export class WhatsappService {
     private readonly categoriaRepository: Repository<Categoria>,
     private readonly movimentacoesService: MovimentacoesService,
     private readonly intentParser: WhatsappIntentParserService,
+    private readonly jobQueue: WhatsappJobQueueService,
+    private readonly metaClient: MetaWhatsappClientService,
+    @InjectRepository(WhatsappInboundResult)
+    private readonly inboundResultRepository: Repository<WhatsappInboundResult>,
+    @InjectRepository(WhatsappInboundCheckpoint)
+    private readonly checkpointRepository: Repository<WhatsappInboundCheckpoint>,
   ) {}
 
   async listarInbound(
@@ -71,9 +87,16 @@ export class WhatsappService {
     signatureHeader?: string,
     rawBody?: Buffer,
   ): Promise<void> {
-    this.verifyWebhookSignature(signatureHeader, rawBody, payload);
+    this.verifyWebhookSignature(signatureHeader, rawBody);
 
-    const entryList = Array.isArray(payload?.entry) ? payload.entry : [];
+    if (
+      payload?.object !== 'whatsapp_business_account' ||
+      !Array.isArray(payload?.entry)
+    ) {
+      throw new BadRequestException('Estrutura do webhook WhatsApp invalida');
+    }
+
+    const entryList = payload.entry;
 
     for (const entry of entryList) {
       const changes = Array.isArray(entry?.changes) ? entry.changes : [];
@@ -93,37 +116,45 @@ export class WhatsappService {
             idempotencyKey,
             'status',
             status?.id || null,
-            status,
+            {
+              id: status?.id || null,
+              status: status?.status || null,
+              timestamp: status?.timestamp || null,
+              recipientId: status?.recipient_id || null,
+            },
           );
         }
 
         const messages = Array.isArray(value.messages) ? value.messages : [];
-        for (const message of messages) {
-          const idempotencyKey = this.hashJson('message', {
-            id: message?.id,
-            from: message?.from,
-            timestamp: message?.timestamp,
-            type: message?.type,
-            text: message?.text?.body,
-          });
-
-          const inserted = await this.saveWebhookEventIfNew(
-            idempotencyKey,
-            'message',
-            message?.id || null,
-            message,
+        if (messages.length) {
+          this.metaClient.validateWebhookPhoneNumberId(
+            String(value?.metadata?.phone_number_id || ''),
           );
-
-          if (inserted) {
-            await this.processarMensagemRecebida(message);
+        }
+        for (const message of messages) {
+          const providerMessageId = String(message?.id || '').trim();
+          if (!providerMessageId) {
+            throw new BadRequestException('Mensagem WhatsApp sem wamid');
           }
+          const sanitized = this.sanitizeInboundMessage(
+            message,
+            value?.metadata?.phone_number_id,
+          );
+          await this.jobQueue.enqueue(providerMessageId, sanitized);
+          await this.saveWebhookEventIfNew(
+            this.hashJson('message', { id: providerMessageId }),
+            'message',
+            providerMessageId,
+            sanitized,
+          );
         }
       }
     }
   }
 
-  private async processarMensagemRecebida(message: any): Promise<void> {
-    const telefoneOrigem = this.normalizarTelefone(message?.from || '');
+  async processarMensagemRecebida(message: any): Promise<void> {
+    const telefoneRecebido = String(message?.from || '').replace(/\D/g, '');
+    const telefoneOrigem = this.normalizarTelefone(telefoneRecebido);
     const providerMessageId = String(message?.id || '').trim();
 
     if (!telefoneOrigem || !providerMessageId) {
@@ -136,33 +167,45 @@ export class WhatsappService {
     const mimeType = this.extractMimeType(message);
     const nomeArquivo = this.extractNomeArquivo(message);
 
-    const usuario = await this.findUsuarioByTelefone(telefoneOrigem);
+    const existente = await this.inboundMessageRepository.findOne({
+      where: { providerMessageId },
+    });
+    if (
+      existente?.statusProcessamento ===
+      WhatsappInboundProcessingStatus.PROCESSADA
+    ) {
+      return;
+    }
 
-    const inbound = await this.inboundMessageRepository.save(
-      this.inboundMessageRepository.create({
-        usuarioId: usuario?.id || null,
-        telefoneOrigem,
-        providerMessageId,
-        tipoMensagem,
-        intentDetectada:
-          tipoMensagem === WhatsappInboundMessageType.IMAGE ||
-          tipoMensagem === WhatsappInboundMessageType.DOCUMENT
-            ? WhatsappIntentType.COMPROVANTE
-            : WhatsappIntentType.DESCONHECIDA,
-        statusProcessamento: WhatsappInboundProcessingStatus.RECEBIDA,
-        mediaId,
-        mimeType,
-        nomeArquivo,
-        movimentoId: null,
-        periodoReferencia: null,
-        texto: texto || null,
-        erroProcessamento: null,
-        detalhesProcessamento: {
-          providerTimestamp: message?.timestamp || null,
-          messageType: message?.type || null,
-        },
-      }),
-    );
+    const usuario = await this.findUsuarioByTelefone(telefoneRecebido);
+
+    const inbound =
+      existente ||
+      (await this.inboundMessageRepository.save(
+        this.inboundMessageRepository.create({
+          usuarioId: usuario?.id || null,
+          telefoneOrigem,
+          providerMessageId,
+          tipoMensagem,
+          intentDetectada:
+            tipoMensagem === WhatsappInboundMessageType.IMAGE ||
+            tipoMensagem === WhatsappInboundMessageType.DOCUMENT
+              ? WhatsappIntentType.COMPROVANTE
+              : WhatsappIntentType.DESCONHECIDA,
+          statusProcessamento: WhatsappInboundProcessingStatus.RECEBIDA,
+          mediaId,
+          mimeType,
+          nomeArquivo,
+          movimentoId: null,
+          periodoReferencia: null,
+          texto: texto || null,
+          erroProcessamento: null,
+          detalhesProcessamento: {
+            providerTimestamp: message?.timestamp || null,
+            messageType: message?.type || null,
+          },
+        }),
+      ));
 
     if (!usuario) {
       await this.marcarFalhaProcessamento(
@@ -210,21 +253,105 @@ export class WhatsappService {
         return;
       }
 
-      const movimento = await this.criarMovimentacaoPorComprovante(
-        usuario.id,
-        message,
-        texto,
-        mimeType || '',
-        nomeArquivo || '',
+      const media = await this.metaClient.downloadMedia(
+        mediaId || '',
+        String(message?.phoneNumberId || ''),
       );
-      inbound.intentDetectada = WhatsappIntentType.COMPROVANTE;
+      const arquivo = {
+        originalname: this.sanitizeFileName(
+          nomeArquivo,
+          providerMessageId,
+          media.mimeType,
+        ),
+        mimetype: media.mimeType,
+        size: media.size,
+        buffer: media.buffer,
+      };
+      const uploadCheckpoint = await this.buscarCheckpoint(
+        providerMessageId,
+        WhatsappCheckpointEtapa.UPLOAD,
+        0,
+      );
+      const analiseCheckpoint = await this.buscarCheckpoint(
+        providerMessageId,
+        WhatsappCheckpointEtapa.ANALISE,
+        0,
+      );
+      const preparado: Partial<AnaliseArquivoPreparada> = {
+        ...(uploadCheckpoint
+          ? {
+              upload: uploadCheckpoint.dados
+                .upload as AnaliseArquivoPreparada['upload'],
+            }
+          : {}),
+        ...(analiseCheckpoint
+          ? {
+              analise: analiseCheckpoint.dados
+                .analise as AnaliseArquivoPreparada['analise'],
+            }
+          : {}),
+      };
+      const processamento =
+        await this.movimentacoesService.analisarArquivoAutomaticamente(
+          arquivo,
+          usuario.id,
+          texto,
+          {
+            idempotencyKeyPrefix: `whatsapp:${providerMessageId}`,
+            storageIdempotencyKey: `whatsapp:${providerMessageId}:${media.sha256}`,
+            preparado,
+            onUploadConcluido: async (upload) => {
+              await this.salvarCheckpoint(
+                providerMessageId,
+                WhatsappCheckpointEtapa.UPLOAD,
+                0,
+                { upload },
+              );
+            },
+            onAnaliseConcluida: async (analise) => {
+              await this.salvarCheckpoint(
+                providerMessageId,
+                WhatsappCheckpointEtapa.ANALISE,
+                0,
+                { analise },
+              );
+            },
+            onResultadoConcluido: async (resultado, ordinal) => {
+              await this.salvarResultadoInbound(inbound.id, resultado, ordinal);
+              await this.salvarCheckpoint(
+                providerMessageId,
+                WhatsappCheckpointEtapa.RESULTADO,
+                ordinal,
+                {
+                  movimentoId: resultado.salvamento.movimentoId || null,
+                  comprovanteId: resultado.comprovanteId,
+                  status: resultado.salvamento.status,
+                },
+              );
+            },
+          },
+        );
+      inbound.intentDetectada =
+        processamento.tipoDocumento === 'extrato'
+          ? WhatsappIntentType.EXTRATO
+          : WhatsappIntentType.COMPROVANTE;
       inbound.statusProcessamento = WhatsappInboundProcessingStatus.PROCESSADA;
-      inbound.movimentoId = movimento.id;
-      inbound.periodoReferencia = movimento.periodo;
+      inbound.movimentoId =
+        processamento.resultados[0]?.salvamento.movimentoId || null;
+      inbound.periodoReferencia =
+        processamento.resultados[0]?.sugestao.periodo || null;
       inbound.detalhesProcessamento = {
         ...(inbound.detalhesProcessamento || {}),
         acao: 'movimentacao_criada_automaticamente',
+        tipoDocumento: processamento.tipoDocumento,
+        quantidadeResultados: processamento.resultados.length,
+        sha256: media.sha256,
       };
+      await Promise.all(
+        processamento.resultados.map((resultado, ordinal) =>
+          this.salvarResultadoInbound(inbound.id, resultado, ordinal),
+        ),
+      );
       await this.inboundMessageRepository.save(inbound);
       return;
     }
@@ -237,6 +364,7 @@ export class WhatsappService {
         const movimento = await this.processarIntentNovaMovimentacao(
           usuario.id,
           intent.payload,
+          providerMessageId,
         );
         inbound.statusProcessamento =
           WhatsappInboundProcessingStatus.PROCESSADA;
@@ -279,6 +407,76 @@ export class WhatsappService {
     await this.inboundMessageRepository.save(inbound);
   }
 
+  private buscarCheckpoint(
+    providerMessageId: string,
+    etapa: WhatsappCheckpointEtapa,
+    ordinal: number,
+  ): Promise<WhatsappInboundCheckpoint | null> {
+    return this.checkpointRepository.findOne({
+      where: { providerMessageId, etapa, ordinal },
+    });
+  }
+
+  private async salvarCheckpoint(
+    providerMessageId: string,
+    etapa: WhatsappCheckpointEtapa,
+    ordinal: number,
+    dados: Record<string, unknown>,
+  ): Promise<void> {
+    const existente = await this.buscarCheckpoint(
+      providerMessageId,
+      etapa,
+      ordinal,
+    );
+    try {
+      await this.checkpointRepository.save(
+        existente
+          ? Object.assign(existente, { dados })
+          : this.checkpointRepository.create({
+              providerMessageId,
+              etapa,
+              ordinal,
+              dados,
+            }),
+      );
+    } catch (error) {
+      if (!this.isDuplicateKeyError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  private async salvarResultadoInbound(
+    inboundMessageId: number,
+    resultado: AnalisarComprovanteResponseDto,
+    ordinal: number,
+  ): Promise<void> {
+    const existente = await this.inboundResultRepository.findOne({
+      where: { inboundMessageId, ordinal },
+    });
+    const dados = {
+      inboundMessageId,
+      movimentoId: resultado.salvamento.movimentoId || null,
+      comprovanteId: resultado.comprovanteId,
+      ordinal,
+      status: resultado.salvamento.status,
+      detalhes: {
+        camposObrigatoriosFaltantes: resultado.camposObrigatoriosFaltantes,
+      },
+    };
+    try {
+      await this.inboundResultRepository.save(
+        existente
+          ? Object.assign(existente, dados)
+          : this.inboundResultRepository.create(dados),
+      );
+    } catch (error) {
+      if (!this.isDuplicateKeyError(error)) {
+        throw error;
+      }
+    }
+  }
+
   private async processarIntentNovaMovimentacao(
     usuarioId: number,
     payload: {
@@ -288,6 +486,7 @@ export class WhatsappService {
       descricao?: string;
       tipoMovimento?: 'RECEITA' | 'DESPESA';
     },
+    providerMessageId: string,
   ): Promise<Movimento> {
     if (!payload.valor || !payload.data || !payload.categoriaNome) {
       throw new BadRequestException(
@@ -324,6 +523,7 @@ export class WhatsappService {
         revisado: false,
       },
       usuarioId,
+      `whatsapp:${providerMessageId}:texto:0`,
     );
   }
 
@@ -370,7 +570,6 @@ export class WhatsappService {
   private verifyWebhookSignature(
     signatureHeader: string | undefined,
     rawBody: Buffer | undefined,
-    payload: unknown,
   ): void {
     const appSecret = process.env.WHATSAPP_APP_SECRET || '';
 
@@ -390,7 +589,10 @@ export class WhatsappService {
     }
 
     const signature = signatureHeader.slice('sha256='.length);
-    const bodyBuffer = rawBody || Buffer.from(JSON.stringify(payload || {}));
+    if (!rawBody) {
+      throw new BadRequestException('Body bruto do webhook indisponivel');
+    }
+    const bodyBuffer = rawBody;
     const expected = createHmac('sha256', appSecret)
       .update(bodyBuffer)
       .digest('hex');
@@ -415,18 +617,77 @@ export class WhatsappService {
   private async findUsuarioByTelefone(
     telefone: string,
   ): Promise<Usuario | null> {
-    const candidatos = new Set<string>([telefone]);
-    if (telefone.startsWith('55')) {
-      candidatos.add(telefone.slice(2));
-    }
-    if (telefone.length === 11) {
-      candidatos.add(`55${telefone}`);
-    }
-
-    return this.usuarioRepository.findOne({
-      where: { telefone: In([...candidatos]) },
-      select: ['id', 'telefone'],
+    const usuarios = await this.usuarioRepository.find({
+      where: { telefone: In(this.telefoneCandidatos(telefone)), ativo: true },
+      select: ['id', 'telefone', 'ativo'],
     });
+    return usuarios.length === 1 ? usuarios[0] : null;
+  }
+
+  private telefoneCandidatos(telefone: string): string[] {
+    const recebida = (telefone || '').replace(/\D/g, '');
+    const canonica = recebida.startsWith('55')
+      ? recebida
+      : recebida.length === 10 || recebida.length === 11
+        ? `55${recebida}`
+        : recebida;
+    const candidatos = new Set<string>([recebida, canonica]);
+    if (/^55\d{2}\d{8}$/.test(canonica)) {
+      candidatos.add(`${canonica.slice(0, 4)}9${canonica.slice(4)}`);
+    } else if (/^55\d{2}9\d{8}$/.test(canonica)) {
+      candidatos.add(`${canonica.slice(0, 4)}${canonica.slice(5)}`);
+    }
+    return [...candidatos].filter(Boolean);
+  }
+
+  private sanitizeInboundMessage(
+    message: any,
+    phoneNumberId: unknown,
+  ): Record<string, unknown> {
+    const type = String(message?.type || '').toLowerCase();
+    const media = message?.[type] || {};
+    return {
+      id: String(message?.id || '').slice(0, 120),
+      from: String(message?.from || '')
+        .replace(/\D/g, '')
+        .slice(0, 20),
+      timestamp: String(message?.timestamp || '').slice(0, 20),
+      type: type.slice(0, 30),
+      phoneNumberId: String(phoneNumberId || '').slice(0, 120),
+      text:
+        type === 'text'
+          ? { body: String(message?.text?.body || '').slice(0, 4000) }
+          : undefined,
+      [type]: ['image', 'document', 'audio'].includes(type)
+        ? {
+            id: String(media?.id || '').slice(0, 120),
+            mime_type: String(media?.mime_type || '').slice(0, 255),
+            caption: String(media?.caption || '').slice(0, 1000),
+            filename: String(media?.filename || '').slice(0, 255),
+          }
+        : undefined,
+    };
+  }
+
+  private sanitizeFileName(
+    name: string | null,
+    providerMessageId: string,
+    mimeType: string,
+  ): string {
+    const extensionByMime: Record<string, string> = {
+      'application/pdf': '.pdf',
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/heic': '.heic',
+      'image/heif': '.heif',
+    };
+    const base = String(name || providerMessageId)
+      .split(/[\\/]/)
+      .pop()!
+      .replace(/[^a-zA-Z0-9._-]/g, '-')
+      .slice(0, 180);
+    return extname(base) ? base : `${base}${extensionByMime[mimeType] || ''}`;
   }
 
   private async criarMovimentacaoPorComprovante(

@@ -43,6 +43,7 @@ export class Movimento {
   @Column({ nullable: true })
   contaId: number;
 
+  @Index('IDX_movimentos_comprovanteId')
   @Column({ nullable: true })
   comprovanteId: number | null;
 

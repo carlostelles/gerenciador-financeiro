@@ -14,6 +14,7 @@ import { LogsService } from '../logs/logs.service';
 import { CategoriasService } from '../categorias/categorias.service';
 import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
+import { EspacosService } from '../espacos/espacos.service';
 
 // Mock bcrypt with proper typing
 jest.mock('bcrypt');
@@ -24,6 +25,7 @@ describe('UsuariosService', () => {
   let repository: jest.Mocked<Repository<Usuario>>;
   let logsService: jest.Mocked<LogsService>;
   let categoriasService: { createDefaultCategories: jest.Mock };
+  let espacosService: { create: jest.Mock };
 
   const mockUsuario = {
     id: 1,
@@ -71,6 +73,9 @@ describe('UsuariosService', () => {
     const mockCategoriasService = {
       createDefaultCategories: jest.fn().mockResolvedValue(undefined),
     };
+    const mockEspacosService = {
+      create: jest.fn().mockResolvedValue({ id: 15 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -87,6 +92,10 @@ describe('UsuariosService', () => {
           provide: CategoriasService,
           useValue: mockCategoriasService,
         },
+        {
+          provide: EspacosService,
+          useValue: mockEspacosService,
+        },
       ],
     }).compile();
 
@@ -94,6 +103,7 @@ describe('UsuariosService', () => {
     repository = module.get(getRepositoryToken(Usuario));
     logsService = module.get(LogsService);
     categoriasService = module.get(CategoriasService);
+    espacosService = module.get(EspacosService);
   });
 
   beforeEach(() => {
@@ -123,8 +133,13 @@ describe('UsuariosService', () => {
       });
       expect(repository.save).toHaveBeenCalledWith(mockUsuario);
       expect(logsService.create).toHaveBeenCalled();
+      expect(espacosService.create).toHaveBeenCalledWith(
+        { nome: 'Espaço pessoal de Test User' },
+        mockUsuario.id,
+      );
       expect(categoriasService.createDefaultCategories).toHaveBeenCalledWith(
         mockUsuario.id,
+        15,
       );
       expect(result).toEqual(mockUsuario);
     });

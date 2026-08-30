@@ -5,6 +5,16 @@
         <tui-badge>Test</tui-badge>
     </span>
     <hr />
+    <tui-textfield tuiChevron [stringify]="spaceStringify" class="space-selector">
+        <label tuiLabel for="espacoId">Espaço</label>
+        <input tuiComboBox id="espacoId" [strict]="true" [disabled]="espacoContext.loading()"
+            [ngModel]="espacoContext.selected()?.id ?? null" (ngModelChange)="selectSpace($event)" />
+        <tui-data-list *tuiTextfieldDropdown>
+            @for (space of espacoContext.spaces(); track space.id) {
+                <button new tuiOption type="button" [value]="space.id">{{ space.nome }} · {{ space.papel }}</button>
+            }
+        </tui-data-list>
+    </tui-textfield>
     <button iconStart="@tui.power" tuiIconButton type="button" (click)="logout()">
         Sair
     </button>
@@ -48,6 +58,9 @@
         </footer>
     </aside>
     <main class="navigation-main" tuiNavigationMain>
+        @if (espacoContext.error()) {
+            <div class="space-error" role="alert">{{ espacoContext.error() }}</div>
+        }
         <nav compact tuiSubheader [style.position]="'sticky'">
             <tui-breadcrumbs [itemsLimit]="10">
                 <ng-container *ngFor="let item of breadcrumbs; let last = last">

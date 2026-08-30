@@ -1,9 +1,11 @@
 <div class="container">
     <div class="header">
         <h2>Gerenciar Movimentações</h2>
-        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
-            Nova Movimentação
-        </app-button-float>
+        @if (espacoContext.canEdit()) {
+            <app-button-float appearance="primary" size="l" (click)="openFormModal()">
+                Nova Movimentação
+            </app-button-float>
+        }
         <app-button-float
             [appearance]="hasFiltro() ? 'neutral' : 'floating'"
             size="l"
@@ -89,7 +91,7 @@
                         appearance="secondary"
                         iconStart="@tui.pencil"
                         [attr.aria-label]="contaId() === ALL_ACCOUNTS ? 'Ver saldos iniciais por conta' : 'Editar saldo inicial'"
-                        [disabled]="!saldoInicial() || isSaldoLoading()"
+                        [disabled]="!saldoInicial() || isSaldoLoading() || (!espacoContext.canEdit() && contaId() !== ALL_ACCOUNTS)"
                         (click)="openSaldoInicialModal()"
                     ></button>
                 </div>
@@ -221,6 +223,7 @@
     <div class="timeline-container" tuiCell="l">
         <app-timeline
             [items]="timelinePastItems()"
+            [readOnly]="!espacoContext.canEdit()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
             (duplicate)="duplicateItem($event)"
@@ -234,6 +237,7 @@
     <div class="timeline-container" tuiCell="l">
         <app-timeline
             [items]="timelineTodayItems()"
+            [readOnly]="!espacoContext.canEdit()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
             (duplicate)="duplicateItem($event)"
@@ -247,6 +251,7 @@
     <div class="timeline-container" tuiCell="l">
         <app-timeline
             [items]="timelineFutureItems()"
+            [readOnly]="!espacoContext.canEdit()"
             (edit)="openFormModal($event)"
             (delete)="confirmDelete($event)"
             (duplicate)="duplicateItem($event)"

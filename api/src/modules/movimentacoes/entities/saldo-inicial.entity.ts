@@ -17,7 +17,7 @@ export enum SaldoInicialOrigem {
 }
 
 @Entity('saldo_iniciais')
-@Unique(['usuarioId', 'contaId', 'periodo'])
+@Unique(['contaId', 'periodo'])
 export class SaldoInicial {
   @PrimaryGeneratedColumn()
   id: number;

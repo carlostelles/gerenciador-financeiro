@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from './orcamento-item.entity';
+import { Espaco } from '../../espacos/entities/espaco.entity';
 
 @Entity('orcamentos')
 export class Orcamento {
@@ -18,6 +19,9 @@ export class Orcamento {
 
   @Column()
   usuarioId: number;
+
+  @Column()
+  espacoId?: number;
 
   @Column({ length: 7 }) // yyyy-mm
   periodo: string;
@@ -34,6 +38,10 @@ export class Orcamento {
   @ManyToOne(() => Usuario, (usuario) => usuario.orcamentos)
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
+
+  @ManyToOne(() => Espaco, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'espacoId' })
+  espaco?: Espaco;
 
   @OneToMany(() => OrcamentoItem, (item) => item.orcamento, {
     cascade: true,

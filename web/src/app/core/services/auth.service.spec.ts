@@ -116,6 +116,7 @@ describe('AuthService', () => {
 
     // With token
     sessionStorage.setItem('auth_token', 'test-token');
+    sessionStorage.setItem('token_expiration', String(Date.now() + 60_000));
     expect(service.isAuthenticated).toBeTruthy();
   });
 

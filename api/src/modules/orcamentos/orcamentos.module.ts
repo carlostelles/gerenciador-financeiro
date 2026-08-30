@@ -6,12 +6,16 @@ import { OrcamentosController } from './orcamentos.controller';
 import { Orcamento } from './entities/orcamento.entity';
 import { OrcamentoItem } from './entities/orcamento-item.entity';
 import { LogsModule } from '../logs/logs.module';
+import { EspacosModule } from '../espacos/espacos.module';
+import { CategoriasModule } from '../categorias/categorias.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Orcamento, OrcamentoItem]),
     JwtModule,
     LogsModule,
+    EspacosModule,
+    CategoriasModule,
   ],
   controllers: [OrcamentosController],
   providers: [OrcamentosService],

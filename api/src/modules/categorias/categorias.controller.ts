@@ -18,10 +18,15 @@ import {
 } from '@nestjs/swagger';
 
 import { CategoriasService } from './categorias.service';
-import { CreateCategoriaDto, UpdateCategoriaDto, CategoriaResponseDto } from './dto/categoria.dto';
+import {
+  CreateCategoriaDto,
+  UpdateCategoriaDto,
+  CategoriaResponseDto,
+} from './dto/categoria.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 
 @ApiTags('categorias')
 @ApiBearerAuth('access-token')
@@ -49,8 +54,15 @@ export class CategoriasController {
   async create(
     @Body() createCategoriaDto: CreateCategoriaDto,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<CategoriaResponseDto> {
-    return this.categoriasService.create(createCategoriaDto, currentUser);
+    return espacoId === undefined
+      ? this.categoriasService.create(createCategoriaDto, currentUser)
+      : this.categoriasService.create(
+          createCategoriaDto,
+          currentUser,
+          espacoId,
+        );
   }
 
   @ApiOperation({ summary: 'Listar categorias do usuário' })
@@ -60,8 +72,13 @@ export class CategoriasController {
     type: [CategoriaResponseDto],
   })
   @Get()
-  async findAll(@CurrentUser() currentUser: any): Promise<CategoriaResponseDto[]> {
-    return this.categoriasService.findAll(currentUser);
+  async findAll(
+    @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
+  ): Promise<CategoriaResponseDto[]> {
+    return espacoId === undefined
+      ? this.categoriasService.findAll(currentUser)
+      : this.categoriasService.findAll(currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Buscar categoria por ID' })
@@ -83,8 +100,11 @@ export class CategoriasController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<CategoriaResponseDto> {
-    return this.categoriasService.findOne(id, currentUser);
+    return espacoId === undefined
+      ? this.categoriasService.findOne(id, currentUser)
+      : this.categoriasService.findOne(id, currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Atualizar categoria' })
@@ -111,8 +131,16 @@ export class CategoriasController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCategoriaDto: UpdateCategoriaDto,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<CategoriaResponseDto> {
-    return this.categoriasService.update(id, updateCategoriaDto, currentUser);
+    return espacoId === undefined
+      ? this.categoriasService.update(id, updateCategoriaDto, currentUser)
+      : this.categoriasService.update(
+          id,
+          updateCategoriaDto,
+          currentUser,
+          espacoId,
+        );
   }
 
   @ApiOperation({ summary: 'Excluir categoria' })
@@ -137,7 +165,10 @@ export class CategoriasController {
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<void> {
-    await this.categoriasService.remove(id, currentUser);
+    if (espacoId === undefined)
+      await this.categoriasService.remove(id, currentUser);
+    else await this.categoriasService.remove(id, currentUser, espacoId);
   }
 }

@@ -20,7 +20,11 @@ import {
 } from '@nestjs/swagger';
 
 import { UsuariosService } from './usuarios.service';
-import { CreateUsuarioDto, UpdateUsuarioDto, UsuarioResponseDto } from './dto/usuario.dto';
+import {
+  CreateUsuarioDto,
+  UpdateUsuarioDto,
+  UsuarioResponseDto,
+} from './dto/usuario.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -52,7 +56,9 @@ export class UsuariosController {
   })
   @Public()
   @Post()
-  async create(@Body() createUsuarioDto: CreateUsuarioDto): Promise<UsuarioResponseDto> {
+  async create(
+    @Body() createUsuarioDto: CreateUsuarioDto,
+  ): Promise<UsuarioResponseDto> {
     const usuario = await this.usuariosService.create(createUsuarioDto);
     // Remove senha da resposta
     const { senha, ...result } = usuario;

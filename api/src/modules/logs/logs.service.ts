@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -8,9 +12,7 @@ import { UserRole } from '../../common/types';
 
 @Injectable()
 export class LogsService {
-  constructor(
-    @InjectModel(Log.name) private logModel: Model<LogDocument>,
-  ) {}
+  constructor(@InjectModel(Log.name) private logModel: Model<LogDocument>) {}
 
   async create(createLogDto: CreateLogDto): Promise<Log> {
     const createdLog = new this.logModel(createLogDto);
@@ -19,7 +21,9 @@ export class LogsService {
 
   async findAll(currentUser: any): Promise<Log[]> {
     if (currentUser.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Apenas administradores podem consultar logs');
+      throw new ForbiddenException(
+        'Apenas administradores podem consultar logs',
+      );
     }
 
     return this.logModel.find().sort({ data: -1 }).exec();
@@ -27,7 +31,9 @@ export class LogsService {
 
   async findOne(id: string, currentUser: any): Promise<Log> {
     if (currentUser.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Apenas administradores podem consultar logs');
+      throw new ForbiddenException(
+        'Apenas administradores podem consultar logs',
+      );
     }
 
     const log = await this.logModel.findById(id).exec();

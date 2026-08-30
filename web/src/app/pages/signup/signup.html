@@ -41,6 +41,10 @@
         </div>
       </tui-textfield>
 
+      <div *ngIf="errorMessage" class="error-message" role="alert">
+        {{ errorMessage }}
+      </div>
+
       <div class="form-actions">
         <button tuiButton size="m" type="submit" [disabled]="signupForm.invalid || isLoading" class="submit-button">
           {{ isLoading ? 'Cadastrando...' : 'Cadastrar' }}

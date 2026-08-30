@@ -6,12 +6,14 @@ import { CategoriasService } from './categorias.service';
 import { CategoriasController } from './categorias.controller';
 import { Categoria } from './entities/categoria.entity';
 import { LogsModule } from '../logs/logs.module';
+import { EspacosModule } from '../espacos/espacos.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Categoria]),
     JwtModule,
     LogsModule,
+    EspacosModule,
   ],
   controllers: [CategoriasController],
   providers: [CategoriasService],

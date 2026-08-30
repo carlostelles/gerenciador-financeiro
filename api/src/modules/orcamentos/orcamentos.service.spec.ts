@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 
 import { OrcamentosService } from './orcamentos.service';
 import { Orcamento } from './entities/orcamento.entity';
@@ -47,7 +44,7 @@ describe('OrcamentosService', () => {
     orcamentoId: 1,
     categoriaId: 1,
     descricao: 'Test item',
-    valor: 1000.00,
+    valor: 1000.0,
     createdAt: new Date(),
     updatedAt: new Date(),
     orcamento: null,
@@ -67,7 +64,7 @@ describe('OrcamentosService', () => {
   const mockCreateItemDto: CreateOrcamentoItemDto = {
     categoriaId: 1,
     descricao: 'Test item',
-    valor: 1000.00,
+    valor: 1000.0,
   };
 
   const usuarioId = 1;
@@ -253,7 +250,10 @@ describe('OrcamentosService', () => {
     });
 
     it('deve lançar ConflictException quando orçamento tiver itens', async () => {
-      const orcamentoWithItems = { ...mockOrcamento, items: [mockOrcamentoItem] };
+      const orcamentoWithItems = {
+        ...mockOrcamento,
+        items: [mockOrcamentoItem],
+      };
       orcamentoRepository.findOne.mockResolvedValue(orcamentoWithItems);
 
       await expect(service.remove(1, usuarioId)).rejects.toThrow(
@@ -283,7 +283,9 @@ describe('OrcamentosService', () => {
         ...mockCreateItemDto,
         orcamentoId: 1,
       });
-      expect(orcamentoItemRepository.save).toHaveBeenCalledWith(mockOrcamentoItem);
+      expect(orcamentoItemRepository.save).toHaveBeenCalledWith(
+        mockOrcamentoItem,
+      );
       expect(result).toEqual(mockOrcamentoItem);
     });
 
@@ -404,7 +406,9 @@ describe('OrcamentosService', () => {
     it('deve retornar null quando orçamento não for encontrado para o período', async () => {
       orcamentoRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByPeriodo('2024-01', usuarioId)).resolves.toBeNull();
+      await expect(
+        service.findByPeriodo('2024-01', usuarioId),
+      ).resolves.toBeNull();
     });
 
     it('deve buscar orçamento apenas do usuário autenticado', async () => {
@@ -434,7 +438,7 @@ describe('OrcamentosService', () => {
         ...mockOrcamentoItem,
         id: 2,
         descricao: 'Combustível',
-        valor: 300.00,
+        valor: 300.0,
         categoriaId: 2,
         categoria: mockCategoria2,
       } as OrcamentoItem;
@@ -443,7 +447,9 @@ describe('OrcamentosService', () => {
         ...mockOrcamento,
         items: [mockOrcamentoItem, mockOrcamentoItem2],
       };
-      orcamentoRepository.findOne.mockResolvedValue(mockOrcamentoWithMultipleItems);
+      orcamentoRepository.findOne.mockResolvedValue(
+        mockOrcamentoWithMultipleItems,
+      );
 
       const result = await service.findByPeriodo('2024-01', usuarioId);
 

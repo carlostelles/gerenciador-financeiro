@@ -22,6 +22,7 @@ import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 
 @ApiTags('reservas')
 @ApiBearerAuth('access-token')
@@ -43,8 +44,11 @@ export class ReservasController {
   create(
     @Body() createReservaDto: CreateReservaDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.reservasService.create(createReservaDto, user.sub);
+    return espacoId === undefined
+      ? this.reservasService.create(createReservaDto, user.sub)
+      : this.reservasService.create(createReservaDto, user.sub, espacoId);
   }
 
   @Get()
@@ -53,8 +57,10 @@ export class ReservasController {
     status: 200,
     description: 'Lista de reservas retornada com sucesso',
   })
-  findAll(@CurrentUser() user: any) {
-    return this.reservasService.findAll(user.sub);
+  findAll(@CurrentUser() user: any, @EspacoId() espacoId?: number) {
+    return espacoId === undefined
+      ? this.reservasService.findAll(user.sub)
+      : this.reservasService.findAll(user.sub, espacoId);
   }
 
   @Get(':id')
@@ -68,8 +74,14 @@ export class ReservasController {
     status: 404,
     description: 'Reserva não encontrada',
   })
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.reservasService.findOne(id, user.sub);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.reservasService.findOne(id, user.sub)
+      : this.reservasService.findOne(id, user.sub, espacoId);
   }
 
   @Patch(':id')
@@ -87,8 +99,11 @@ export class ReservasController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateReservaDto: UpdateReservaDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.reservasService.update(id, updateReservaDto, user.sub);
+    return espacoId === undefined
+      ? this.reservasService.update(id, updateReservaDto, user.sub)
+      : this.reservasService.update(id, updateReservaDto, user.sub, espacoId);
   }
 
   @Delete(':id')
@@ -102,7 +117,13 @@ export class ReservasController {
     status: 404,
     description: 'Reserva não encontrada',
   })
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.reservasService.remove(id, user.sub);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.reservasService.remove(id, user.sub)
+      : this.reservasService.remove(id, user.sub, espacoId);
   }
 }

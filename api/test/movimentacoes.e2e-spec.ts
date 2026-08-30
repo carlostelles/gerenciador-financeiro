@@ -416,6 +416,23 @@ describe('MovimentacoesController (e2e)', () => {
   });
 
   describe('Authentication and Authorization', () => {
+    it('deve encaminhar o espaço selecionado para validação de acesso', async () => {
+      movimentacoesService.findAll.mockResolvedValue([]);
+
+      await request(app.getHttpServer())
+        .get('/movimentacoes/2025-09')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .set('X-Espaco-Id', '42')
+        .expect(200);
+
+      expect(movimentacoesService.findAll).toHaveBeenCalledWith(
+        '2025-09',
+        mockUser.sub,
+        {},
+        42,
+      );
+    });
+
     it('deve funcionar com diferentes roles de usuário', async () => {
       movimentacoesService.findAll.mockResolvedValue([]);
 

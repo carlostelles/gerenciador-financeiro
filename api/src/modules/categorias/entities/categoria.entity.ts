@@ -12,6 +12,7 @@ import { CategoriaTipo } from '../../../common/types';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
 import { Reserva } from '../../reservas/entities/reserva.entity';
+import { Espaco } from '../../espacos/entities/espaco.entity';
 
 @Entity('categorias')
 export class Categoria {
@@ -20,6 +21,9 @@ export class Categoria {
 
   @Column()
   usuarioId: number;
+
+  @Column()
+  espacoId?: number;
 
   @Column({ length: 255 })
   nome: string;
@@ -42,6 +46,10 @@ export class Categoria {
   @ManyToOne(() => Usuario, (usuario) => usuario.categorias)
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
+
+  @ManyToOne(() => Espaco, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'espacoId' })
+  espaco?: Espaco;
 
   @OneToMany(() => OrcamentoItem, (item) => item.categoria)
   orcamentoItems: OrcamentoItem[];

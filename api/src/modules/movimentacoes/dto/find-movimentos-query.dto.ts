@@ -3,6 +3,14 @@ import { IsNumberString, IsOptional, IsString } from 'class-validator';
 
 export class FindMovimentosQueryDto {
   @ApiPropertyOptional({
+    description: 'Espaço financeiro selecionado',
+    example: '1',
+  })
+  @IsOptional()
+  @IsNumberString({}, { message: 'O espacoId deve ser um número' })
+  espacoId?: string;
+
+  @ApiPropertyOptional({
     description: 'Filtrar movimentações por categoria',
     example: '1',
   })

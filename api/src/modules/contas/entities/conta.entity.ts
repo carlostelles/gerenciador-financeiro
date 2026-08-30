@@ -11,6 +11,7 @@ import {
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Movimento } from '../../movimentacoes/entities/movimento.entity';
 import { SaldoInicial } from '../../movimentacoes/entities/saldo-inicial.entity';
+import { Espaco } from '../../espacos/entities/espaco.entity';
 
 @Entity('contas')
 export class Conta {
@@ -19,6 +20,9 @@ export class Conta {
 
   @Column()
   usuarioId: number;
+
+  @Column()
+  espacoId?: number;
 
   @Column({ length: 255 })
   nome: string;
@@ -35,6 +39,10 @@ export class Conta {
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
+
+  @ManyToOne(() => Espaco, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'espacoId' })
+  espaco?: Espaco;
 
   @OneToMany(() => Movimento, (movimento) => movimento.conta)
   movimentos: Movimento[];

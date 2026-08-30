@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveWhatsappIntegration1798588800000
-  implements MigrationInterface
-{
+export class RemoveWhatsappIntegration1798588800000 implements MigrationInterface {
   name = 'RemoveWhatsappIntegration1798588800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -19,11 +17,7 @@ export class RemoveWhatsappIntegration1798588800000
       await queryRunner.query(`DROP TABLE IF EXISTS \`${table}\``);
     }
 
-    await this.dropColumnIfPresent(
-      queryRunner,
-      'movimentos',
-      'idempotencyKey',
-    );
+    await this.dropColumnIfPresent(queryRunner, 'movimentos', 'idempotencyKey');
     await this.dropColumnIfPresent(
       queryRunner,
       'movimento_comprovantes',

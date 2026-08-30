@@ -103,7 +103,10 @@ describe('OrcamentosCadastroComponent', () => {
 
     component.onReceiptSelected({ target: input } as unknown as Event);
 
-    expect(movimentoService.analisarComprovante).toHaveBeenCalledWith(file);
+    expect(movimentoService.analisarComprovante).toHaveBeenCalledWith(file, {
+      periodo: undefined,
+      movimentoId: undefined,
+    });
     expect(component.movimentoForm.get('valor')?.value).toBe(59.9);
     expect(component.movimentoForm.get('descricao')?.value).toBe('Pagamento via PIX');
     expect(component.movimentoForm.get('contaId')?.value).toBe(2);

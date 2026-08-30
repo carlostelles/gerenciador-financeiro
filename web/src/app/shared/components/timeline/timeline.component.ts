@@ -35,6 +35,7 @@ export interface TimelineGroup {
 })
 export class TimelineComponent {
     readonly items = input.required<TimelineItem[]>();
+    readonly readOnly = input(false);
     readonly edit = output<any>();
     readonly delete = output<any>();
     readonly duplicate = output<any>();
@@ -119,6 +120,7 @@ export class TimelineComponent {
     }
 
     onEdit(item: TimelineItem) {
+        if (this.readOnly()) return;
         this.edit.emit(item.raw);
     }
 

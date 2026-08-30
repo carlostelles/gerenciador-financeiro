@@ -18,10 +18,15 @@ import {
 } from '@nestjs/swagger';
 
 import { ContasService } from './contas.service';
-import { CreateContaDto, UpdateContaDto, ContaResponseDto } from './dto/conta.dto';
+import {
+  CreateContaDto,
+  UpdateContaDto,
+  ContaResponseDto,
+} from './dto/conta.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 
 @ApiTags('contas')
 @ApiBearerAuth('access-token')
@@ -40,8 +45,11 @@ export class ContasController {
   async create(
     @Body() createContaDto: CreateContaDto,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<ContaResponseDto> {
-    return this.contasService.create(createContaDto, currentUser);
+    return espacoId === undefined
+      ? this.contasService.create(createContaDto, currentUser)
+      : this.contasService.create(createContaDto, currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Listar contas do usuário' })
@@ -51,8 +59,13 @@ export class ContasController {
     type: [ContaResponseDto],
   })
   @Get()
-  async findAll(@CurrentUser() currentUser: any): Promise<ContaResponseDto[]> {
-    return this.contasService.findAll(currentUser);
+  async findAll(
+    @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
+  ): Promise<ContaResponseDto[]> {
+    return espacoId === undefined
+      ? this.contasService.findAll(currentUser)
+      : this.contasService.findAll(currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Buscar conta por ID' })
@@ -70,8 +83,11 @@ export class ContasController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<ContaResponseDto> {
-    return this.contasService.findOne(id, currentUser);
+    return espacoId === undefined
+      ? this.contasService.findOne(id, currentUser)
+      : this.contasService.findOne(id, currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Atualizar conta' })
@@ -90,8 +106,11 @@ export class ContasController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateContaDto: UpdateContaDto,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<ContaResponseDto> {
-    return this.contasService.update(id, updateContaDto, currentUser);
+    return espacoId === undefined
+      ? this.contasService.update(id, updateContaDto, currentUser)
+      : this.contasService.update(id, updateContaDto, currentUser, espacoId);
   }
 
   @ApiOperation({ summary: 'Excluir conta' })
@@ -112,7 +131,10 @@ export class ContasController {
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: any,
+    @EspacoId() espacoId?: number,
   ): Promise<void> {
-    await this.contasService.remove(id, currentUser);
+    if (espacoId === undefined)
+      await this.contasService.remove(id, currentUser);
+    else await this.contasService.remove(id, currentUser, espacoId);
   }
 }

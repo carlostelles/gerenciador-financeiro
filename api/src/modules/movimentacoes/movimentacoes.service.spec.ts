@@ -82,6 +82,7 @@ describe('MovimentacoesService', () => {
 
     const mockCategoriaRepository = {
       find: jest.fn(),
+      findOne: jest.fn(),
     };
 
     const mockComprovanteRepository = {
@@ -322,6 +323,28 @@ describe('MovimentacoesService', () => {
       ).rejects.toThrow(BadRequestException);
       expect(movimentoRepository.create).not.toHaveBeenCalled();
     });
+
+    it('deve rejeitar item de orçamento de outro espaço mesmo com categoria informada', async () => {
+      (service as any).espacosService = {
+        resolveContext: jest.fn().mockResolvedValue({ espacoId: 8 }),
+      };
+      orcamentoItemRepository.findOne.mockResolvedValue({
+        id: 99,
+        categoriaId: 10,
+        orcamento: { id: 5, espacoId: 9 },
+      } as OrcamentoItem);
+
+      await expect(
+        service.create(
+          periodo,
+          { ...mockCreateMovimentoDto, orcamentoItemId: 99 },
+          usuarioId,
+          8,
+        ),
+      ).rejects.toThrow('O item de orçamento informado não existe');
+
+      expect(movimentoRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('analisarComprovante', () => {
@@ -418,6 +441,9 @@ describe('MovimentacoesService', () => {
     });
 
     it('deve criar movimento parcial não revisado quando faltar campo obrigatório', async () => {
+      (service as any).espacosService = {
+        resolveContext: jest.fn().mockResolvedValue({ espacoId: 8 }),
+      };
       categoriaRepository.find.mockResolvedValue([
         { id: 7, usuarioId, nome: 'Alimentação', tipo: 'DESPESA' } as Categoria,
       ]);
@@ -472,6 +498,8 @@ describe('MovimentacoesService', () => {
       const result = await service.analisarComprovante(
         arquivo as any,
         usuarioId,
+        undefined,
+        8,
       );
 
       expect(result.statusCode).toBe(201);
@@ -486,6 +514,7 @@ describe('MovimentacoesService', () => {
           valor: 123.45,
           categoriaId: 7,
           contaId: 2,
+          espacoId: 8,
           revisado: false,
         }),
       );
@@ -501,9 +530,25 @@ describe('MovimentacoesService', () => {
     });
 
     it('deve criar um unico comprovante para varios movimentos do extrato', async () => {
+      (service as any).espacosService = {
+        resolveContext: jest.fn().mockResolvedValue({ espacoId: 8 }),
+      };
       categoriaRepository.find.mockResolvedValue([
-        { id: 7, usuarioId, nome: 'Alimentação', tipo: 'DESPESA' } as Categoria,
+        {
+          id: 7,
+          usuarioId,
+          espacoId: 8,
+          nome: 'Alimentação',
+          tipo: 'DESPESA',
+        } as Categoria,
       ]);
+      categoriaRepository.findOne.mockResolvedValue({
+        id: 7,
+        usuarioId,
+        espacoId: 8,
+        nome: 'Alimentação',
+        tipo: 'DESPESA',
+      } as Categoria);
       contaRepository.find.mockResolvedValue([]);
       const comprovante = {
         id: 80,
@@ -570,17 +615,17 @@ describe('MovimentacoesService', () => {
         return filtro.id ? movimentos.get(filtro.id) || null : null;
       });
 
-      const resultado = await service.analisarExtratos([arquivo], usuarioId);
+      const resultado = await service.analisarExtratos([arquivo], usuarioId, 8);
 
       expect(comprovanteRepository.save).toHaveBeenCalledTimes(1);
       expect(movimentoRepository.create).toHaveBeenCalledTimes(2);
       expect(movimentoRepository.create).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ comprovanteId: 80 }),
+        expect.objectContaining({ comprovanteId: 80, espacoId: 8 }),
       );
       expect(movimentoRepository.create).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ comprovanteId: 80 }),
+        expect.objectContaining({ comprovanteId: 80, espacoId: 8 }),
       );
       expect(resultado.resultados).toHaveLength(2);
       expect(resultado.resultados.map((item) => item.comprovanteId)).toEqual([
@@ -725,6 +770,33 @@ describe('MovimentacoesService', () => {
       expect(comprovanteRepository.findOne).toHaveBeenCalledWith({
         where: { id: 99, usuarioId },
       });
+      expect(movimentoRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('deve rejeitar item de orçamento de outro espaço na atualização', async () => {
+      (service as any).espacosService = {
+        resolveContext: jest.fn().mockResolvedValue({ espacoId: 8 }),
+      };
+      movimentoRepository.findOne.mockResolvedValue({
+        ...mockMovimento,
+        espacoId: 8,
+      } as Movimento);
+      orcamentoItemRepository.findOne.mockResolvedValue({
+        id: 99,
+        categoriaId: 12,
+        orcamento: { id: 5, espacoId: 9 },
+      } as OrcamentoItem);
+
+      await expect(
+        service.update(
+          periodo,
+          1,
+          { orcamentoItemId: 99, categoriaId: 12 },
+          usuarioId,
+          8,
+        ),
+      ).rejects.toThrow('O item de orçamento informado não existe');
+
       expect(movimentoRepository.save).not.toHaveBeenCalled();
     });
 

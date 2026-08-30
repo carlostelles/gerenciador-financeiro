@@ -11,6 +11,8 @@ import { MovimentoComprovante } from '../modules/movimentacoes/entities/moviment
 import { Reserva } from '../modules/reservas/entities/reserva.entity';
 import { Conta } from '../modules/contas/entities/conta.entity';
 import { SaldoInicial } from '../modules/movimentacoes/entities/saldo-inicial.entity';
+import { Espaco } from '../modules/espacos/entities/espaco.entity';
+import { EspacoMembro } from '../modules/espacos/entities/espaco-membro.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -34,10 +36,12 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         SaldoInicial,
         Reserva,
         Conta,
+        Espaco,
+        EspacoMembro,
       ],
-      synchronize: this.configService.get('NODE_ENV') !== 'production',
+      synchronize: false,
       logging: this.configService.get('NODE_ENV') === 'development',
-      migrations: ['dist/migrations/*.js'],
+      migrations: ['dist/migrations/!(*.spec).js'],
       migrationsTableName: 'migrations',
     };
   }

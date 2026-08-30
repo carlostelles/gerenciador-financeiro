@@ -6,6 +6,7 @@ import { TuiConfirmService, TuiTooltip } from '@taiga-ui/kit';
 import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 
 import { CategoriaService } from '../../core/services/categoria.service';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 import { Categoria, PromptService, ToastService, CategoriaBadgeComponent, ButtonFloatComponent } from '../../shared';
 import { CategoriasCadastroComponent } from './components/cadastro/cadastro';
 
@@ -32,6 +33,7 @@ export class CategoriasComponent implements OnInit {
   private readonly promptService = inject(PromptService);
   private readonly toast = inject(ToastService);
   private readonly dialogs = inject(TuiDialogService);
+  protected readonly espacoContext = inject(EspacoContextService);
 
   categorias: Categoria[] = [];
   isLoading = signal<boolean>(false);
@@ -59,6 +61,7 @@ export class CategoriasComponent implements OnInit {
   }
 
   openFormModal(categoria?: Categoria) {
+    if (!this.espacoContext.canEdit()) return;
     this.dialogs
       .open<string>(new PolymorpheusComponent(CategoriasCadastroComponent), {
         label: categoria ? 'Editar categoria' : 'Cadastrar categoria',
@@ -77,6 +80,7 @@ export class CategoriasComponent implements OnInit {
   }
 
   confirmDelete(categoria: Categoria) {
+    if (!this.espacoContext.canEdit()) return;
     this.promptService
       .open(`A categoria <strong>${categoria.nome}</strong> será excluída. Esta ação não pode ser desfeita.`, {
         heading: 'Confirmação de Exclusão',

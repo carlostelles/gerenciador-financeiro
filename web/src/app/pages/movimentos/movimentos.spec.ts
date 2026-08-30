@@ -82,6 +82,70 @@ describe('MovimentosComponent', () => {
     expect(component.saldo).toBe(100);
   });
 
+  it('calcula os cards apenas com movimentos da conta selecionada mesmo se a resposta vier misturada', () => {
+    movimentoService.getAll.mockReturnValue(of([
+      { id: 1, contaId: 7, valor: 500, categoria: { tipo: 'RECEITA' } },
+      { id: 2, contaId: 7, valor: 120, categoria: { tipo: 'DESPESA' } },
+      { id: 3, contaId: 7, valor: 30, categoria: { tipo: 'RESERVA' } },
+      { id: 4, contaId: 8, valor: 900, categoria: { tipo: 'RECEITA' } },
+      { id: 5, contaId: 8, valor: 400, categoria: { tipo: 'DESPESA' } },
+    ]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    expect(component.contaId()).toBe(7);
+    expect(component.totalReceitas).toBe(500);
+    expect(component.totalDespesas).toBe(120);
+    expect(component.totalReservas).toBe(30);
+    expect(component.saldo).toBe(400);
+  });
+
+  it('recalcula os cards ao trocar a conta selecionada', () => {
+    movimentoService.getAll.mockReturnValue(of([
+      { id: 1, contaId: 7, valor: '100.50', categoria: { tipo: 'RECEITA' } },
+      { id: 2, contaId: 8, valor: '250.75', categoria: { tipo: 'RECEITA' } },
+      { id: 3, contaId: 8, valor: '40.25', orcamentoItem: { categoria: { tipo: 'DESPESA' } } },
+      { id: 4, contaId: 8, valor: 10, categoria: { tipo: 'RESERVA' } },
+      { id: 5, valor: 999, categoria: { tipo: 'RECEITA' } },
+    ]));
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    expect(component.totalReceitas).toBe(100.5);
+    expect(component.totalDespesas).toBe(0);
+
+    component.contaId.set(8);
+
+    expect(component.totalReceitas).toBe(250.75);
+    expect(component.totalDespesas).toBe(40.25);
+    expect(component.totalReservas).toBe(10);
+  });
+
+  it('agrega movimentos de todas as contas quando a opção consolidada está selecionada', () => {
+    sessionStorage.setItem('movimentacoes.contaId', ALL_ACCOUNTS);
+    contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));
+    movimentoService.getAll.mockReturnValue(of([
+      { id: 1, contaId: 7, valor: 100, categoria: { tipo: 'RECEITA' } },
+      { id: 2, contaId: 8, valor: 250, categoria: { tipo: 'RECEITA' } },
+      { id: 3, contaId: 7, valor: 30, categoria: { tipo: 'DESPESA' } },
+      { id: 4, contaId: 8, valor: 20, categoria: { tipo: 'RESERVA' } },
+    ]));
+
+    const fixture = TestBed.createComponent(MovimentosComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance as any;
+
+    expect(component.totalReceitas).toBe(350);
+    expect(component.totalDespesas).toBe(30);
+    expect(component.totalReservas).toBe(20);
+    expect(component.saldo).toBe(375);
+  });
+
   it('restaura durante a sessão a conta escolhida entre várias contas', () => {
     sessionStorage.setItem('movimentacoes.contaId', '8');
     contaService.getAll.mockReturnValue(of([conta, { id: 8, nome: 'Carteira' }]));

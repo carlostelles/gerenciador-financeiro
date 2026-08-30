@@ -119,20 +119,34 @@ export class MovimentosComponent implements OnInit {
         return mov.orcamentoItem?.descricao || '';
     }
 
+    private get movimentosDosCards(): Movimento[] {
+        const contaId = this.contaId();
+
+        if (contaId === ALL_ACCOUNTS) {
+            return this.movimentos();
+        }
+
+        if (contaId === null) {
+            return [];
+        }
+
+        return this.movimentos().filter((movimento) => movimento.contaId === contaId);
+    }
+
     get totalReceitas(): number {
-        return this.movimentos()
+        return this.movimentosDosCards
             .filter(mov => this.getCategoriaTipo(mov) === 'RECEITA')
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }
 
     get totalDespesas(): number {
-        return this.movimentos()
+        return this.movimentosDosCards
             .filter(mov => this.getCategoriaTipo(mov) === 'DESPESA')
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }
 
     get totalReservas(): number {
-        return this.movimentos()
+        return this.movimentosDosCards
             .filter(mov => this.getCategoriaTipo(mov) === 'RESERVA')
             .reduce((sum, mov) => sum + Number(mov.valor), 0);
     }

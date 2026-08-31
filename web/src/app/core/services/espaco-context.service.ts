@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, signal } from '@angular/core';
-import { tap } from 'rxjs';
+import { EMPTY, catchError, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { Espaco, EspacoPapel } from '../../shared/interfaces';

@@ -14,7 +14,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
     if (authService.token && authService.isAuthenticated) {
         let headers = req.headers.set('Authorization', `Bearer ${authService.token}`);
-        const espacoId = espacoContext.selected()?.id;
+        const espacoId = espacoContext.selected()?.id ?? sessionStorage.getItem('espacoId');
         if (espacoId) headers = headers.set('X-Espaco-Id', String(espacoId));
         const authReq = req.clone({ headers });
         return next(authReq);

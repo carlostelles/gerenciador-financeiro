@@ -7,6 +7,8 @@ import { AuthService } from '../services/auth.service';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
+  afterEach(() => sessionStorage.clear());
+
   it('envia autenticação e o espaço selecionado nas APIs protegidas', () => {
     const auth = { token: 'access-token', isAuthenticated: true };
     const context = { selected: () => ({ id: 42 }) };
@@ -31,6 +33,29 @@ describe('authInterceptor', () => {
 
     expect(intercepted?.headers.get('Authorization')).toBe('Bearer access-token');
     expect(intercepted?.headers.get('X-Espaco-Id')).toBe('42');
+  });
+
+  it('usa o espaço persistido enquanto o contexto ainda não foi carregado', () => {
+    sessionStorage.setItem('espacoId', '84');
+    const auth = { token: 'access-token', isAuthenticated: true };
+    const context = { selected: () => null };
+    let intercepted: HttpRequest<unknown> | undefined;
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: EspacoContextService, useValue: context },
+      ],
+    });
+
+    TestBed.runInInjectionContext(() =>
+      authInterceptor(new HttpRequest('GET', '/movimentacoes/2026-08'), (request) => {
+        intercepted = request;
+        return of(new HttpResponse());
+      }).subscribe(),
+    );
+
+    expect(intercepted?.headers.get('X-Espaco-Id')).toBe('84');
   });
 
   it('não envia o espaço em endpoints de autenticação', () => {

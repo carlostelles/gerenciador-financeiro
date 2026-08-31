@@ -250,7 +250,9 @@ export class EspacosService {
           where: { email: dto.email, ativo: true },
         });
         if (!usuario) {
-          throw new NotFoundException('Não foi possível adicionar este usuário');
+          throw new NotFoundException(
+            'Não foi possível adicionar este usuário',
+          );
         }
         const existente = await manager.findOne(EspacoMembro, {
           where: { espacoId, usuarioId: usuario.id },

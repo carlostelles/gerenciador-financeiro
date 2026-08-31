@@ -66,12 +66,12 @@
   display: grid;
   flex: 1;
   min-width: 0;
-  padding: 0.5rem;
   border: 0;
   color: inherit;
   background: transparent;
   text-align: start;
   cursor: pointer;
+  justify-content: start;
 
   span {
     overflow: hidden;
@@ -97,8 +97,12 @@
 .member-form {
   padding-block: 1rem;
 
-  > tui-textfield:first-child {
+  > tui-textfield {
     flex: 1;
+
+    &:first-child {
+      flex: 2;
+    }
   }
 }
 
@@ -109,6 +113,10 @@
 .member-row {
   min-height: 4rem;
   border-top: 1px solid var(--tui-border-normal);
+
+  > tui-textfield {
+    flex: .3;
+  }
 }
 
 .member-name {

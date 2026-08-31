@@ -5,7 +5,9 @@
       <p>Organize seus dados e acessos compartilhados.</p>
     </div>
     <form class="create-form" (ngSubmit)="createSpace()">
-      <input tuiTextfield maxlength="120" name="newSpaceName" [(ngModel)]="newSpaceName" placeholder="Nome do novo espaço" aria-label="Nome do novo espaço" />
+      <tui-textfield>
+        <input tuiTextfield maxlength="120" name="newSpaceName" [(ngModel)]="newSpaceName" placeholder="Nome do novo espaço" aria-label="Nome do novo espaço" />
+      </tui-textfield>
       <button tuiButton appearance="primary" type="submit" [disabled]="!newSpaceName.trim() || mutationPending()">
         <tui-icon icon="@tui.plus" /> Criar
       </button>
@@ -22,10 +24,12 @@
       @for (space of context.spaces(); track space.id) {
         <article class="space-row" [class.active]="context.selected()?.id === space.id">
           @if (editingId === space.id) {
-            <input tuiTextfield maxlength="120" [(ngModel)]="editingName" aria-label="Novo nome do espaço" />
+            <tui-textfield>
+              <input tuiTextfield maxlength="120" [(ngModel)]="editingName" aria-label="Novo nome do espaço" />
+            </tui-textfield>
             <div class="row-actions">
-              <button tuiIconButton iconStart="@tui.check" appearance="primary" type="button" tuiTooltip="Salvar nome" aria-label="Salvar nome" [disabled]="mutationPending()" (click)="saveRename(space)"></button>
-              <button tuiIconButton iconStart="@tui.x" appearance="secondary" type="button" tuiTooltip="Cancelar" aria-label="Cancelar" [disabled]="mutationPending()" (click)="cancelRename()"></button>
+              <button tuiIconButton iconStart="@tui.check" appearance="primary" type="button" tuiHint="Salvar nome" aria-label="Salvar nome" [disabled]="mutationPending()" (click)="saveRename(space)"></button>
+              <button tuiIconButton iconStart="@tui.x" appearance="secondary" type="button" tuiHint="Cancelar" aria-label="Cancelar" [disabled]="mutationPending()" (click)="cancelRename()"></button>
             </div>
           } @else {
             <button tuiButton appearance="flat" class="space-main" type="button" (click)="manage(space)">
@@ -35,9 +39,9 @@
             <tui-badge appearance="neutral">{{ space.papel }}</tui-badge>
             <div class="row-actions">
               @if (space.papel === 'OWNER') {
-                <button tuiIconButton iconStart="@tui.pencil" appearance="secondary" type="button" tuiTooltip="Renomear" aria-label="Renomear espaço" [disabled]="mutationPending()" (click)="beginRename(space)"></button>
+                <button tuiIconButton iconStart="@tui.pencil" appearance="secondary" type="button" tuiHint="Renomear" aria-label="Renomear espaço" [disabled]="mutationPending()" (click)="beginRename(space)"></button>
                 @if (space.tipo === 'SHARED') {
-                  <button tuiIconButton iconStart="@tui.trash" appearance="destructive" type="button" tuiTooltip="Excluir" aria-label="Excluir espaço" [disabled]="mutationPending()" (click)="deleteSpace(space)"></button>
+                  <button tuiIconButton iconStart="@tui.trash" appearance="destructive" type="button" tuiHint="Excluir" aria-label="Excluir espaço" [disabled]="mutationPending()" (click)="deleteSpace(space)"></button>
                 }
               } @else {
                 <button tuiButton appearance="secondary-destructive" size="s" type="button" [disabled]="mutationPending()" (click)="leaveSpace(space)">Sair</button>
@@ -64,7 +68,9 @@
 
       @if (context.selected()?.papel === 'OWNER') {
         <div class="member-form">
-          <input tuiTextfield type="email" [(ngModel)]="memberEmail" [disabled]="mutationPending()" placeholder="E-mail exato do usuário" aria-label="E-mail do usuário" />
+          <tui-textfield>
+            <input tuiTextfield type="email" [(ngModel)]="memberEmail" [disabled]="mutationPending()" placeholder="E-mail exato do usuário" aria-label="E-mail do usuário" />
+          </tui-textfield>
           <tui-textfield tuiChevron [stringify]="roleStringify">
             <label tuiLabel for="memberRole">Papel</label>
             <input tuiComboBox id="memberRole" [strict]="true" [disabled]="mutationPending()" [(ngModel)]="memberRole" />
@@ -95,8 +101,8 @@
                       <button new tuiOption type="button" value="VIEWER">Visualizador</button>
                     </tui-data-list>
                   </tui-textfield>
-                  <button tuiIconButton iconStart="@tui.arrow-right-left" appearance="secondary" type="button" tuiTooltip="Transferir propriedade" aria-label="Transferir propriedade" [disabled]="mutationPending()" (click)="transfer(member)"></button>
-                  <button tuiIconButton iconStart="@tui.user-minus" appearance="destructive" type="button" tuiTooltip="Remover membro" aria-label="Remover membro" [disabled]="mutationPending()" (click)="removeMember(member)"></button>
+                  <button tuiIconButton iconStart="@tui.arrow-right-left" appearance="secondary" type="button" tuiHint="Transferir propriedade" aria-label="Transferir propriedade" [disabled]="mutationPending()" (click)="transfer(member)"></button>
+                  <button tuiIconButton iconStart="@tui.user-minus" appearance="destructive" type="button" tuiHint="Remover membro" aria-label="Remover membro" [disabled]="mutationPending()" (click)="removeMember(member)"></button>
                 }
               </div>
             } @empty {

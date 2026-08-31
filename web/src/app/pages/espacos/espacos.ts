@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { TuiButton, TuiDataList, TuiIcon, TuiTextfield } from '@taiga-ui/core';
+import { TuiButton, TuiDataList, TuiDropdown, TuiHint, TuiIcon, TuiTextfield } from '@taiga-ui/core';
 import { TuiBadge, TuiChevron, TuiComboBox } from '@taiga-ui/kit';
-import { finalize, Observable, Observer } from 'rxjs';
+import { finalize, Observable, Observer, Subscription } from 'rxjs';
 
 import { EspacoContextService } from '../../core/services/espaco-context.service';
 import { EspacoService } from '../../core/services/espaco.service';
@@ -26,6 +27,8 @@ import {
     TuiChevron,
     TuiComboBox,
     TuiDataList,
+    TuiDropdown,
+    TuiHint,
     TuiIcon,
     TuiTextfield,
   ],
@@ -33,11 +36,12 @@ import {
   styleUrls: ['./espacos.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EspacosComponent implements OnInit {
+export class EspacosComponent {
   protected readonly context = inject(EspacoContextService);
   private readonly service = inject(EspacoService);
   private readonly prompt = inject(PromptService);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected newSpaceName = '';
   protected editingId: number | null = null;
@@ -50,11 +54,16 @@ export class EspacosComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly roleStringify = (papel: EspacoPapel): string =>
     papel === 'EDITOR' ? 'Editor' : 'Visualizador';
-
-  ngOnInit(): void {
+  private readonly selectedSpaceEffect = effect((onCleanup) => {
     const selected = this.context.selected();
-    if (selected?.papel === 'OWNER') this.loadMembers(selected.id);
-  }
+    this.members.set([]);
+    if (selected?.papel === 'OWNER') {
+      const subscription = this.loadMembers(selected.id);
+      onCleanup(() => subscription.unsubscribe());
+    } else {
+      this.membersLoading.set(false);
+    }
+  });
 
   protected createSpace(): void {
     const nome = this.newSpaceName.trim();
@@ -145,7 +154,6 @@ export class EspacosComponent implements OnInit {
     this.context.select(space.id);
     this.members.set([]);
     this.error.set(null);
-    if (space.papel === 'OWNER') this.loadMembers(space.id);
   }
 
   protected addMember(): void {
@@ -222,18 +230,21 @@ export class EspacosComponent implements OnInit {
       });
   }
 
-  private loadMembers(espacoId: number): void {
+  private loadMembers(espacoId: number): Subscription {
     this.membersLoading.set(true);
-    this.service.members(espacoId).subscribe({
-      next: (members) => {
-        this.members.set(members);
-        this.membersLoading.set(false);
-      },
-      error: () => {
-        this.error.set('Não foi possível carregar os membros.');
-        this.membersLoading.set(false);
-      },
-    });
+    return this.service
+      .members(espacoId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (members) => {
+          this.members.set(members);
+          this.membersLoading.set(false);
+        },
+        error: () => {
+          this.error.set('Não foi possível carregar os membros.');
+          this.membersLoading.set(false);
+        },
+      });
   }
 
   private runMutation<T>(

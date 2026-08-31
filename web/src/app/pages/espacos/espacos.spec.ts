@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
 import { EspacoContextService } from '../../core/services/espaco-context.service';
 import { EspacoService } from '../../core/services/espaco.service';
@@ -35,7 +35,9 @@ describe('EspacosComponent', () => {
         papel: 'OWNER',
       }),
       isOwner: () => context.selected()?.papel === 'OWNER',
-      select: jest.fn(),
+      select: jest.fn((espacoId: number) => {
+        context.selected.set(context.spaces().find((space: { id: number }) => space.id === espacoId));
+      }),
       removeLocal: jest.fn(),
       load: jest.fn().mockReturnValue(of(undefined)),
     };
@@ -48,7 +50,13 @@ describe('EspacosComponent', () => {
         { provide: PromptService, useValue: { open: jest.fn().mockReturnValue(of(true)) } },
         { provide: ToastService, useValue: { success: jest.fn(), warning: jest.fn(), error: jest.fn() } },
       ],
-    }).overrideComponent(EspacosComponent, { set: { template: '' } });
+    });
+  });
+
+  it('renderiza o template real com os controles de acesso', () => {
+    const fixture = TestBed.createComponent(EspacosComponent);
+
+    expect(() => fixture.detectChanges()).not.toThrow();
   });
 
   it('cria espaço com nome trimado e recarrega o contexto', () => {
@@ -81,12 +89,101 @@ describe('EspacosComponent', () => {
   });
 
   it('carrega membros ao selecionar espaço próprio', () => {
-    const component = TestBed.createComponent(EspacosComponent).componentInstance as any;
+    context.selected.set(null);
+    const fixture = TestBed.createComponent(EspacosComponent);
+    const component = fixture.componentInstance as any;
 
-    component.manage(context.selected());
+    component.manage(context.spaces()[0]);
+    fixture.detectChanges();
 
     expect(context.select).toHaveBeenCalledWith(7);
     expect(espacoService.members).toHaveBeenCalledWith(7);
+  });
+
+  it('carrega membros uma única vez quando o espaço próprio chega assincronamente', () => {
+    context.selected.set(null);
+    const fixture = TestBed.createComponent(EspacosComponent);
+    fixture.detectChanges();
+
+    context.selected.set(context.spaces()[0]);
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(espacoService.members).toHaveBeenCalledTimes(1);
+    expect(espacoService.members).toHaveBeenCalledWith(7);
+  });
+
+  it('limpa membros ao mudar para espaço sem papel de proprietário ou sem seleção', () => {
+    espacoService.members.mockReturnValue(
+      of([
+        {
+          usuarioId: 12,
+          papel: 'VIEWER',
+          usuario: { id: 12, nome: 'Pessoa', email: 'pessoa@example.com' },
+        },
+      ]),
+    );
+    const fixture = TestBed.createComponent(EspacosComponent);
+    const component = fixture.componentInstance as any;
+    fixture.detectChanges();
+    expect(component.members()).toHaveLength(1);
+
+    context.selected.set({ ...context.selected(), papel: 'EDITOR' });
+    fixture.detectChanges();
+    expect(component.members()).toEqual([]);
+
+    component.members.set([{ usuarioId: 13, papel: 'VIEWER' }]);
+    context.selected.set(null);
+    fixture.detectChanges();
+    expect(component.members()).toEqual([]);
+  });
+
+  it('cancela o carregamento anterior ao trocar de espaço', () => {
+    const membersResponse = new Subject<any[]>();
+    espacoService.members.mockReturnValue(membersResponse);
+    const fixture = TestBed.createComponent(EspacosComponent);
+    const component = fixture.componentInstance as any;
+    fixture.detectChanges();
+
+    context.selected.set({ ...context.selected(), id: 8, papel: 'EDITOR' });
+    fixture.detectChanges();
+    membersResponse.next([{ usuarioId: 12, papel: 'VIEWER' }]);
+
+    expect(membersResponse.observed).toBe(false);
+    expect(component.members()).toEqual([]);
+    expect(component.membersLoading()).toBe(false);
+  });
+
+  it('carrega apenas os membros do novo espaço próprio ao trocar a seleção', () => {
+    const firstResponse = new Subject<any[]>();
+    const secondResponse = new Subject<any[]>();
+    espacoService.members.mockImplementation((espacoId: number) =>
+      espacoId === 7 ? firstResponse : secondResponse,
+    );
+    const fixture = TestBed.createComponent(EspacosComponent);
+    const component = fixture.componentInstance as any;
+    fixture.detectChanges();
+
+    context.selected.set({ ...context.selected(), id: 8 });
+    fixture.detectChanges();
+    firstResponse.next([{ usuarioId: 12, papel: 'VIEWER' }]);
+    secondResponse.next([{ usuarioId: 13, papel: 'EDITOR' }]);
+
+    expect(firstResponse.observed).toBe(false);
+    expect(espacoService.members).toHaveBeenNthCalledWith(1, 7);
+    expect(espacoService.members).toHaveBeenNthCalledWith(2, 8);
+    expect(component.members()).toEqual([{ usuarioId: 13, papel: 'EDITOR' }]);
+  });
+
+  it('cancela o carregamento de membros ao destruir o componente', () => {
+    const membersResponse = new Subject<any[]>();
+    espacoService.members.mockReturnValue(membersResponse);
+    const fixture = TestBed.createComponent(EspacosComponent);
+    fixture.detectChanges();
+
+    fixture.destroy();
+
+    expect(membersResponse.observed).toBe(false);
   });
 
   it('adiciona membro com email trimado e papel selecionado', () => {

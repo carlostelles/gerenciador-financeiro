@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, WritableSignal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { TuiHint, TuiTextfield } from '@taiga-ui/core';
 import { TuiChevron, TuiComboBox } from '@taiga-ui/kit';
 import { TuiDataList } from '@taiga-ui/core';
 import { TuiAxes, TuiBarChart, TuiLegendItem, TuiRingChart } from '@taiga-ui/addon-charts';
 import { TuiHovered, TuiStringHandler } from '@taiga-ui/cdk';
-import { forkJoin, finalize, map } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, finalize, forkJoin, map, of, Subject, switchMap } from 'rxjs';
 
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 import { Conta, CurrencyPipe, FormatPeriodPipe, ResumoCategoriaItem, ResumoPorCategoriaResponse, ComparativoPorTipoResponse, formatPeriod, getTodayUTC } from '../../shared';
 
 const RESUMO_VAZIO: ResumoPorCategoriaResponse = {
@@ -47,12 +49,19 @@ const COMPARATIVO_VAZIO: ComparativoPorTipoResponse = {
   templateUrl: './home.html',
   styleUrls: ['./home.scss']
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent {
   private readonly movimentoService = inject(MovimentoService);
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly contaService = inject(ContaService);
+  private readonly espacoContext = inject(EspacoContextService);
+  private readonly resumoRequest = new Subject<{ periodo: string; contaId?: number } | null>();
+  private filterRevision = 0;
+  private readonly dashboardLoading = signal(false);
+  private readonly resumoLoading = signal(false);
 
-  protected readonly isLoading = signal<boolean>(false);
+  protected readonly isLoading = computed(
+    () => this.dashboardLoading() || this.resumoLoading(),
+  );
   protected readonly periodos = signal<string[]>([]);
   protected readonly contas = signal<Conta[]>([]);
   protected readonly chosedPeriodo = signal<string | undefined>(undefined);
@@ -105,6 +114,101 @@ export class HomeComponent implements OnInit {
   protected readonly valoresDespesas = computed(() => this.resumo().despesas.map((item) => item.total));
   protected readonly valoresReservas = computed(() => this.resumo().reservas.map((item) => item.total));
 
+  constructor() {
+    toObservable(this.espacoContext.selected)
+      .pipe(
+        map((espaco) => espaco?.id ?? null),
+        distinctUntilChanged(),
+        switchMap((espacoId) => {
+          this.clearDashboard();
+
+          if (espacoId === null) {
+            return EMPTY;
+          }
+
+          const periodo = this.currentPeriodo;
+          const filterRevision = this.filterRevision;
+          this.chosedPeriodo.set(periodo);
+          this.dashboardLoading.set(true);
+
+          return forkJoin({
+            contas: this.contaService.getAll(),
+            periodosOrcamento: this.orcamentoService.findPeriodos(),
+            periodosMovimento: this.movimentoService.findPeriodos(),
+            comparativo: this.movimentoService.findComparativoPorTipo(),
+            resumo: this.movimentoService.findResumoPorCategoria(periodo),
+          }).pipe(
+            map(({ contas, periodosOrcamento, periodosMovimento, comparativo, resumo }) => {
+              const periodos = new Set([...periodosOrcamento, ...periodosMovimento, periodo]);
+              return {
+                contas,
+                periodos: Array.from(periodos).sort(),
+                comparativo,
+                resumo,
+                periodo,
+                filterRevision,
+              };
+            }),
+            catchError((error) => {
+              console.error('Erro ao carregar dashboard:', error);
+              return of(null);
+            }),
+            finalize(() => this.dashboardLoading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((dashboard) => {
+        if (!dashboard) return;
+
+        this.contas.set(dashboard.contas);
+        this.periodos.set(dashboard.periodos);
+        this.comparativo.set(dashboard.comparativo);
+        if (dashboard.filterRevision === this.filterRevision) {
+          this.resumo.set(dashboard.resumo);
+          this.chosedPeriodo.set(dashboard.periodo);
+        }
+      });
+
+    this.resumoRequest
+      .pipe(
+        switchMap((request) => {
+          if (!request) return EMPTY;
+
+          this.resumoLoading.set(true);
+          return this.movimentoService
+            .findResumoPorCategoria(request.periodo, request.contaId)
+            .pipe(
+              map((resumo) => ({ resumo, periodo: request.periodo })),
+              catchError((error) => {
+                console.error('Erro ao carregar resumo de movimentações:', error);
+                this.resumo.set(RESUMO_VAZIO);
+                return EMPTY;
+              }),
+              finalize(() => this.resumoLoading.set(false)),
+            );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe(({ resumo, periodo }) => {
+        this.resumo.set(resumo);
+        this.chosedPeriodo.set(periodo);
+      });
+  }
+
+  private clearDashboard(): void {
+    this.filterRevision++;
+    this.resumoRequest.next(null);
+    this.dashboardLoading.set(false);
+    this.resumoLoading.set(false);
+    this.contaId.set(null);
+    this.chosedPeriodo.set(undefined);
+    this.contas.set([]);
+    this.periodos.set([]);
+    this.resumo.set(RESUMO_VAZIO);
+    this.comparativo.set(COMPARATIVO_VAZIO);
+  }
+
   private somar(itens: ResumoCategoriaItem[]): number {
     return itens.reduce((sum, item) => sum + Number(item.total), 0);
   }
@@ -114,72 +218,13 @@ export class HomeComponent implements OnInit {
     return `${now.getUTCFullYear()}-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}`;
   }
 
-  ngOnInit() {
-    this.loadContas();
-    this.loadPeriodos();
-    this.loadComparativo();
-  }
-
-  loadComparativo() {
-    this.movimentoService.findComparativoPorTipo().subscribe({
-      next: (comparativo) => this.comparativo.set(comparativo),
-      error: (error) => {
-        console.error('Erro ao carregar comparativo de movimentações:', error);
-        this.comparativo.set(COMPARATIVO_VAZIO);
-      },
-    });
-  }
-
-  loadContas() {
-    this.contaService.getAll().subscribe({
-      next: (contas) => this.contas.set(contas),
-      error: (error) => console.error('Erro ao carregar contas:', error),
-    });
-  }
-
-  loadPeriodos() {
-    this.isLoading.set(true);
-
-    forkJoin([
-      this.orcamentoService.findPeriodos(),
-      this.movimentoService.findPeriodos(),
-    ])
-      .pipe(
-        finalize(() => this.isLoading.set(false)),
-        map(([periodosOrcamento, periodosMovimento]) => {
-          const allPeriodos = new Set([...periodosOrcamento, ...periodosMovimento]);
-          if (!allPeriodos.has(this.currentPeriodo)) {
-            allPeriodos.add(this.currentPeriodo);
-          }
-          return Array.from(allPeriodos).sort();
-        })
-      )
-      .subscribe({
-        next: (periodos) => {
-          this.periodos.set(periodos);
-
-          if (periodos.length > 0) {
-            this.loadResumo(this.currentPeriodo);
-          }
-        },
-        error: (error) => console.error('Erro ao carregar períodos:', error),
-      });
-  }
-
   loadResumo(periodo: string) {
-    this.isLoading.set(true);
-    this.chosedPeriodo.set(periodo);
+    if (!this.espacoContext.selected()) return;
 
-    this.movimentoService
-      .findResumoPorCategoria(periodo, this.contaId() ?? undefined)
-      .pipe(finalize(() => this.isLoading.set(false)))
-      .subscribe({
-        next: (resumo) => this.resumo.set(resumo),
-        error: (error) => {
-          console.error('Erro ao carregar resumo de movimentações:', error);
-          this.resumo.set(RESUMO_VAZIO);
-        },
-      });
+    this.filterRevision++;
+    this.chosedPeriodo.set(periodo);
+    this.resumo.set(RESUMO_VAZIO);
+    this.resumoRequest.next({ periodo, contaId: this.contaId() ?? undefined });
   }
 
   onPeriodoChange(periodo: string | null) {

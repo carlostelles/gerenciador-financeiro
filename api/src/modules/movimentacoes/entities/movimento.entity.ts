@@ -13,6 +13,7 @@ import { OrcamentoItem } from '../../orcamentos/entities/orcamento-item.entity';
 import { Categoria } from '../../categorias/entities/categoria.entity';
 import { Conta } from '../../contas/entities/conta.entity';
 import { MovimentoComprovante } from './movimento-comprovante.entity';
+import { Espaco } from '../../espacos/entities/espaco.entity';
 
 @Entity('movimentos')
 export class Movimento {
@@ -21,6 +22,9 @@ export class Movimento {
 
   @Column()
   usuarioId: number;
+
+  @Column()
+  espacoId?: number;
 
   @Column({ length: 7 }) // yyyy-mm
   periodo: string;
@@ -59,6 +63,10 @@ export class Movimento {
   @ManyToOne(() => Usuario, (usuario) => usuario.movimentos)
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
+
+  @ManyToOne(() => Espaco, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'espacoId' })
+  espaco?: Espaco;
 
   @ManyToOne(() => OrcamentoItem, (item) => item.movimentos, { nullable: true })
   @JoinColumn({ name: 'orcamentoItemId' })

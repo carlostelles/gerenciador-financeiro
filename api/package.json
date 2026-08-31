@@ -5,11 +5,14 @@
   "author": "Carlos Telles",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:local": "NODE_ENV=development && cp .env.local .env && nest start --watch",
+    "start:local": "node --env-file-if-exists=.env.local -e \"process.env.NODE_ENV = 'development'; process.argv.splice(1, 0, 'nest'); require('./node_modules/@nestjs/cli/bin/nest.js')\" -- start --watch",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

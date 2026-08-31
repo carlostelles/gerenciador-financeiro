@@ -13,7 +13,8 @@ import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
-import { CategoriasService } from '../categorias/categorias.service';
+import { EspacosService } from '../espacos/espacos.service';
+import { EspacoTipo } from '../espacos/entities/espaco.entity';
 
 @Injectable()
 export class UsuariosService {
@@ -21,7 +22,7 @@ export class UsuariosService {
     @InjectRepository(Usuario)
     private usuariosRepository: Repository<Usuario>,
     private logsService: LogsService,
-    private categoriasService: CategoriasService,
+    private espacosService: EspacosService,
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto): Promise<Usuario> {
@@ -63,22 +64,43 @@ export class UsuariosService {
       dadosNovos: { ...savedUsuario, senha: '[HIDDEN]' },
     });
 
-    // Criar categorias padrões para o novo usuário
-    await this.categoriasService.createDefaultCategories(savedUsuario.id);
+    await this.espacosService.create(
+      { nome: `Espaço pessoal de ${savedUsuario.nome}` },
+      savedUsuario.id,
+      EspacoTipo.PERSONAL,
+    );
 
     return savedUsuario;
   }
 
   async findAll(): Promise<Usuario[]> {
     return this.usuariosRepository.find({
-      select: ['id', 'nome', 'email', 'telefone', 'role', 'ativo', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'nome',
+        'email',
+        'telefone',
+        'role',
+        'ativo',
+        'createdAt',
+        'updatedAt',
+      ],
     });
   }
 
   async findOne(id: number): Promise<Usuario> {
     const usuario = await this.usuariosRepository.findOne({
       where: { id },
-      select: ['id', 'nome', 'email', 'telefone', 'role', 'ativo', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'nome',
+        'email',
+        'telefone',
+        'role',
+        'ativo',
+        'createdAt',
+        'updatedAt',
+      ],
     });
 
     if (!usuario) {
@@ -105,7 +127,7 @@ export class UsuariosService {
     currentUser: any,
   ): Promise<Usuario> {
     const usuario = await this.usuariosRepository.findOne({ where: { id } });
-    
+
     if (!usuario) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -123,9 +145,11 @@ export class UsuariosService {
     // Verificar email único se foi alterado
     if (updateUsuarioDto.email && updateUsuarioDto.email !== usuario.email) {
       if (currentUser.role !== UserRole.ADMIN) {
-        throw new ForbiddenException('Usuários não podem alterar o próprio email');
+        throw new ForbiddenException(
+          'Usuários não podem alterar o próprio email',
+        );
       }
-      
+
       const existingEmail = await this.usuariosRepository.findOne({
         where: { email: updateUsuarioDto.email },
       });
@@ -135,7 +159,10 @@ export class UsuariosService {
     }
 
     // Verificar telefone único se foi alterado
-    if (updateUsuarioDto.telefone && updateUsuarioDto.telefone !== usuario.telefone) {
+    if (
+      updateUsuarioDto.telefone &&
+      updateUsuarioDto.telefone !== usuario.telefone
+    ) {
       const existingPhone = await this.usuariosRepository.findOne({
         where: { telefone: updateUsuarioDto.telefone },
       });
@@ -170,14 +197,16 @@ export class UsuariosService {
 
   async remove(id: number, currentUser: any): Promise<void> {
     const usuario = await this.usuariosRepository.findOne({ where: { id } });
-    
+
     if (!usuario) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
     // Verificar permissões
     if (currentUser.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Apenas administradores podem desativar usuários');
+      throw new ForbiddenException(
+        'Apenas administradores podem desativar usuários',
+      );
     }
 
     // Não permitir auto-desativação

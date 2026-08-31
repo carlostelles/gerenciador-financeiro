@@ -8,7 +8,12 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 
 import { UsuariosService } from '../usuarios/usuarios.service';
-import { AlterarSenhaDto, LoginDto, RefreshTokenDto, AuthResponseDto } from './dto/auth.dto';
+import {
+  AlterarSenhaDto,
+  LoginDto,
+  RefreshTokenDto,
+  AuthResponseDto,
+} from './dto/auth.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
 
@@ -63,7 +68,9 @@ export class AuthService {
     }
   }
 
-  async alterarSenha(alterarSenhaDto: AlterarSenhaDto): Promise<{ message: string }> {
+  async alterarSenha(
+    alterarSenhaDto: AlterarSenhaDto,
+  ): Promise<{ message: string }> {
     const { email, senhaAtual, novaSenha, confirmarSenha } = alterarSenhaDto;
 
     if (novaSenha !== confirmarSenha) {
@@ -95,7 +102,7 @@ export class AuthService {
 
   async logout(userId: number): Promise<void> {
     const usuario = await this.usuariosService.findOne(userId);
-    
+
     // Log da ação de logout
     await this.logsService.create({
       data: new Date(),

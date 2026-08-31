@@ -28,6 +28,7 @@ const SAFE_PASSWORD_PATTERN = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|?,.:]+$/;
 export class SignupComponent {
   signupForm: FormGroup;
   isLoading = false;
+  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -50,6 +51,7 @@ export class SignupComponent {
   onSubmit(): void {
     if (this.signupForm.valid) {
       this.isLoading = true;
+      this.errorMessage = '';
 
       const formValue = this.signupForm.value;
       const userData: CreateUsuarioDto = {
@@ -63,8 +65,9 @@ export class SignupComponent {
         next: () => {
           this.router.navigate(['/login']);
         },
-        error: (error) => {
+        error: () => {
           this.isLoading = false;
+          this.errorMessage = 'Não foi possível realizar o cadastro.';
         }
       });
     }

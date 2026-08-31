@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +16,9 @@ import { UpdateOrcamentoItemDto } from './dto/update-orcamento-item.dto';
 import { OrcamentoByPeriodoResponseDto } from './dto/find-by-periodo.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
+import { EspacosService } from '../espacos/espacos.service';
+import { EspacoPapel } from '../espacos/entities/espaco-membro.entity';
+import { CategoriasService } from '../categorias/categorias.service';
 
 @Injectable()
 export class OrcamentosService {
@@ -24,14 +28,20 @@ export class OrcamentosService {
     @InjectRepository(OrcamentoItem)
     private orcamentoItemRepository: Repository<OrcamentoItem>,
     private logsService: LogsService,
+    @Optional() private espacosService?: EspacosService,
+    @Optional() private categoriasService?: CategoriasService,
   ) {}
 
   async create(
     createOrcamentoDto: CreateOrcamentoDto,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<Orcamento> {
+    const contexto = await this.contexto(usuarioId, espacoId, true);
     const existingOrcamento = await this.orcamentoRepository.findOne({
-      where: { periodo: createOrcamentoDto.periodo, usuarioId },
+      where: contexto
+        ? { periodo: createOrcamentoDto.periodo, espacoId: contexto }
+        : { periodo: createOrcamentoDto.periodo, usuarioId },
     });
 
     if (existingOrcamento) {
@@ -41,6 +51,7 @@ export class OrcamentosService {
     const orcamento = this.orcamentoRepository.create({
       ...createOrcamentoDto,
       usuarioId,
+      ...(contexto ? { espacoId: contexto } : {}),
     });
 
     const savedOrcamento = await this.orcamentoRepository.save(orcamento);
@@ -64,17 +75,19 @@ export class OrcamentosService {
     return savedOrcamento;
   }
 
-  async findAll(usuarioId: number): Promise<Orcamento[]> {
+  async findAll(usuarioId: number, espacoId?: number): Promise<Orcamento[]> {
+    const contexto = await this.contexto(usuarioId, espacoId);
     return this.orcamentoRepository.find({
-      where: { usuarioId },
+      where: contexto ? { espacoId: contexto } : { usuarioId },
       relations: ['items', 'items.categoria'],
       order: { periodo: 'DESC' },
     });
   }
 
-  async findPeriodos(usuarioId: number): Promise<string[]> {
+  async findPeriodos(usuarioId: number, espacoId?: number): Promise<string[]> {
+    const contexto = await this.contexto(usuarioId, espacoId);
     const orcamentos = await this.orcamentoRepository.find({
-      where: { usuarioId },
+      where: contexto ? { espacoId: contexto } : { usuarioId },
       select: ['periodo'],
       order: { periodo: 'DESC' },
     });
@@ -85,9 +98,13 @@ export class OrcamentosService {
   async findByPeriodo(
     periodo: string,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<OrcamentoByPeriodoResponseDto | null> {
+    const contexto = await this.contexto(usuarioId, espacoId);
     const orcamento = await this.orcamentoRepository.findOne({
-      where: { periodo, usuarioId },
+      where: contexto
+        ? { periodo, espacoId: contexto }
+        : { periodo, usuarioId },
       relations: ['items', 'items.categoria'],
     });
 
@@ -117,9 +134,15 @@ export class OrcamentosService {
     return response;
   }
 
-  async findOne(id: number, usuarioId: number): Promise<Orcamento> {
+  async findOne(
+    id: number,
+    usuarioId: number,
+    espacoId?: number,
+    escrita = false,
+  ): Promise<Orcamento> {
+    const contexto = await this.contexto(usuarioId, espacoId, escrita);
     const orcamento = await this.orcamentoRepository.findOne({
-      where: { id, usuarioId },
+      where: contexto ? { id, espacoId: contexto } : { id, usuarioId },
       relations: ['items', 'items.categoria'],
     });
 
@@ -134,12 +157,18 @@ export class OrcamentosService {
     id: number,
     updateOrcamentoDto: UpdateOrcamentoDto,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<Orcamento> {
-    const orcamento = await this.findOne(id, usuarioId);
+    const orcamento = await this.findOne(id, usuarioId, espacoId, true);
 
     if (updateOrcamentoDto.periodo) {
       const existingOrcamento = await this.orcamentoRepository.findOne({
-        where: { periodo: updateOrcamentoDto.periodo, usuarioId },
+        where: orcamento.espacoId
+          ? {
+              periodo: updateOrcamentoDto.periodo,
+              espacoId: orcamento.espacoId,
+            }
+          : { periodo: updateOrcamentoDto.periodo, usuarioId },
       });
 
       if (existingOrcamento && existingOrcamento.id !== id) {
@@ -173,8 +202,12 @@ export class OrcamentosService {
     return orcamentoAtualizado;
   }
 
-  async remove(id: number, usuarioId: number): Promise<void> {
-    const orcamento = await this.findOne(id, usuarioId);
+  async remove(
+    id: number,
+    usuarioId: number,
+    espacoId?: number,
+  ): Promise<void> {
+    const orcamento = await this.findOne(id, usuarioId, espacoId, true);
 
     if (orcamento.items && orcamento.items.length > 0) {
       throw new ConflictException(
@@ -204,11 +237,14 @@ export class OrcamentosService {
     id: number,
     periodo: string,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<Orcamento> {
-    const orcamentoOriginal = await this.findOne(id, usuarioId);
+    const orcamentoOriginal = await this.findOne(id, usuarioId, espacoId, true);
 
     const existingOrcamento = await this.orcamentoRepository.findOne({
-      where: { periodo, usuarioId },
+      where: orcamentoOriginal.espacoId
+        ? { periodo, espacoId: orcamentoOriginal.espacoId }
+        : { periodo, usuarioId },
     });
 
     if (existingOrcamento) {
@@ -219,6 +255,9 @@ export class OrcamentosService {
       periodo,
       descricao: `${orcamentoOriginal.descricao} (Clonado)`,
       usuarioId,
+      ...(orcamentoOriginal.espacoId
+        ? { espacoId: orcamentoOriginal.espacoId }
+        : {}),
     });
 
     const orcamentoSalvo = await this.orcamentoRepository.save(novoOrcamento);
@@ -235,7 +274,11 @@ export class OrcamentosService {
 
     await this.orcamentoItemRepository.save(itensClonados);
 
-    const orcamentoCompleto = await this.findOne(orcamentoSalvo.id, usuarioId);
+    const orcamentoCompleto = await this.findOne(
+      orcamentoSalvo.id,
+      usuarioId,
+      espacoId,
+    );
 
     // Log da clonagem
     try {
@@ -260,8 +303,21 @@ export class OrcamentosService {
     orcamentoId: number,
     createItemDto: CreateOrcamentoItemDto,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<OrcamentoItem> {
-    await this.findOne(orcamentoId, usuarioId);
+    const orcamento = await this.findOne(
+      orcamentoId,
+      usuarioId,
+      espacoId,
+      true,
+    );
+    if (orcamento.espacoId && this.categoriasService) {
+      await this.categoriasService.findOne(
+        createItemDto.categoriaId,
+        { sub: usuarioId },
+        orcamento.espacoId,
+      );
+    }
 
     const item = this.orcamentoItemRepository.create({
       ...createItemDto,
@@ -294,8 +350,9 @@ export class OrcamentosService {
   async findItems(
     orcamentoId: number,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<OrcamentoItem[]> {
-    await this.findOne(orcamentoId, usuarioId);
+    await this.findOne(orcamentoId, usuarioId, espacoId);
 
     return this.orcamentoItemRepository.find({
       where: { orcamentoId },
@@ -307,8 +364,10 @@ export class OrcamentosService {
     orcamentoId: number,
     itemId: number,
     usuarioId: number,
+    espacoId?: number,
+    escrita = false,
   ): Promise<OrcamentoItem> {
-    await this.findOne(orcamentoId, usuarioId);
+    await this.findOne(orcamentoId, usuarioId, espacoId, escrita);
 
     const item = await this.orcamentoItemRepository.findOne({
       where: { id: itemId, orcamentoId },
@@ -327,8 +386,25 @@ export class OrcamentosService {
     itemId: number,
     updateItemDto: UpdateOrcamentoItemDto,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<OrcamentoItem> {
-    const item = await this.findItem(orcamentoId, itemId, usuarioId);
+    const item = await this.findItem(
+      orcamentoId,
+      itemId,
+      usuarioId,
+      espacoId,
+      true,
+    );
+    if (updateItemDto.categoriaId && this.categoriasService) {
+      const orcamento = await this.findOne(orcamentoId, usuarioId, espacoId);
+      if (orcamento.espacoId) {
+        await this.categoriasService.findOne(
+          updateItemDto.categoriaId,
+          { sub: usuarioId },
+          orcamento.espacoId,
+        );
+      }
+    }
 
     const dadosAnteriores = JSON.parse(JSON.stringify(item));
     Object.assign(item, updateItemDto);
@@ -360,8 +436,15 @@ export class OrcamentosService {
     orcamentoId: number,
     itemId: number,
     usuarioId: number,
+    espacoId?: number,
   ): Promise<void> {
-    const item = await this.findItem(orcamentoId, itemId, usuarioId);
+    const item = await this.findItem(
+      orcamentoId,
+      itemId,
+      usuarioId,
+      espacoId,
+      true,
+    );
 
     // Verificar se há movimentações vinculadas
     if (item.movimentos && item.movimentos.length > 0) {
@@ -389,5 +472,20 @@ export class OrcamentosService {
         error,
       );
     }
+  }
+
+  private async contexto(
+    usuarioId: number,
+    espacoId?: number,
+    escrita = false,
+  ): Promise<number | undefined> {
+    if (!this.espacosService) return undefined;
+    return (
+      await this.espacosService.resolveContext(
+        espacoId,
+        usuarioId,
+        escrita ? [EspacoPapel.OWNER, EspacoPapel.EDITOR] : undefined,
+      )
+    ).espacoId;
   }
 }

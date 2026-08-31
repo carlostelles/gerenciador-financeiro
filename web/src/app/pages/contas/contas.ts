@@ -8,6 +8,7 @@ import { TuiTable, TuiTableControl } from '@taiga-ui/addon-table';
 import { ContaService } from '../../core/services/conta.service';
 import { Conta, PromptService, ToastService, ButtonFloatComponent } from '../../shared';
 import { ContasCadastroComponent } from './components/cadastro/cadastro';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 
 @Component({
   selector: 'app-contas',
@@ -32,6 +33,7 @@ export class ContasComponent implements OnInit {
   private readonly promptService = inject(PromptService);
   private readonly toast = inject(ToastService);
   private readonly dialogs = inject(TuiDialogService);
+  protected readonly espacoContext = inject(EspacoContextService);
 
   contas: Conta[] = [];
   isLoading = signal<boolean>(false);

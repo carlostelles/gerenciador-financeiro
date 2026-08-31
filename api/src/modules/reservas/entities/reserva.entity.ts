@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Categoria } from '../../categorias/entities/categoria.entity';
+import { Espaco } from '../../espacos/entities/espaco.entity';
 
 @Entity('reservas')
 export class Reserva {
@@ -17,6 +18,9 @@ export class Reserva {
 
   @Column()
   usuarioId: number;
+
+  @Column()
+  espacoId?: number;
 
   @Column({ type: 'date' })
   data: Date;
@@ -39,6 +43,10 @@ export class Reserva {
   @ManyToOne(() => Usuario, (usuario) => usuario.reservas)
   @JoinColumn({ name: 'usuarioId' })
   usuario: Usuario;
+
+  @ManyToOne(() => Espaco, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'espacoId' })
+  espaco?: Espaco;
 
   @ManyToOne(() => Categoria, (categoria) => categoria.reservas)
   @JoinColumn({ name: 'categoriaId' })

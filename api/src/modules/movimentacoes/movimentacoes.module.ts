@@ -13,6 +13,7 @@ import { MovimentoComprovante } from './entities/movimento-comprovante.entity';
 import { SaldoInicial } from './entities/saldo-inicial.entity';
 import { MovimentoComprovanteStorageService } from './services/movimento-comprovante-storage.service';
 import { MovimentoComprovanteAiService } from './services/movimento-comprovante-ai.service';
+import { EspacosModule } from '../espacos/espacos.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MovimentoComprovanteAiService } from './services/movimento-comprovante-
     ]),
     JwtModule,
     LogsModule,
+    EspacosModule,
   ],
   controllers: [MovimentacoesController],
   providers: [

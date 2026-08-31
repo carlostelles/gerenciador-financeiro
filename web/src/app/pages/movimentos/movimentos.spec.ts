@@ -6,6 +6,7 @@ import { ALL_ACCOUNTS, MovimentosComponent } from './movimentos';
 import { MovimentoService } from '../../core/services/movimento.service';
 import { OrcamentoService } from '../../core/services/orcamento.service';
 import { ContaService } from '../../core/services/conta.service';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 import { PromptService, ToastService } from '../../shared';
 
 describe('MovimentosComponent', () => {
@@ -57,6 +58,7 @@ describe('MovimentosComponent', () => {
         { provide: MovimentoService, useValue: movimentoService },
         { provide: OrcamentoService, useValue: orcamentoService },
         { provide: ContaService, useValue: contaService },
+        { provide: EspacoContextService, useValue: { canEdit: () => true } },
         { provide: PromptService, useValue: { open: jest.fn() } },
         { provide: TuiDialogService, useValue: dialogs },
         { provide: ToastService, useValue: toast },

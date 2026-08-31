@@ -18,6 +18,7 @@ import { ContaService } from '../../core/services/conta.service';
 import { forkJoin, finalize, map } from 'rxjs';
 import { TuiCardLarge, TuiCell } from '@taiga-ui/layout';
 import { NgTemplateOutlet } from '@angular/common';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 
 export const ALL_ACCOUNTS = 'all' as const;
 type ContaSelecionada = number | typeof ALL_ACCOUNTS | null;
@@ -62,6 +63,7 @@ export class MovimentosComponent implements OnInit {
     private readonly promptService = inject(PromptService);
     private readonly dialogs = inject(TuiDialogService);
     private readonly toast = inject(ToastService);
+    protected readonly espacoContext = inject(EspacoContextService);
     protected readonly ALL_ACCOUNTS = ALL_ACCOUNTS;
 
     protected readonly isLoading = signal<boolean>(false);
@@ -396,6 +398,8 @@ export class MovimentosComponent implements OnInit {
             return;
         }
 
+        if (!this.espacoContext.canEdit()) return;
+
         this.dialogs.open<SaldoInicial>(
             new PolymorpheusComponent(SaldoInicialDialogComponent),
             {
@@ -429,6 +433,7 @@ export class MovimentosComponent implements OnInit {
     }
 
     openFormModal(movimento?: Movimento) {
+        if (!this.espacoContext.canEdit()) return;
         this.saveScrollPosition();
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
@@ -448,6 +453,7 @@ export class MovimentosComponent implements OnInit {
     }
 
     duplicateItem(movimento: Movimento) {
+        if (!this.espacoContext.canEdit()) return;
         this.saveScrollPosition();
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
@@ -484,6 +490,7 @@ export class MovimentosComponent implements OnInit {
     }
 
     markAsReviewed(movimento: Movimento) {
+        if (!this.espacoContext.canEdit()) return;
         const camposObrigatoriosPreenchidos =
             !!movimento.data &&
             movimento.valor !== null &&
@@ -505,6 +512,7 @@ export class MovimentosComponent implements OnInit {
     }
 
     confirmDelete(movimento: Movimento) {
+        if (!this.espacoContext.canEdit()) return;
         this.saveScrollPosition();
         this.promptService
             .open(`O movimento <strong>${movimento.descricao}</strong> do período <strong>${formatPeriod(movimento.periodo)}</strong> será excluído. Esta ação não pode ser desfeita.`, {

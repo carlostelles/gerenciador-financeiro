@@ -17,7 +17,12 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { AlterarSenhaDto, LoginDto, RefreshTokenDto, AuthResponseDto } from './dto/auth.dto';
+import {
+  AlterarSenhaDto,
+  LoginDto,
+  RefreshTokenDto,
+  AuthResponseDto,
+} from './dto/auth.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -102,7 +107,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('alterar-senha')
   @HttpCode(HttpStatus.OK)
-  async alterarSenha(@Body() alterarSenhaDto: AlterarSenhaDto): Promise<{ message: string }> {
+  async alterarSenha(
+    @Body() alterarSenhaDto: AlterarSenhaDto,
+  ): Promise<{ message: string }> {
     return this.authService.alterarSenha(alterarSenhaDto);
   }
 

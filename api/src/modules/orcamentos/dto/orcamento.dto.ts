@@ -39,7 +39,7 @@ export class CreateOrcamentoItemDto {
 
   @ApiProperty({
     description: 'Valor do item',
-    example: 500.00,
+    example: 500.0,
   })
   @IsNumber({}, { message: 'Valor deve ser um número' })
   @IsPositive({ message: 'Valor deve ser positivo' })
@@ -54,7 +54,9 @@ export class CreateOrcamentoItemDto {
   categoriaId: number;
 }
 
-export class UpdateOrcamentoItemDto extends PartialType(CreateOrcamentoItemDto) {}
+export class UpdateOrcamentoItemDto extends PartialType(
+  CreateOrcamentoItemDto,
+) {}
 
 export class OrcamentoItemResponseDto {
   @ApiProperty({ description: 'ID do item', example: 1 })
@@ -63,10 +65,13 @@ export class OrcamentoItemResponseDto {
   @ApiProperty({ description: 'ID do orçamento', example: 1 })
   orcamentoId: number;
 
-  @ApiProperty({ description: 'Descrição do item', example: 'Supermercado mensal' })
+  @ApiProperty({
+    description: 'Descrição do item',
+    example: 'Supermercado mensal',
+  })
   descricao: string;
 
-  @ApiProperty({ description: 'Valor do item', example: 500.00 })
+  @ApiProperty({ description: 'Valor do item', example: 500.0 })
   valor: number;
 
   @ApiProperty({ description: 'ID da categoria', example: 1 })
@@ -89,10 +94,16 @@ export class OrcamentoResponseDto {
   @ApiProperty({ description: 'Período do orçamento', example: '2023-10' })
   periodo: string;
 
-  @ApiProperty({ description: 'Descrição do orçamento', example: 'Orçamento de Outubro 2023' })
+  @ApiProperty({
+    description: 'Descrição do orçamento',
+    example: 'Orçamento de Outubro 2023',
+  })
   descricao: string;
 
-  @ApiProperty({ description: 'Itens do orçamento', type: [OrcamentoItemResponseDto] })
+  @ApiProperty({
+    description: 'Itens do orçamento',
+    type: [OrcamentoItemResponseDto],
+  })
   items: OrcamentoItemResponseDto[];
 
   @ApiProperty({ description: 'Data de criação' })

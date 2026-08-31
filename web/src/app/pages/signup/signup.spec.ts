@@ -89,9 +89,15 @@ describe('SignupComponent', () => {
     });
     expect(component.signupForm.get('senha')?.errors?.['maxlength']).toBeTruthy();
 
-    // Test pattern (alphanumeric only)
+    // Test safe special characters accepted by the API contract
     component.signupForm.patchValue({
       senha: 'password@123'
+    });
+    expect(component.signupForm.get('senha')?.valid).toBeTruthy();
+
+    // Test characters rejected by the API contract
+    component.signupForm.patchValue({
+      senha: 'password/123'
     });
     expect(component.signupForm.get('senha')?.errors?.['pattern']).toBeTruthy();
   });
@@ -103,7 +109,7 @@ describe('SignupComponent', () => {
     component.signupForm.patchValue({
       nome: 'Test User',
       email: 'test@example.com',
-      telefone: '5511999999999',
+      telefone: '+5511999999999',
       senha: 'password123'
     });
 
@@ -118,21 +124,26 @@ describe('SignupComponent', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
   });
 
-  it('should handle error on submission', () => {
-    const errorResponse = { error: { message: 'Email already exists' } };
+  it('should handle errors without exposing the HTTP response', () => {
+    const errorResponse = { error: { message: 'Internal database detail' } };
     mockUsuarioService.create.mockReturnValue(throwError(() => errorResponse));
 
     component.signupForm.patchValue({
       nome: 'Test User',
       email: 'test@example.com',
-      telefone: '5511999999999',
+      telefone: '+5511999999999',
       senha: 'password123'
     });
 
     component.onSubmit();
 
     expect(component.isLoading).toBeFalsy();
-    expect(component.errorMessage).toBe('Email already exists');
+    expect(component.errorMessage).toBe('Não foi possível realizar o cadastro.');
+    expect(component.errorMessage).not.toContain('Internal database detail');
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain('Não foi possível realizar o cadastro.');
   });
 
   it('should not submit if form is invalid', () => {

@@ -6,14 +6,14 @@ import { UsuariosService } from './usuarios.service';
 import { UsuariosController } from './usuarios.controller';
 import { Usuario } from './entities/usuario.entity';
 import { LogsModule } from '../logs/logs.module';
-import { CategoriasModule } from '../categorias/categorias.module';
+import { EspacosModule } from '../espacos/espacos.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario]),
     JwtModule,
     forwardRef(() => LogsModule),
-    CategoriasModule,
+    EspacosModule,
   ],
   controllers: [UsuariosController],
   providers: [UsuariosService],

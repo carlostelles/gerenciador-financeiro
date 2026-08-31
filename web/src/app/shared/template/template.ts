@@ -15,12 +15,15 @@ import {
 import {
   TuiBadge,
   TuiBreadcrumbs,
+  TuiChevron,
+  TuiComboBox,
   TuiFade,
   TuiTabs,
 } from '@taiga-ui/kit';
 import { TuiNavigation } from '@taiga-ui/layout';
 import { AuthService } from '../../core/services/auth.service';
 import { filter } from 'rxjs/operators';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 
 @Component({
   selector: 'app-template',
@@ -34,6 +37,8 @@ import { filter } from 'rxjs/operators';
     TuiBadge,
     TuiBreadcrumbs,
     TuiButton,
+    TuiChevron,
+    TuiComboBox,
     TuiDataList,
     TuiDropdown,
     TuiFade,
@@ -50,7 +55,8 @@ import { filter } from 'rxjs/operators';
 })
 export class TemplateComponent implements OnInit {
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
+  protected readonly router = inject(Router);
+  protected readonly espacoContext = inject(EspacoContextService);
 
   protected readonly breadcrumbs = ['Home', 'Dashboard'];
 
@@ -58,6 +64,8 @@ export class TemplateComponent implements OnInit {
   protected readonly isAdmin = signal(false); // Será implementado com dados reais do usuário
   protected readonly pageTitle = signal('Dashboard');
   protected readonly userName = signal('Usuário'); // Será implementado com dados reais do usuário
+  protected readonly spaceStringify = (espacoId: number): string =>
+    this.espacoContext.spaces().find((space) => space.id === espacoId)?.nome ?? '';
 
   constructor() {
     // Monitora mudanças de rota para atualizar o título da página
@@ -70,6 +78,15 @@ export class TemplateComponent implements OnInit {
 
   ngOnInit(): void {
     this.isAdmin.set(this.authService.decodedToken?.role === 'ADMIN');
+    this.espacoContext.load().subscribe();
+  }
+
+  protected selectSpace(espacoId: number): void {
+    this.espacoContext.select(espacoId);
+    const currentUrl = this.router.url;
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigateByUrl(currentUrl);
+    });
   }
 
   protected handleToggle(): void {
@@ -92,6 +109,7 @@ export class TemplateComponent implements OnInit {
   private updatePageTitle(url: string): void {
     const routeTitles: { [key: string]: string } = {
       '/home': 'Dashboard',
+      '/espacos': 'Espaços financeiros',
       '/categorias': 'Categorias',
       '/orcamentos': 'Orçamentos',
       '/movimentacoes': 'Movimentações',

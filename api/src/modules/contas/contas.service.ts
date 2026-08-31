@@ -11,6 +11,8 @@ import { CreateContaDto, UpdateContaDto } from './dto/conta.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
 import { Movimento } from '../movimentacoes/entities/movimento.entity';
+import { EspacosService } from '../espacos/espacos.service';
+import { EspacoPapel } from '../espacos/entities/espaco-membro.entity';
 
 @Injectable()
 export class ContasService {
@@ -20,15 +22,23 @@ export class ContasService {
     @InjectRepository(Movimento)
     private movimentoRepository: Repository<Movimento>,
     private logsService: LogsService,
+    private espacosService: EspacosService,
   ) {}
 
   async create(
     createContaDto: CreateContaDto,
     currentUser: any,
+    espacoId?: number,
   ): Promise<Conta> {
+    const contexto = await this.espacosService.resolveContext(
+      espacoId,
+      currentUser.sub,
+      [EspacoPapel.OWNER, EspacoPapel.EDITOR],
+    );
     const conta = this.contasRepository.create({
       ...createContaDto,
       usuarioId: currentUser.sub,
+      espacoId: contexto.espacoId,
     });
 
     const savedConta = await this.contasRepository.save(conta);
@@ -46,16 +56,30 @@ export class ContasService {
     return savedConta;
   }
 
-  async findAll(currentUser: any): Promise<Conta[]> {
+  async findAll(currentUser: any, espacoId?: number): Promise<Conta[]> {
+    const contexto = await this.espacosService.resolveContext(
+      espacoId,
+      currentUser.sub,
+    );
     return this.contasRepository.find({
-      where: { usuarioId: currentUser.sub },
+      where: { espacoId: contexto.espacoId },
       order: { nome: 'ASC' },
     });
   }
 
-  async findOne(id: number, currentUser: any): Promise<Conta> {
+  async findOne(
+    id: number,
+    currentUser: any,
+    espacoId?: number,
+    escrita = false,
+  ): Promise<Conta> {
+    const contexto = await this.espacosService.resolveContext(
+      espacoId,
+      currentUser.sub,
+      escrita ? [EspacoPapel.OWNER, EspacoPapel.EDITOR] : undefined,
+    );
     const conta = await this.contasRepository.findOne({
-      where: { id, usuarioId: currentUser.sub },
+      where: { id, espacoId: contexto.espacoId },
     });
 
     if (!conta) {
@@ -69,12 +93,13 @@ export class ContasService {
     id: number,
     updateContaDto: UpdateContaDto,
     currentUser: any,
+    espacoId?: number,
   ): Promise<Conta> {
-    const conta = await this.findOne(id, currentUser);
+    const conta = await this.findOne(id, currentUser, espacoId, true);
 
     const dadosAnteriores = { ...conta };
     await this.contasRepository.update(id, updateContaDto);
-    const contaAtualizada = await this.findOne(id, currentUser);
+    const contaAtualizada = await this.findOne(id, currentUser, espacoId);
 
     await this.logsService.create({
       data: new Date(),
@@ -90,8 +115,8 @@ export class ContasService {
     return contaAtualizada;
   }
 
-  async remove(id: number, currentUser: any): Promise<void> {
-    const conta = await this.findOne(id, currentUser);
+  async remove(id: number, currentUser: any, espacoId?: number): Promise<void> {
+    const conta = await this.findOne(id, currentUser, espacoId, true);
 
     const movimentosVinculados = await this.movimentoRepository.count({
       where: { contaId: id },

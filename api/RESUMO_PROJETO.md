@@ -31,6 +31,7 @@ gerenciador-financeiro/
 │   ├── modules/           # Módulos principais da aplicação
 │   │   ├── auth/         # Autenticação JWT
 │   │   ├── usuarios/     # Gestão de usuários
+│   │   ├── espacos/      # Espaços financeiros pessoais e compartilhados
 │   │   ├── categorias/   # Categorias de receitas/despesas
 │   │   └── logs/         # Sistema de logs (MongoDB)
 │   ├── common/           # Utilitários compartilhados
@@ -60,6 +61,8 @@ gerenciador-financeiro/
 
 ### MySQL (Entidades Principais)
 - **usuarios** - Gestão de usuários e autenticação
+- **espacos** - Contextos financeiros pessoais e compartilhados
+- **espaco_membros** - Membros e papéis (OWNER, EDITOR e VIEWER) dos espaços
 - **categorias** - Categorias de receitas, despesas e reservas
 - **orcamentos** - Planejamento financeiro (estrutura criada)
 - **movimentos** - Transações financeiras (estrutura criada)
@@ -161,6 +164,20 @@ npm run docker:prod   # Build e run ambiente de produção
 - `GET /categorias/:id` - Buscar categoria específica
 - `PATCH /categorias/:id` - Atualizar categoria
 - `DELETE /categorias/:id` - Remover categoria
+
+### Espaços financeiros (`/espacos`)
+- `POST /espacos` - Criar espaço financeiro
+- `GET /espacos` - Listar espaços acessíveis ao usuário
+- `GET /espacos/contexto` - Resolver o espaço financeiro ativo
+- `GET /espacos/:id` - Buscar um espaço financeiro
+- `PATCH /espacos/:id` - Renomear um espaço financeiro
+- `DELETE /espacos/:id` - Excluir um espaço compartilhado vazio
+- `GET /espacos/:id/membros` - Listar membros do espaço
+- `POST /espacos/:id/membros` - Adicionar membro
+- `PATCH /espacos/:id/membros/:usuarioId` - Alterar papel de membro
+- `DELETE /espacos/:id/membros/:usuarioId` - Remover membro
+- `POST /espacos/:id/sair` - Sair de um espaço compartilhado
+- `POST /espacos/:id/transferir-propriedade` - Transferir a propriedade
 
 ### Logs (`/logs`)
 - `GET /logs` - Listar logs (Admin)

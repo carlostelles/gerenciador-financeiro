@@ -1,9 +1,13 @@
 <div class="container">
     <div class="header">
         <h2>Gerenciar Contas</h2>
-        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
-            Nova Conta
-        </app-button-float>
+        <div class="header-actions">
+            @if (espacoContext.canEdit()) {
+                <app-button-float appearance="primary" size="l" (click)="openFormModal()">
+                    Nova Conta
+                </app-button-float>
+            }
+        </div>
     </div>
 
     <div class="content" *ngIf="!isLoading()">
@@ -29,6 +33,7 @@
                             </div>
                         </td>
                         <td tuiTd class="actions">
+                            @if (espacoContext.canEdit()) {
                             <button tuiButton appearance="secondary" size="s" (click)="openFormModal(conta)">
                                 <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary" tuiTooltip="Editar conta"
                                     aria-label="Editar conta" />
@@ -37,6 +42,7 @@
                                 <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger" tuiTooltip="Excluir conta"
                                     aria-label="Excluir conta" />
                             </button>
+                            }
                         </td>
                     </tr>
                 </tbody>
@@ -44,7 +50,9 @@
 
             <div *ngIf="contas.length === 0" class="empty-state">
                 <p>Nenhuma conta encontrada.</p>
-                <p>Clique em "Nova Conta" para adicionar sua primeira conta.</p>
+                @if (espacoContext.canEdit()) {
+                    <p>Clique em "Nova Conta" para adicionar sua primeira conta.</p>
+                }
             </div>
         </div>
     </div>

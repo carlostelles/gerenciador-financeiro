@@ -10,6 +10,7 @@ import { OrcamentosCadastroComponent } from './components/cadastro/cadastro';
 import { OrcamentosItemCadastroComponent } from './components/cadastro-item/cadastro-item';
 import { formatPeriod, FormatPeriodPipe, CurrencyPipe, Orcamento, PromptService, ToastService, ButtonFloatComponent } from '../../shared';
 import { OrcamentosCloneComponent } from './components/clone/clone';
+import { EspacoContextService } from '../../core/services/espaco-context.service';
 
 @Component({
     selector: 'app-orcamentos',
@@ -36,6 +37,7 @@ export class OrcamentosComponent implements OnInit {
     private readonly promptService = inject(PromptService);
     private readonly dialogs = inject(TuiDialogService);
     private readonly toast = inject(ToastService);
+    protected readonly espacoContext = inject(EspacoContextService);
 
     orcamentos: Orcamento[] = [];
     isLoading = signal<boolean>(false);
@@ -60,6 +62,7 @@ export class OrcamentosComponent implements OnInit {
     }
 
     openFormModal(orcamento?: Orcamento) {
+        if (!this.espacoContext.canEdit()) return;
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCadastroComponent), {
                 label: orcamento ? 'Editar orçamento' : 'Cadastrar orçamento',
@@ -83,6 +86,7 @@ export class OrcamentosComponent implements OnInit {
     }
 
     openFormItensModal(orcamento?: Orcamento) {
+        if (!this.espacoContext.canEdit()) return;
         this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosItemCadastroComponent), {
                 label: orcamento ? 'Editar orçamento' : 'Cadastrar orçamento',
@@ -100,6 +104,7 @@ export class OrcamentosComponent implements OnInit {
     }
 
     confirmDelete(orcamento: Orcamento) {
+        if (!this.espacoContext.canEdit()) return;
         this.promptService
             .open(`O orçamento <strong>${orcamento.descricao}</strong> do período <strong>${formatPeriod(orcamento.periodo)}</strong> será excluído. Esta ação não pode ser desfeita.`, {
                 heading: 'Confirmação de Exclusão',
@@ -124,6 +129,7 @@ export class OrcamentosComponent implements OnInit {
     }
 
     confirmClone(orcamento: Orcamento) {
+         if (!this.espacoContext.canEdit()) return;
        this.dialogs
             .open<string>(new PolymorpheusComponent(OrcamentosCloneComponent), {
                 label: 'Clonar orçamento',

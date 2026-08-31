@@ -42,6 +42,7 @@ import { ComprovanteUploadFile } from './types/comprovante-upload-file.type';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 
 @ApiTags('movimentacoes')
 @ApiBearerAuth('access-token')
@@ -56,8 +57,8 @@ export class MovimentacoesController {
     status: 200,
     description: 'Lista de períodos retornada com sucesso',
   })
-  findPeriodos(@CurrentUser() user: any) {
-    return this.movimentacoesService.findPeriodos(user.sub);
+  findPeriodos(@CurrentUser() user: any, @EspacoId() espacoId?: number) {
+    return this.movimentacoesService.findPeriodos(user.sub, espacoId);
   }
 
   @Get('comparativo')
@@ -69,8 +70,11 @@ export class MovimentacoesController {
     status: 200,
     description: 'Comparativo por tipo retornado com sucesso',
   })
-  findComparativoPorTipo(@CurrentUser() user: any) {
-    return this.movimentacoesService.findComparativoPorTipo(user.sub);
+  findComparativoPorTipo(
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return this.movimentacoesService.findComparativoPorTipo(user.sub, espacoId);
   }
 
   @Get('comprovantes/:comprovanteId/url-visualizacao')
@@ -81,10 +85,12 @@ export class MovimentacoesController {
   obterUrlComprovante(
     @Param('comprovanteId', ParseIntPipe) comprovanteId: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.obterUrlComprovante(
       comprovanteId,
       user.sub,
+      espacoId,
     );
   }
 
@@ -111,8 +117,13 @@ export class MovimentacoesController {
   async analisarExtratos(
     @UploadedFiles() arquivos: ComprovanteUploadFile[],
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.analisarExtratos(arquivos || [], user.sub);
+    return this.movimentacoesService.analisarExtratos(
+      arquivos || [],
+      user.sub,
+      espacoId,
+    );
   }
 
   @Post('comprovantes/analisar')
@@ -164,11 +175,13 @@ export class MovimentacoesController {
     @Body() body: AnalisarComprovanteRequestDto,
     @CurrentUser() user: any,
     @Res({ passthrough: true }) response: Response,
+    @EspacoId() espacoId?: number,
   ) {
     const result = await this.movimentacoesService.analisarComprovante(
       arquivo,
       user.sub,
       body,
+      espacoId,
     );
 
     response.status(result.statusCode);
@@ -187,8 +200,15 @@ export class MovimentacoesController {
   getSaldosIniciais(
     @Param('periodo') periodo: string,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.getSaldosIniciais(periodo, user.sub);
+    return espacoId === undefined
+      ? this.movimentacoesService.getSaldosIniciais(periodo, user.sub)
+      : this.movimentacoesService.getSaldosIniciais(
+          periodo,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Get(':periodo/saldo-inicial')
@@ -199,11 +219,13 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Query('contaId', ParseIntPipe) contaId: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.getSaldoInicial(
       periodo,
       contaId,
       user.sub,
+      espacoId,
     );
   }
 
@@ -215,11 +237,13 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Body() createSaldoInicialDto: CreateSaldoInicialDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.createSaldoInicial(
       periodo,
       createSaldoInicialDto,
       user.sub,
+      espacoId,
     );
   }
 
@@ -232,12 +256,14 @@ export class MovimentacoesController {
     @Param('contaId', ParseIntPipe) contaId: number,
     @Body() updateSaldoInicialDto: UpdateSaldoInicialDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.updateSaldoInicial(
       periodo,
       contaId,
       updateSaldoInicialDto,
       user.sub,
+      espacoId,
     );
   }
 
@@ -262,11 +288,13 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Param('contaId', ParseIntPipe) contaId: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.restaurarSaldoInicialAutomatico(
       periodo,
       contaId,
       user.sub,
+      espacoId,
     );
   }
 
@@ -288,12 +316,16 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Body() createMovimentoDto: CreateMovimentoDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.create(
-      periodo,
-      createMovimentoDto,
-      user.sub,
-    );
+    return espacoId === undefined
+      ? this.movimentacoesService.create(periodo, createMovimentoDto, user.sub)
+      : this.movimentacoesService.create(
+          periodo,
+          createMovimentoDto,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Get(':periodo/categorias')
@@ -312,10 +344,12 @@ export class MovimentacoesController {
   findCategoriasForPeriodo(
     @Param('periodo') periodo: string,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.findCategoriasForPeriodo(
       periodo,
       user.sub,
+      espacoId,
     );
   }
 
@@ -341,11 +375,13 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Query() query: FindResumoQueryDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
     return this.movimentacoesService.findResumoPorCategoria(
       periodo,
       user.sub,
       query,
+      espacoId,
     );
   }
 
@@ -378,8 +414,11 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Query() query: FindMovimentosQueryDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.findAll(periodo, user.sub, query);
+    return espacoId === undefined
+      ? this.movimentacoesService.findAll(periodo, user.sub, query)
+      : this.movimentacoesService.findAll(periodo, user.sub, query, espacoId);
   }
 
   @Get(':periodo/:id')
@@ -401,8 +440,11 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.findOne(periodo, id, user.sub);
+    return espacoId === undefined
+      ? this.movimentacoesService.findOne(periodo, id, user.sub)
+      : this.movimentacoesService.findOne(periodo, id, user.sub, espacoId);
   }
 
   @Patch(':periodo/:id')
@@ -425,13 +467,22 @@ export class MovimentacoesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateMovimentoDto: UpdateMovimentoDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.update(
-      periodo,
-      id,
-      updateMovimentoDto,
-      user.sub,
-    );
+    return espacoId === undefined
+      ? this.movimentacoesService.update(
+          periodo,
+          id,
+          updateMovimentoDto,
+          user.sub,
+        )
+      : this.movimentacoesService.update(
+          periodo,
+          id,
+          updateMovimentoDto,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Delete(':periodo/:id')
@@ -453,7 +504,10 @@ export class MovimentacoesController {
     @Param('periodo') periodo: string,
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.movimentacoesService.remove(periodo, id, user.sub);
+    return espacoId === undefined
+      ? this.movimentacoesService.remove(periodo, id, user.sub)
+      : this.movimentacoesService.remove(periodo, id, user.sub, espacoId);
   }
 }

@@ -106,9 +106,9 @@ describe('OrcamentosController', () => {
     it('deve criar orçamento', async () => {
       service.create.mockResolvedValue(mockOrcamento);
 
-      const result = await controller.create(mockCreateOrcamentoDto, mockUser);
+      const result = await controller.create(mockCreateOrcamentoDto, mockUser, 8);
 
-      expect(service.create).toHaveBeenCalledWith(mockCreateOrcamentoDto, mockUser.sub);
+      expect(service.create).toHaveBeenCalledWith(mockCreateOrcamentoDto, mockUser.sub, 8);
       expect(result).toEqual(mockOrcamento);
     });
   });
@@ -118,9 +118,9 @@ describe('OrcamentosController', () => {
       const mockOrcamentos = [mockOrcamento];
       service.findAll.mockResolvedValue(mockOrcamentos);
 
-      const result = await controller.findAll(mockUser);
+      const result = await controller.findAll(mockUser, 8);
 
-      expect(service.findAll).toHaveBeenCalledWith(mockUser.sub);
+      expect(service.findAll).toHaveBeenCalledWith(mockUser.sub, 8);
       expect(result).toEqual(mockOrcamentos);
     });
   });
@@ -130,9 +130,9 @@ describe('OrcamentosController', () => {
       const mockPeriodos = ['2024-01', '2024-02', '2024-03'];
       service.findPeriodos.mockResolvedValue(mockPeriodos);
 
-      const result = await controller.findPeriodos(mockUser);
+      const result = await controller.findPeriodos(mockUser, 8);
 
-      expect(service.findPeriodos).toHaveBeenCalledWith(mockUser.sub);
+      expect(service.findPeriodos).toHaveBeenCalledWith(mockUser.sub, 8);
       expect(result).toEqual(mockPeriodos);
     });
   });
@@ -141,9 +141,9 @@ describe('OrcamentosController', () => {
     it('deve retornar orçamento por ID', async () => {
       service.findOne.mockResolvedValue(mockOrcamento);
 
-      const result = await controller.findOne(1, mockUser);
+      const result = await controller.findOne(1, mockUser, 8);
 
-      expect(service.findOne).toHaveBeenCalledWith(1, mockUser.sub);
+      expect(service.findOne).toHaveBeenCalledWith(1, mockUser.sub, 8);
       expect(result).toEqual(mockOrcamento);
     });
   });
@@ -153,9 +153,9 @@ describe('OrcamentosController', () => {
       const updatedOrcamento = { ...mockOrcamento, ...mockUpdateOrcamentoDto };
       service.update.mockResolvedValue(updatedOrcamento as Orcamento);
 
-      const result = await controller.update(1, mockUpdateOrcamentoDto, mockUser);
+      const result = await controller.update(1, mockUpdateOrcamentoDto, mockUser, 8);
 
-      expect(service.update).toHaveBeenCalledWith(1, mockUpdateOrcamentoDto, mockUser.sub);
+      expect(service.update).toHaveBeenCalledWith(1, mockUpdateOrcamentoDto, mockUser.sub, 8);
       expect(result).toEqual(updatedOrcamento);
     });
   });
@@ -164,9 +164,9 @@ describe('OrcamentosController', () => {
     it('deve remover orçamento', async () => {
       service.remove.mockResolvedValue(undefined);
 
-      const result = await controller.remove(1, mockUser);
+      const result = await controller.remove(1, mockUser, 8);
 
-      expect(service.remove).toHaveBeenCalledWith(1, mockUser.sub);
+      expect(service.remove).toHaveBeenCalledWith(1, mockUser.sub, 8);
       expect(result).toBeUndefined();
     });
   });
@@ -176,9 +176,9 @@ describe('OrcamentosController', () => {
       const clonedOrcamento = { ...mockOrcamento, periodo: '2024-02' };
       service.clone.mockResolvedValue(clonedOrcamento as Orcamento);
 
-      const result = await controller.clone(1, '2024-02', mockUser);
+      const result = await controller.clone(1, '2024-02', mockUser, 8);
 
-      expect(service.clone).toHaveBeenCalledWith(1, '2024-02', mockUser.sub);
+      expect(service.clone).toHaveBeenCalledWith(1, '2024-02', mockUser.sub, 8);
       expect(result).toEqual(clonedOrcamento);
     });
   });
@@ -187,9 +187,9 @@ describe('OrcamentosController', () => {
     it('deve criar item de orçamento', async () => {
       service.createItem.mockResolvedValue(mockOrcamentoItem);
 
-      const result = await controller.createItem(1, mockCreateItemDto, mockUser);
+      const result = await controller.createItem(1, mockCreateItemDto, mockUser, 8);
 
-      expect(service.createItem).toHaveBeenCalledWith(1, mockCreateItemDto, mockUser.sub);
+      expect(service.createItem).toHaveBeenCalledWith(1, mockCreateItemDto, mockUser.sub, 8);
       expect(result).toEqual(mockOrcamentoItem);
     });
   });
@@ -199,9 +199,9 @@ describe('OrcamentosController', () => {
       const mockItems = [mockOrcamentoItem];
       service.findItems.mockResolvedValue(mockItems);
 
-      const result = await controller.findItems(1, mockUser);
+      const result = await controller.findItems(1, mockUser, 8);
 
-      expect(service.findItems).toHaveBeenCalledWith(1, mockUser.sub);
+      expect(service.findItems).toHaveBeenCalledWith(1, mockUser.sub, 8);
       expect(result).toEqual(mockItems);
     });
   });
@@ -210,9 +210,9 @@ describe('OrcamentosController', () => {
     it('deve retornar item de orçamento por ID', async () => {
       service.findItem.mockResolvedValue(mockOrcamentoItem);
 
-      const result = await controller.findItem(1, 1, mockUser);
+      const result = await controller.findItem(1, 1, mockUser, 8);
 
-      expect(service.findItem).toHaveBeenCalledWith(1, 1, mockUser.sub);
+      expect(service.findItem).toHaveBeenCalledWith(1, 1, mockUser.sub, 8);
       expect(result).toEqual(mockOrcamentoItem);
     });
   });
@@ -222,9 +222,9 @@ describe('OrcamentosController', () => {
       const updatedItem = { ...mockOrcamentoItem, ...mockUpdateItemDto };
       service.updateItem.mockResolvedValue(updatedItem as OrcamentoItem);
 
-      const result = await controller.updateItem(1, 1, mockUpdateItemDto, mockUser);
+      const result = await controller.updateItem(1, 1, mockUpdateItemDto, mockUser, 8);
 
-      expect(service.updateItem).toHaveBeenCalledWith(1, 1, mockUpdateItemDto, mockUser.sub);
+      expect(service.updateItem).toHaveBeenCalledWith(1, 1, mockUpdateItemDto, mockUser.sub, 8);
       expect(result).toEqual(updatedItem);
     });
   });
@@ -233,9 +233,9 @@ describe('OrcamentosController', () => {
     it('deve remover item de orçamento', async () => {
       service.removeItem.mockResolvedValue(undefined);
 
-      const result = await controller.removeItem(1, 1, mockUser);
+      const result = await controller.removeItem(1, 1, mockUser, 8);
 
-      expect(service.removeItem).toHaveBeenCalledWith(1, 1, mockUser.sub);
+      expect(service.removeItem).toHaveBeenCalledWith(1, 1, mockUser.sub, 8);
       expect(result).toBeUndefined();
     });
   });

@@ -46,7 +46,7 @@
                             }
                         </span>
                         <div class="action-buttons">
-                            @if (!item.revisado) {
+                            @if (!readOnly() && !item.revisado) {
                                 <button class="action-btn" (click)="onMarkAsReviewed(item); $event.stopPropagation()" title="Marcar como revisado">
                                     <tui-icon icon="@tui.check" />
                                 </button>
@@ -56,15 +56,17 @@
                                     <tui-icon icon="@tui.paperclip" />
                                 </button>
                             }
-                            <button class="action-btn duplicate-btn" (click)="onDuplicate(item); $event.stopPropagation()" title="Duplicar">
-                                <tui-icon icon="@tui.copy" />
-                            </button>
-                            <button class="action-btn edit-btn" (click)="onEdit(item); $event.stopPropagation()" title="Editar">
-                                <tui-icon icon="@tui.pencil" />
-                            </button>
-                            <button class="action-btn delete-btn" (click)="onDelete(item); $event.stopPropagation()" title="Excluir">
-                                <tui-icon icon="@tui.trash-2" />
-                            </button>
+                            @if (!readOnly()) {
+                                <button class="action-btn duplicate-btn" (click)="onDuplicate(item); $event.stopPropagation()" title="Duplicar">
+                                    <tui-icon icon="@tui.copy" />
+                                </button>
+                                <button class="action-btn edit-btn" (click)="onEdit(item); $event.stopPropagation()" title="Editar">
+                                    <tui-icon icon="@tui.pencil" />
+                                </button>
+                                <button class="action-btn delete-btn" (click)="onDelete(item); $event.stopPropagation()" title="Excluir">
+                                    <tui-icon icon="@tui.trash-2" />
+                                </button>
+                            }
                         </div>
                     </div>
                 </div>

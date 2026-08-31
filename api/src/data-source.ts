@@ -9,5 +9,5 @@ const options = new DatabaseConfig(new ConfigService()).createTypeOrmOptions();
 
 export default new DataSource({
   ...(options as DataSourceOptions),
-  migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
+  migrations: [join(__dirname, 'migrations', '!(*.spec).{ts,js}')],
 });

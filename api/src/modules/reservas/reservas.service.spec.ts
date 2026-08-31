@@ -19,7 +19,7 @@ describe('ReservasService', () => {
     usuarioId: 1,
     data: new Date('2024-01-15'),
     descricao: 'Test reserva',
-    valor: 500.00,
+    valor: 500.0,
     categoriaId: 1,
     status: 'ATIVA',
     createdAt: new Date(),
@@ -31,13 +31,13 @@ describe('ReservasService', () => {
   const mockCreateReservaDto: CreateReservaDto = {
     data: '2024-01-15',
     descricao: 'Test reserva',
-    valor: 500.00,
+    valor: 500.0,
     categoriaId: 1,
   };
 
   const mockUpdateReservaDto: UpdateReservaDto = {
     descricao: 'Updated reserva',
-    valor: 750.00,
+    valor: 750.0,
   };
 
   const usuarioId = 1;

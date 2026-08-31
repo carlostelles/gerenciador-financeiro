@@ -26,6 +26,7 @@ import { OrcamentoByPeriodoResponseDto } from './dto/find-by-periodo.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { EspacoId } from '../../common/decorators/espaco-id.decorator';
 
 @ApiTags('orcamentos')
 @ApiBearerAuth('access-token')
@@ -47,8 +48,11 @@ export class OrcamentosController {
   create(
     @Body() createOrcamentoDto: CreateOrcamentoDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.create(createOrcamentoDto, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.create(createOrcamentoDto, user.sub)
+      : this.orcamentosService.create(createOrcamentoDto, user.sub, espacoId);
   }
 
   @Get()
@@ -57,8 +61,10 @@ export class OrcamentosController {
     status: 200,
     description: 'Lista de orçamentos retornada com sucesso',
   })
-  findAll(@CurrentUser() user: any) {
-    return this.orcamentosService.findAll(user.sub);
+  findAll(@CurrentUser() user: any, @EspacoId() espacoId?: number) {
+    return espacoId === undefined
+      ? this.orcamentosService.findAll(user.sub)
+      : this.orcamentosService.findAll(user.sub, espacoId);
   }
 
   @Get('periodos')
@@ -70,8 +76,10 @@ export class OrcamentosController {
     description: 'Lista de períodos retornada com sucesso',
     type: [String],
   })
-  findPeriodos(@CurrentUser() user: any) {
-    return this.orcamentosService.findPeriodos(user.sub);
+  findPeriodos(@CurrentUser() user: any, @EspacoId() espacoId?: number) {
+    return espacoId === undefined
+      ? this.orcamentosService.findPeriodos(user.sub)
+      : this.orcamentosService.findPeriodos(user.sub, espacoId);
   }
 
   @Get('periodo/:periodo')
@@ -90,8 +98,14 @@ export class OrcamentosController {
     status: 404,
     description: 'Orçamento não encontrado para o período informado',
   })
-  findByPeriodo(@Param('periodo') periodo: string, @CurrentUser() user: any) {
-    return this.orcamentosService.findByPeriodo(periodo, user.sub);
+  findByPeriodo(
+    @Param('periodo') periodo: string,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.orcamentosService.findByPeriodo(periodo, user.sub)
+      : this.orcamentosService.findByPeriodo(periodo, user.sub, espacoId);
   }
 
   @Get(':id')
@@ -105,8 +119,14 @@ export class OrcamentosController {
     status: 404,
     description: 'Orçamento não encontrado',
   })
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.orcamentosService.findOne(id, user.sub);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.orcamentosService.findOne(id, user.sub)
+      : this.orcamentosService.findOne(id, user.sub, espacoId);
   }
 
   @Patch(':id')
@@ -124,8 +144,16 @@ export class OrcamentosController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateOrcamentoDto: UpdateOrcamentoDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.update(id, updateOrcamentoDto, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.update(id, updateOrcamentoDto, user.sub)
+      : this.orcamentosService.update(
+          id,
+          updateOrcamentoDto,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Delete(':id')
@@ -139,8 +167,14 @@ export class OrcamentosController {
     status: 404,
     description: 'Orçamento não encontrado',
   })
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.orcamentosService.remove(id, user.sub);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.orcamentosService.remove(id, user.sub)
+      : this.orcamentosService.remove(id, user.sub, espacoId);
   }
 
   @Post(':id/clonar/:periodo')
@@ -159,8 +193,11 @@ export class OrcamentosController {
     @Param('id', ParseIntPipe) id: number,
     @Param('periodo') periodo: string,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.clone(id, periodo, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.clone(id, periodo, user.sub)
+      : this.orcamentosService.clone(id, periodo, user.sub, espacoId);
   }
 
   // Endpoints para itens de orçamento
@@ -175,8 +212,16 @@ export class OrcamentosController {
     @Param('id', ParseIntPipe) id: number,
     @Body() createItemDto: CreateOrcamentoItemDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.createItem(id, createItemDto, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.createItem(id, createItemDto, user.sub)
+      : this.orcamentosService.createItem(
+          id,
+          createItemDto,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Get(':id/itens')
@@ -186,8 +231,14 @@ export class OrcamentosController {
     status: 200,
     description: 'Lista de itens retornada com sucesso',
   })
-  findItems(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.orcamentosService.findItems(id, user.sub);
+  findItems(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
+  ) {
+    return espacoId === undefined
+      ? this.orcamentosService.findItems(id, user.sub)
+      : this.orcamentosService.findItems(id, user.sub, espacoId);
   }
 
   @Get(':id/itens/:itemId')
@@ -202,8 +253,11 @@ export class OrcamentosController {
     @Param('id', ParseIntPipe) id: number,
     @Param('itemId', ParseIntPipe) itemId: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.findItem(id, itemId, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.findItem(id, itemId, user.sub)
+      : this.orcamentosService.findItem(id, itemId, user.sub, espacoId);
   }
 
   @Patch(':id/itens/:itemId')
@@ -219,13 +273,17 @@ export class OrcamentosController {
     @Param('itemId', ParseIntPipe) itemId: number,
     @Body() updateItemDto: UpdateOrcamentoItemDto,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.updateItem(
-      id,
-      itemId,
-      updateItemDto,
-      user.sub,
-    );
+    return espacoId === undefined
+      ? this.orcamentosService.updateItem(id, itemId, updateItemDto, user.sub)
+      : this.orcamentosService.updateItem(
+          id,
+          itemId,
+          updateItemDto,
+          user.sub,
+          espacoId,
+        );
   }
 
   @Delete(':id/itens/:itemId')
@@ -240,7 +298,10 @@ export class OrcamentosController {
     @Param('id', ParseIntPipe) id: number,
     @Param('itemId', ParseIntPipe) itemId: number,
     @CurrentUser() user: any,
+    @EspacoId() espacoId?: number,
   ) {
-    return this.orcamentosService.removeItem(id, itemId, user.sub);
+    return espacoId === undefined
+      ? this.orcamentosService.removeItem(id, itemId, user.sub)
+      : this.orcamentosService.removeItem(id, itemId, user.sub, espacoId);
   }
 }

@@ -11,9 +11,10 @@ import * as bcrypt from 'bcrypt';
 import { UsuariosService } from './usuarios.service';
 import { Usuario } from './entities/usuario.entity';
 import { LogsService } from '../logs/logs.service';
-import { CategoriasService } from '../categorias/categorias.service';
 import { CreateUsuarioDto, UpdateUsuarioDto } from './dto/usuario.dto';
 import { UserRole } from '../../common/types';
+import { EspacosService } from '../espacos/espacos.service';
+import { EspacoTipo } from '../espacos/entities/espaco.entity';
 
 // Mock bcrypt with proper typing
 jest.mock('bcrypt');
@@ -23,7 +24,7 @@ describe('UsuariosService', () => {
   let service: UsuariosService;
   let repository: jest.Mocked<Repository<Usuario>>;
   let logsService: jest.Mocked<LogsService>;
-  let categoriasService: { createDefaultCategories: jest.Mock };
+  let espacosService: { create: jest.Mock };
 
   const mockUsuario = {
     id: 1,
@@ -68,8 +69,8 @@ describe('UsuariosService', () => {
       create: jest.fn(),
     };
 
-    const mockCategoriasService = {
-      createDefaultCategories: jest.fn().mockResolvedValue(undefined),
+    const mockEspacosService = {
+      create: jest.fn().mockResolvedValue({ id: 15 }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -84,8 +85,8 @@ describe('UsuariosService', () => {
           useValue: mockLogsService,
         },
         {
-          provide: CategoriasService,
-          useValue: mockCategoriasService,
+          provide: EspacosService,
+          useValue: mockEspacosService,
         },
       ],
     }).compile();
@@ -93,7 +94,7 @@ describe('UsuariosService', () => {
     service = module.get<UsuariosService>(UsuariosService);
     repository = module.get(getRepositoryToken(Usuario));
     logsService = module.get(LogsService);
-    categoriasService = module.get(CategoriasService);
+    espacosService = module.get(EspacosService);
   });
 
   beforeEach(() => {
@@ -123,8 +124,10 @@ describe('UsuariosService', () => {
       });
       expect(repository.save).toHaveBeenCalledWith(mockUsuario);
       expect(logsService.create).toHaveBeenCalled();
-      expect(categoriasService.createDefaultCategories).toHaveBeenCalledWith(
+      expect(espacosService.create).toHaveBeenCalledWith(
+        { nome: 'Espaço pessoal de Test User' },
         mockUsuario.id,
+        EspacoTipo.PERSONAL,
       );
       expect(result).toEqual(mockUsuario);
     });

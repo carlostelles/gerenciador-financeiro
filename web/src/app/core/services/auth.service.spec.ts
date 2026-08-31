@@ -116,12 +116,13 @@ describe('AuthService', () => {
 
     // With token
     sessionStorage.setItem('auth_token', 'test-token');
+    sessionStorage.setItem('token_expiration', String(Date.now() + 60_000));
     expect(service.isAuthenticated).toBeTruthy();
   });
 
   it('should emit authentication state changes', () => {
     let authState: boolean | undefined;
-    
+
     service.isAuthenticated$.subscribe(state => {
       authState = state;
     });
@@ -138,7 +139,7 @@ describe('AuthService', () => {
     };
 
     service.login({ email: 'test@test.com', senha: 'password' }).subscribe();
-    
+
     const req = httpMock.expectOne('http://localhost:3000/auth/login');
     req.flush(mockResponse);
 

@@ -7,12 +7,14 @@ import { ContasController } from './contas.controller';
 import { Conta } from './entities/conta.entity';
 import { Movimento } from '../movimentacoes/entities/movimento.entity';
 import { LogsModule } from '../logs/logs.module';
+import { EspacosModule } from '../espacos/espacos.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Conta, Movimento]),
     JwtModule,
     LogsModule,
+    EspacosModule,
   ],
   controllers: [ContasController],
   providers: [ContasService],

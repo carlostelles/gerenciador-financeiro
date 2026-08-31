@@ -1,9 +1,11 @@
 <div class="container">
     <div class="header">
         <h2>Gerenciar Categorias</h2>
-        <app-button-float appearance="primary" size="l" (click)="openFormModal()">
-            Nova Categoria
-        </app-button-float>
+        @if (espacoContext.canEdit()) {
+            <app-button-float appearance="primary" size="l" (click)="openFormModal()">
+                Nova Categoria
+            </app-button-float>
+        }
     </div>
 
     <div class="content" *ngIf="!isLoading()">
@@ -25,6 +27,7 @@
                         </td>
                         <td tuiTd>{{ categoria.descricao || '-' }}</td>
                         <td tuiTd class="actions">
+                            @if (espacoContext.canEdit()) {
                             <button tuiButton appearance="secondary" size="s" (click)="openFormModal(categoria)">
                                 <tui-icon icon="@tui.edit" [style.height.rem]="1" appearance="secondary" tuiTooltip="Editar categoria"
                                     aria-label="Editar categoria" />
@@ -33,6 +36,7 @@
                                 <tui-icon icon="@tui.trash" [style.height.rem]="1" appearance="danger" tuiTooltip="Excluir categoria"
                                     aria-label="Excluir categoria" />
                             </button>
+                            }
                         </td>
                     </tr>
                 </tbody>
@@ -40,7 +44,9 @@
 
             <div *ngIf="categorias.length === 0" class="empty-state">
                 <p>Nenhuma categoria encontrada.</p>
-                <p>Clique em "Nova Categoria" para adicionar sua primeira categoria.</p>
+                @if (espacoContext.canEdit()) {
+                    <p>Clique em "Nova Categoria" para adicionar sua primeira categoria.</p>
+                }
             </div>
         </div>
     </div>

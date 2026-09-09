@@ -8,6 +8,9 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { DataSource } from 'typeorm';
+import { Usuario } from '../../modules/usuarios/entities/usuario.entity';
+import { credentialVersionMatches } from '../../modules/auth/password-reset/password-reset.rules';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -15,6 +18,7 @@ export class JwtAuthGuard implements CanActivate {
     private jwtService: JwtService,
     private reflector: Reflector,
     private configService: ConfigService,
+    private dataSource: DataSource,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -38,6 +42,17 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get('JWT_SECRET'),
       });
+      if (!Number.isSafeInteger(payload.sub) || payload.sub <= 0)
+        throw new UnauthorizedException();
+      const user = await this.dataSource.getRepository(Usuario).findOne({
+        where: { id: payload.sub },
+        select: ['id', 'ativo', 'credenciaisVersao'],
+      });
+      if (
+        !user?.ativo ||
+        !credentialVersionMatches(payload, user.credenciaisVersao)
+      )
+        throw new UnauthorizedException();
       request.user = payload;
     } catch {
       throw new UnauthorizedException('Token inválido');

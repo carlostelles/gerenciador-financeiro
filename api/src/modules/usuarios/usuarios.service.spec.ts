@@ -63,7 +63,18 @@ describe('UsuariosService', () => {
       create: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
+      manager: undefined as any,
     };
+    const manager = {
+      query: jest.fn().mockResolvedValue({ affectedRows: 1 }),
+      findOne: jest.fn((_entity, options) => mockRepository.findOne(options)),
+      update: jest.fn((entity, id, changes) =>
+        entity === Usuario
+          ? mockRepository.update(id, changes)
+          : Promise.resolve(),
+      ),
+    };
+    mockRepository.manager = { transaction: jest.fn((work) => work(manager)) };
 
     const mockLogsService = {
       create: jest.fn(),
@@ -195,6 +206,7 @@ describe('UsuariosService', () => {
           'telefone',
           'role',
           'ativo',
+          'credenciaisVersao',
           'createdAt',
           'updatedAt',
         ],

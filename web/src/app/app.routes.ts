@@ -4,6 +4,10 @@ import { AdminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   {
+    path: 'redefinir-senha',
+    loadComponent: () => import('./pages/redefinir-senha/redefinir-senha').then(m => m.RedefinirSenhaComponent)
+  },
+  {
     path: '',
     loadComponent: () => import('./shared/template/template').then(m => m.TemplateComponent),
     canActivate: [AuthGuard],

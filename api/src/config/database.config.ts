@@ -13,6 +13,21 @@ import { Conta } from '../modules/contas/entities/conta.entity';
 import { SaldoInicial } from '../modules/movimentacoes/entities/saldo-inicial.entity';
 import { Espaco } from '../modules/espacos/entities/espaco.entity';
 import { EspacoMembro } from '../modules/espacos/entities/espaco-membro.entity';
+import {
+  PasswordReset,
+  PasswordResetLimit,
+} from '../modules/auth/password-reset/password-reset.entity';
+import { CreateWhatsappTables1722988800000 } from '../migrations/1722988800000-create-whatsapp-tables';
+import { CreateSaldoIniciais1756500000000 } from '../migrations/1756500000000-create-saldo-iniciais';
+import { CreateWhatsappInboundMessages1786060800000 } from '../migrations/1786060800000-create-whatsapp-inbound-messages';
+import { AddWhatsappDurableMediaJobs1788134400000 } from '../migrations/1788134400000-add-whatsapp-durable-media-jobs';
+import { AddWhatsappCrashSafetyAndComprovanteCardinality1798502400000 } from '../migrations/1798502400000-add-whatsapp-crash-safety-and-comprovante-cardinality';
+import { RemoveWhatsappIntegration1798588800000 } from '../migrations/1798588800000-remove-whatsapp-integration';
+import { CreateFinancialSpaces1798675200000 } from '../migrations/1798675200000-create-financial-spaces';
+import { HardenFinancialSpaces1798758000000 } from '../migrations/1798758000000-harden-financial-spaces';
+import { PasswordRecovery1798844400000 } from '../migrations/1798844400000-PasswordRecovery';
+import { PasswordResetDelivery1798930800000 } from '../migrations/1798930800000-PasswordResetDelivery';
+import { PasswordResetDelivery } from '../modules/auth/password-reset/password-reset-delivery.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -38,10 +53,26 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Conta,
         Espaco,
         EspacoMembro,
+        PasswordReset,
+        PasswordResetLimit,
+        PasswordResetDelivery,
       ],
       synchronize: false,
-      logging: this.configService.get('NODE_ENV') === 'development',
-      migrations: ['dist/migrations/!(*.spec).js'],
+      timezone: 'Z',
+      // Query errors/parameters can contain password hashes and recovery digests.
+      logging: false,
+      migrations: [
+        CreateWhatsappTables1722988800000,
+        CreateSaldoIniciais1756500000000,
+        CreateWhatsappInboundMessages1786060800000,
+        AddWhatsappDurableMediaJobs1788134400000,
+        AddWhatsappCrashSafetyAndComprovanteCardinality1798502400000,
+        RemoveWhatsappIntegration1798588800000,
+        CreateFinancialSpaces1798675200000,
+        HardenFinancialSpaces1798758000000,
+        PasswordRecovery1798844400000,
+        PasswordResetDelivery1798930800000,
+      ],
       migrationsTableName: 'migrations',
     };
   }

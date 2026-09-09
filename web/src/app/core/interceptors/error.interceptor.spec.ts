@@ -37,6 +37,14 @@ describe('Renovação pelos interceptadores HTTP', () => {
 
   afterEach(() => { backend.verify(); sessionStorage.clear(); });
 
+  it.each([400, 401, 429, 503])('recuperação não faz refresh, retry ou alerta duplicado em %s', status => {
+    const url = `${environment.apiUrl}/auth/redefinir-senha`;
+    http.post(url, { token: 'a'.repeat(43) }).subscribe({ error: () => undefined });
+    backend.expectOne(url).flush({}, { status, statusText: 'Error' });
+    backend.expectNone(url); backend.expectNone(refreshUrl);
+    expect(TestBed.inject(TuiAlertService).open).not.toHaveBeenCalled();
+  });
+
   it('compartilha um único refresh entre respostas 401 simultâneas', () => {
     const responses = jest.fn();
     http.get('/contas').subscribe(responses);

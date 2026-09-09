@@ -40,6 +40,9 @@ export class Usuario {
   @Column({ default: true })
   ativo: boolean;
 
+  @Column({ type: 'int', unsigned: true, default: 0 })
+  credenciaisVersao: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +16,7 @@ import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
 import { EspacosService } from '../espacos/espacos.service';
 import { EspacoTipo } from '../espacos/entities/espaco.entity';
+import { revokePending } from '../auth/password-reset/password-reset.service';
 
 @Injectable()
 export class UsuariosService {
@@ -98,6 +100,7 @@ export class UsuariosService {
         'telefone',
         'role',
         'ativo',
+        'credenciaisVersao',
         'createdAt',
         'updatedAt',
       ],
@@ -116,9 +119,49 @@ export class UsuariosService {
     });
   }
 
-  async updatePassword(id: number, senha: string): Promise<void> {
+  async updatePassword(
+    id: number,
+    senha: string,
+    expectedVersion?: number,
+  ): Promise<void> {
     const hashedPassword = await bcrypt.hash(senha, 10);
-    await this.usuariosRepository.update(id, { senha: hashedPassword });
+    await this.mutateCredentials(
+      id,
+      { senha: hashedPassword },
+      expectedVersion,
+    );
+  }
+
+  private async mutateCredentials(
+    id: number,
+    changes: UpdateUsuarioDto,
+    expectedVersion?: number,
+  ): Promise<void> {
+    await this.usuariosRepository.manager.transaction(async (manager) => {
+      const user = await manager.findOne(Usuario, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!user) throw new NotFoundException('Usuário não encontrado');
+      if (
+        expectedVersion !== undefined &&
+        (!user.ativo || user.credenciaisVersao !== expectedVersion)
+      ) {
+        throw new UnauthorizedException('Email ou senha atual inválidos');
+      }
+      const invalidatesReset =
+        !!changes.senha ||
+        (changes.email !== undefined && changes.email !== user.email) ||
+        changes.ativo === false;
+      await manager.update(Usuario, id, {
+        ...changes,
+        ...(changes.senha
+          ? { credenciaisVersao: user.credenciaisVersao + 1 }
+          : {}),
+      });
+      if (invalidatesReset)
+        await revokePending(manager, id, new Date(Date.now()));
+    });
   }
 
   async update(
@@ -177,7 +220,7 @@ export class UsuariosService {
     }
 
     const dadosAnteriores = { ...usuario };
-    await this.usuariosRepository.update(id, updateUsuarioDto);
+    await this.mutateCredentials(id, updateUsuarioDto);
     const usuarioAtualizado = await this.findOne(id);
 
     // Log da atualização
@@ -214,7 +257,7 @@ export class UsuariosService {
       throw new ForbiddenException('Não é possível desativar a si mesmo');
     }
 
-    await this.usuariosRepository.update(id, { ativo: false });
+    await this.mutateCredentials(id, { ativo: false });
 
     // Log da desativação
     await this.logsService.create({

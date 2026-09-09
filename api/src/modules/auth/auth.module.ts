@@ -6,6 +6,12 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { LogsModule } from '../logs/logs.module';
+import { PasswordResetController } from './password-reset/password-reset.controller';
+import { PasswordResetService } from './password-reset/password-reset.service';
+import { HostingerMailService } from './password-reset/hostinger-mail.service';
+import { PasswordResetPayloadCipher } from './password-reset/password-reset-payload.cipher';
+import { PasswordResetDeliveryStore } from './password-reset/password-reset-delivery.store';
+import { PasswordResetDeliveryWorker } from './password-reset/password-reset-delivery.worker';
 
 @Module({
   imports: [
@@ -23,8 +29,15 @@ import { LogsModule } from '../logs/logs.module';
     UsuariosModule,
     LogsModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
+  controllers: [AuthController, PasswordResetController],
+  providers: [
+    AuthService,
+    PasswordResetService,
+    HostingerMailService,
+    PasswordResetPayloadCipher,
+    PasswordResetDeliveryStore,
+    PasswordResetDeliveryWorker,
+  ],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

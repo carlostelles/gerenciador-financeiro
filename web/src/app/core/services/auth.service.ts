@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, tap, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, BehaviorSubject, tap, of, catchError, throwError, finalize, shareReplay, switchMap, EMPTY } from 'rxjs';
 import { Router } from '@angular/router';
 import { AlterarSenhaDto, AuthResponse, JwtToken, LoginDto, RefreshTokenDto } from '../../shared/interfaces';
 import { environment } from '../../../environments/environment';
@@ -13,6 +13,8 @@ export class AuthService {
   private readonly tokenKey = 'auth_token';
   private readonly refreshTokenKey = 'refresh_token';
   private readonly tokenExpirationKey = 'token_expiration';
+  private refreshRequest$?: Observable<AuthResponse>;
+  private sessionVersion = 0;
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasValidToken);
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
@@ -81,15 +83,40 @@ export class AuthService {
   login(credentials: LoginDto): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, credentials)
       .pipe(
-        tap(response => this.handleAuthSuccess(response))
+        tap(response => {
+          this.sessionVersion++;
+          this.refreshRequest$ = undefined;
+          this.handleAuthSuccess(response);
+        })
       );
   }
 
   refresh(refreshTokenDto: RefreshTokenDto): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/refresh`, refreshTokenDto)
-      .pipe(
-        tap(response => this.handleAuthSuccess(response))
-      );
+    // Timer, guardas e respostas 401 compartilham a mesma renovação em andamento.
+    if (!this.refreshRequest$) {
+      const version = this.sessionVersion;
+      const request$ = this.http.post<AuthResponse>(`${this.baseUrl}/auth/refresh`, refreshTokenDto)
+        .pipe(
+          // Uma resposta antiga não pode restaurar um logout nem sobrescrever outro login.
+          switchMap(response => version === this.sessionVersion ? of(response) : EMPTY),
+          tap(response => this.handleAuthSuccess(response)),
+          catchError((error: HttpErrorResponse) => {
+            if (version !== this.sessionVersion) {
+              return EMPTY;
+            }
+            if (error.status === 401) {
+              this.clearSession();
+            }
+            return throwError(() => error);
+          }),
+          finalize(() => {
+            if (this.refreshRequest$ === request$) this.refreshRequest$ = undefined;
+          }),
+          shareReplay({ bufferSize: 1, refCount: true })
+        );
+      this.refreshRequest$ = request$;
+    }
+    return this.refreshRequest$;
   }
 
   alterarSenha(dados: AlterarSenhaDto): Observable<{ message: string }> {
@@ -99,7 +126,11 @@ export class AuthService {
   logout(): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.baseUrl}/auth/logout`, {})
       .pipe(
-        tap(() => this.handleLogout())
+        tap(() => this.clearSession()),
+        catchError(error => {
+          this.clearSession();
+          return throwError(() => error);
+        })
       );
   }
 
@@ -114,7 +145,9 @@ export class AuthService {
     this.isAuthenticatedSubject.next(true);
   }
 
-  private handleLogout(): void {
+  clearSession(): void {
+    this.sessionVersion++;
+    this.refreshRequest$ = undefined;
     sessionStorage.removeItem(this.tokenKey);
     sessionStorage.removeItem(this.refreshTokenKey);
     sessionStorage.removeItem(this.tokenExpirationKey);

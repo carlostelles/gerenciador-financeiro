@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, Matches, MinLength, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  Matches,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 
 const SAFE_PASSWORD_PATTERN = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|?,.:]+$/;
 
@@ -69,8 +75,12 @@ export class AlterarSenhaDto {
     maxLength: 16,
   })
   @IsString({ message: 'Confirmação de senha deve ser uma string' })
-  @MinLength(8, { message: 'Confirmação de senha deve ter no mínimo 8 caracteres' })
-  @MaxLength(16, { message: 'Confirmação de senha deve ter no máximo 16 caracteres' })
+  @MinLength(8, {
+    message: 'Confirmação de senha deve ter no mínimo 8 caracteres',
+  })
+  @MaxLength(16, {
+    message: 'Confirmação de senha deve ter no máximo 16 caracteres',
+  })
   @Matches(SAFE_PASSWORD_PATTERN, {
     message: 'Confirmação de senha contém caracteres não permitidos',
   })

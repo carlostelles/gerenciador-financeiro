@@ -101,6 +101,32 @@ describe('AuthService', () => {
     expect(service.token).toBe('test-token');
   });
 
+  it('não restaura a sessão se um refresh terminar depois do logout', () => {
+    const onRefresh = jest.fn();
+    service.refresh({ refreshToken: 'old-refresh' }).subscribe(onRefresh);
+    const refresh = httpMock.expectOne('http://localhost:3000/auth/refresh');
+    service.logout().subscribe();
+    httpMock.expectOne('http://localhost:3000/auth/logout').flush({ message: 'OK' });
+    refresh.flush({ accessToken: 'late-access', refreshToken: 'late-refresh', expiresIn: 300 });
+    expect(service.token).toBeNull();
+    expect(service.isAuthenticated).toBe(false);
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it.each([200, 401])('ignora refresh de uma sessão anterior após novo login (%s)', (status) => {
+    service.refresh({ refreshToken: 'old-refresh' }).subscribe({ error: () => undefined });
+    const oldRefresh = httpMock.expectOne('http://localhost:3000/auth/refresh');
+    service.login({ email: 'new@example.com', senha: 'password' }).subscribe();
+    httpMock.expectOne('http://localhost:3000/auth/login').flush({
+      accessToken: 'new-login', refreshToken: 'new-login-refresh', expiresIn: 300,
+    });
+    oldRefresh.flush({ accessToken: 'old-access', refreshToken: 'old-refresh', expiresIn: 300 },
+      { status, statusText: status === 200 ? 'OK' : 'Unauthorized' });
+    expect(service.token).toBe('new-login');
+    expect(service.refreshToken).toBe('new-login-refresh');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
   it('should return null when no token exists', () => {
     expect(service.token).toBeNull();
   });

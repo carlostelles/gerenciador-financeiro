@@ -1,6 +1,7 @@
 import { TuiRoot } from "@taiga-ui/core";
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { AuthService } from "./core/services/auth.service";
 
@@ -13,9 +14,13 @@ import { AuthService } from "./core/services/auth.service";
 export class App implements OnInit, OnDestroy {
   protected readonly authService = inject(AuthService);
   private refreshTimeout?: number;
+  private readonly subscriptions = new Subscription();
 
   ngOnInit(): void {
-    this.scheduleTokenRefresh();
+    // Também reage ao login e às renovações feitas pelos interceptadores/guardas.
+    this.subscriptions.add(this.authService.isAuthenticated$.subscribe(() => {
+      this.scheduleTokenRefresh();
+    }));
   }
 
   private scheduleTokenRefresh(): void {
@@ -24,47 +29,37 @@ export class App implements OnInit, OnDestroy {
       clearTimeout(this.refreshTimeout);
     }
 
-    // Só agenda se estiver autenticado
-    if (!this.authService.isAuthenticated) {
+    // Access token expirado não invalida uma sessão que ainda pode ser renovada.
+    if (!this.authService.refreshToken) {
       return;
     }
 
-    const timeToExpiration = this.authService.timeToExpiration;
-    
-    // Se o tempo para expiração for menor que 1 minuto, já renova
-    if (timeToExpiration <= 1) {
-      this.performTokenRefresh();
-      return;
-    }
+    const remainingMs = this.authService.timeToExpiration * 60 * 1000;
+    // Limita a margem para não criar um loop imediato com tokens de curta duração.
+    const timeoutMs = Math.max(0, remainingMs - Math.min(30_000, remainingMs * 0.1));
 
-    // Agenda para 30 segundos antes do token expirar
-    const timeoutMs = Math.max(0, (timeToExpiration - 0.5) * 60 * 1000); // 0.5 min = 30 segundos
-    
     this.refreshTimeout = window.setTimeout(() => {
       this.performTokenRefresh();
     }, timeoutMs);
   }
 
   private performTokenRefresh(): void {
-    if (!this.authService.isAuthenticated || !this.authService.refreshToken) {
+    if (!this.authService.refreshToken) {
       return;
     }
 
-    this.authService.refresh({ refreshToken: this.authService.refreshToken }).subscribe({
-      next: () => {
-        // Token renovado com sucesso, agenda o próximo refresh
-        this.scheduleTokenRefresh();
-      },
+    this.subscriptions.add(this.authService.refresh({ refreshToken: this.authService.refreshToken }).subscribe({
       error: () => {
-        // Em caso de erro, limpa o timeout
-        if (this.refreshTimeout) {
-          clearTimeout(this.refreshTimeout);
+        // Falhas transitórias não encerram a sessão; 401 já a limpa no serviço.
+        if (this.authService.refreshToken) {
+          this.refreshTimeout = window.setTimeout(() => this.performTokenRefresh(), 30_000);
         }
       }
-    });
+    }));
   }
 
   ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
     }

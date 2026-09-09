@@ -12,13 +12,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return next(req);
     }
 
+    let headers = req.headers;
+    const espacoId = espacoContext.selected()?.id ?? sessionStorage.getItem('espacoId');
+    if (espacoId) headers = headers.set('X-Espaco-Id', String(espacoId));
+
     if (authService.token && authService.isAuthenticated) {
-        let headers = req.headers.set('Authorization', `Bearer ${authService.token}`);
-        const espacoId = espacoContext.selected()?.id ?? sessionStorage.getItem('espacoId');
-        if (espacoId) headers = headers.set('X-Espaco-Id', String(espacoId));
-        const authReq = req.clone({ headers });
-        return next(authReq);
+        headers = headers.set('Authorization', `Bearer ${authService.token}`);
     }
 
-    return next(req);
+    return next(req.clone({ headers }));
 };

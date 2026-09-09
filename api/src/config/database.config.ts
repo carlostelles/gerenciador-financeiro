@@ -59,6 +59,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       ],
       synchronize: false,
       timezone: 'Z',
+      // Avoids mysql2 building a Date for DATE columns, which TypeORM then reads with local getters and can shift by a day.
+      dateStrings: ['DATE'],
       // Query errors/parameters can contain password hashes and recovery digests.
       logging: false,
       migrations: [

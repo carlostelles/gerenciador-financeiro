@@ -76,6 +76,14 @@ describe('AuthService', () => {
   describe('login', () => {
     const loginDto = { email: 'test@example.com', senha: 'password' };
 
+    it('emite versão capturada antes de bcrypt mesmo em corrida com reset', async () => {
+      const user = { ...mockUser, credenciaisVersao: 0 };
+      usuariosService.findByEmail.mockResolvedValue(user as any);
+      (bcrypt.compare as jest.Mock).mockImplementationOnce(async () => { user.credenciaisVersao = 1; return true; });
+      await service.login(loginDto);
+      expect(jwtService.signAsync).toHaveBeenCalledWith(expect.objectContaining({ credenciaisVersao: 0 }), expect.anything());
+    });
+
     it('deve retornar tokens quando credenciais forem válidas', async () => {
       usuariosService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -124,6 +132,26 @@ describe('AuthService', () => {
   describe('refresh', () => {
     const refreshTokenDto = { refreshToken: 'valid-refresh-token' };
 
+    it.each([null, -1, 0.5, '0', true, {}])('rejeita claim de versão inválida %p', async claim => {
+      jwtService.verifyAsync.mockResolvedValue({ sub: 1, credenciaisVersao: claim });
+      usuariosService.findOne.mockResolvedValue({ ...mockUser, credenciaisVersao: 0 } as any);
+      await expect(service.refresh(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it.each([undefined, null, '1', 0, -1])('rejeita subject inválido %p antes de consultar usuário', async sub => {
+      jwtService.verifyAsync.mockResolvedValue({ sub, credenciaisVersao: 0 });
+      usuariosService.findOne.mockResolvedValue({ ...mockUser, credenciaisVersao: 0 } as any);
+      await expect(service.refresh(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      expect(usuariosService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('rejeita refresh anterior à mudança de senha', async () => {
+      jwtService.verifyAsync.mockResolvedValue({ sub: 1, credenciaisVersao: 0 });
+      usuariosService.findOne.mockResolvedValue({ ...mockUser, credenciaisVersao: 1 } as any);
+      await expect(service.refresh(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+
     it('deve retornar novos tokens quando refresh token for válido', async () => {
       const payload = { sub: 1 };
       jwtService.verifyAsync.mockResolvedValue(payload);
@@ -170,6 +198,7 @@ describe('AuthService', () => {
       expect(usuariosService.updatePassword).toHaveBeenCalledWith(
         1,
         'NovaSenha1!',
+        0,
       );
       expect(logsService.create).toHaveBeenCalledWith(
         expect.objectContaining({

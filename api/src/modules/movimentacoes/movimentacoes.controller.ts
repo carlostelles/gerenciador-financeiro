@@ -26,6 +26,7 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { MovimentacoesService } from './movimentacoes.service';
 import { CreateMovimentoDto } from './dto/create-movimento.dto';
 import { UpdateMovimentoDto } from './dto/update-movimento.dto';
@@ -43,6 +44,12 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { EspacoId } from '../../common/decorators/espaco-id.decorator';
+
+// GHSA-535w-7cp7-47q4: os campos textuais destes uploads são escalares.
+// Nest 11 ainda não declara a opção adicionada pelo Multer 2.3.
+const comprovanteMultipartLimits: NonNullable<MulterOptions['limits']> & {
+  fieldArrayIndexLimit: number;
+} = { fieldArrayIndexLimit: 0 };
 
 @ApiTags('movimentacoes')
 @ApiBearerAuth('access-token')
@@ -95,7 +102,9 @@ export class MovimentacoesController {
   }
 
   @Post('comprovantes/analisar-extratos')
-  @UseInterceptors(FilesInterceptor('arquivos', 20))
+  @UseInterceptors(FilesInterceptor('arquivos', 20, {
+    limits: comprovanteMultipartLimits,
+  }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
@@ -127,7 +136,9 @@ export class MovimentacoesController {
   }
 
   @Post('comprovantes/analisar')
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(FileInterceptor('arquivo', {
+    limits: comprovanteMultipartLimits,
+  }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:

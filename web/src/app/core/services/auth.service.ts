@@ -123,6 +123,17 @@ export class AuthService {
     return this.http.post<{ message: string }>(`${this.baseUrl}/auth/alterar-senha`, dados);
   }
 
+  solicitarRecuperacao(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/auth/solicitar-recuperacao-senha`, { email });
+  }
+
+  redefinirSenha(dados: { token: string; novaSenha: string; confirmarSenha: string }): Observable<{ message: string }> {
+    const version = this.sessionVersion;
+    return this.http.post<{ message: string }>(`${this.baseUrl}/auth/redefinir-senha`, dados).pipe(
+      tap(() => { if (version === this.sessionVersion) this.clearSession(false); })
+    );
+  }
+
   logout(): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.baseUrl}/auth/logout`, {})
       .pipe(
@@ -145,14 +156,15 @@ export class AuthService {
     this.isAuthenticatedSubject.next(true);
   }
 
-  clearSession(): void {
+  clearSession(navigate = true): void {
     this.sessionVersion++;
     this.refreshRequest$ = undefined;
     sessionStorage.removeItem(this.tokenKey);
     sessionStorage.removeItem(this.refreshTokenKey);
     sessionStorage.removeItem(this.tokenExpirationKey);
     this.isAuthenticatedSubject.next(false);
-    this.router.navigate(['/login']);
+    const path = (this.router.url || '').split(/[?#]/)[0];
+    if (navigate && !['/esqueci-senha', '/redefinir-senha'].includes(path)) this.router.navigate(['/login']);
   }
 
   refreshTokenIfNeeded(): Observable<AuthResponse | null> {

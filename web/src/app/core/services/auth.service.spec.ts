@@ -35,6 +35,31 @@ describe('AuthService', () => {
     expect(service).toBeTruthy();
   });
 
+  it.each(['/esqueci-senha', '/redefinir-senha#token=secret'])('refresh rejeitado não expulsa da rota pública %s', url => {
+    Object.defineProperty(mockRouter, 'url', { value: url, configurable: true });
+    service.refresh({ refreshToken: 'old' }).subscribe({ error: () => undefined });
+    httpMock.expectOne('http://localhost:3000/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('reset limpa sessão sem permitir que refresh antigo a restaure', () => {
+    service.refresh({ refreshToken: 'old' }).subscribe();
+    const pending = httpMock.expectOne('http://localhost:3000/auth/refresh');
+    service.redefinirSenha({ token: 'a'.repeat(43), novaSenha: 'abcdefgh', confirmarSenha: 'abcdefgh' }).subscribe();
+    httpMock.expectOne('http://localhost:3000/auth/redefinir-senha').flush({ message: 'OK' });
+    pending.flush({ accessToken: 'late', refreshToken: 'late', expiresIn: 300 });
+    expect(service.token).toBeNull(); expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('reset atrasado não apaga login iniciado depois da solicitação', () => {
+    service.redefinirSenha({ token: 'a'.repeat(43), novaSenha: 'abcdefgh', confirmarSenha: 'abcdefgh' }).subscribe();
+    const reset = httpMock.expectOne('http://localhost:3000/auth/redefinir-senha');
+    service.login({ email: 'other@example.com', senha: 'abcdefgh' }).subscribe();
+    httpMock.expectOne('http://localhost:3000/auth/login').flush({ accessToken: 'new-user', refreshToken: 'new-user-refresh', expiresIn: 300 });
+    reset.flush({ message: 'OK' });
+    expect(service.token).toBe('new-user'); expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
   it('should login successfully', () => {
     const mockCredentials: LoginDto = {
       email: 'test@example.com',

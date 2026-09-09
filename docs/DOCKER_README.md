@@ -57,6 +57,12 @@ Configuração Docker completa para o projeto Gerenciador Financeiro com API Nes
 
 ### Produção (Recomendado)
 
+> **Entrega de recuperação de senha:** não use o Quick Start abaixo para atualizar
+> uma instalação existente. Siga a [sequência coordenada de migração e ativação](RECUPERACAO-SENHA.md#fase-4--preparação-da-entrega-2026-09-09),
+> com schema antes do código e todas as instâncias antigas paradas. O workflow
+> atual publica automaticamente ao receber push em `main`; bloquear esse deploy
+> antes do merge e não acioná-lo para esta entrega sem revisar o procedimento.
+
 ```bash
 # 1. Clonar o repositório
 git clone <repository-url>

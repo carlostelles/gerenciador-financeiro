@@ -54,6 +54,11 @@ describe('MovimentacoesController (e2e)', () => {
       update: jest.fn(),
       remove: jest.fn(),
       getSaldosIniciais: jest.fn(),
+      analisarComprovante: jest.fn().mockResolvedValue({
+        statusCode: 201,
+        body: { sucesso: true },
+      }),
+      analisarExtratos: jest.fn().mockResolvedValue({ sucesso: true }),
     };
 
     const mockLogsService = {
@@ -124,6 +129,65 @@ describe('MovimentacoesController (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  describe('segurança multipart (Multer)', () => {
+    it('preserva arquivo e campos escalares do comprovante', async () => {
+      await request(app.getHttpServer())
+        .post('/movimentacoes/comprovantes/analisar')
+        .field('periodo', '2026-09')
+        .field('movimentoId', '42')
+        .attach('arquivo', Buffer.from('comprovante'), 'comprovante.pdf')
+        .expect(201);
+
+      expect(movimentacoesService.analisarComprovante).toHaveBeenCalledWith(
+        expect.objectContaining({ originalname: 'comprovante.pdf' }),
+        mockUser.sub,
+        expect.objectContaining({ periodo: '2026-09', movimentoId: '42' }),
+        undefined,
+      );
+    });
+
+    it('preserva upload em lote de arquivos', async () => {
+      await request(app.getHttpServer())
+        .post('/movimentacoes/comprovantes/analisar-extratos')
+        .attach('arquivos', Buffer.from('extrato 1'), 'extrato-1.pdf')
+        .attach('arquivos', Buffer.from('extrato 2'), 'extrato-2.pdf')
+        .expect(201);
+
+      expect(movimentacoesService.analisarExtratos).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ originalname: 'extrato-1.pdf' }),
+          expect.objectContaining({ originalname: 'extrato-2.pdf' }),
+        ]),
+        mockUser.sub,
+        undefined,
+      );
+    });
+
+    it.each(['analisar', 'analisar-extratos'])(
+      'rejeita índice de array textual acima do limite em %s antes do serviço',
+      async (endpoint) => {
+        // Índice pequeno: reproduz a ausência da proteção sem alocar arrays enormes.
+        const response = await request(app.getHttpServer())
+          .post(`/movimentacoes/comprovantes/${endpoint}`)
+          .field('items[1]', 'valor');
+
+        expect(response.status).toBeGreaterThanOrEqual(400);
+        expect(response.status).toBeLessThanOrEqual(500);
+        expect(movimentacoesService.analisarComprovante).not.toHaveBeenCalled();
+        expect(movimentacoesService.analisarExtratos).not.toHaveBeenCalled();
+      },
+    );
+
+    it('continua rejeitando arquivo com campo inesperado', async () => {
+      await request(app.getHttpServer())
+        .post('/movimentacoes/comprovantes/analisar')
+        .attach('inesperado', Buffer.from('arquivo'), 'arquivo.pdf')
+        .expect(400);
+
+      expect(movimentacoesService.analisarComprovante).not.toHaveBeenCalled();
+    });
   });
 
   describe('/movimentacoes/:periodo (POST)', () => {

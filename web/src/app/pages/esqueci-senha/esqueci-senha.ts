@@ -1,85 +1,83 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, DestroyRef, ElementRef, inject, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TuiButton, TuiLabel, TuiTextfield } from '@taiga-ui/core';
+import { TuiButton, TuiLabel, TuiTextfield, TuiNotification, TuiLoader } from '@taiga-ui/core';
 
 import { AuthService } from '../../core/services/auth.service';
-import { AlterarSenhaDto } from '../../shared/interfaces';
-import { ToastService } from '../../shared';
-
-const SAFE_PASSWORD_PATTERN = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|?,.:]+$/;
 
 @Component({
   selector: 'app-esqueci-senha',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, TuiButton, TuiLabel, TuiTextfield],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, TuiButton, TuiLabel, TuiTextfield, TuiNotification, TuiLoader],
   templateUrl: './esqueci-senha.html',
   styleUrls: ['./esqueci-senha.scss'],
 })
-export class EsqueciSenhaComponent {
-  private readonly passwordValidators = [
-    Validators.minLength(8),
-    Validators.maxLength(16),
-    Validators.pattern(SAFE_PASSWORD_PATTERN),
-  ];
-
-  protected readonly form = this.formBuilder.group(
-    {
-      email: ['', [Validators.required, Validators.email]],
-      senhaAtual: ['', [Validators.required, ...this.passwordValidators]],
-      novaSenha: ['', [Validators.required, ...this.passwordValidators]],
-      confirmarSenha: ['', [Validators.required]],
-    },
-    { validators: this.passwordsMatch },
-  );
+export class EsqueciSenhaComponent implements OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
+  private timer?: ReturnType<typeof setInterval>;
+  private availableAt = 0;
+  protected readonly form = this.formBuilder.nonNullable.group({
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+  });
   protected isLoading = false;
+  protected remaining = 0;
+  protected message = '';
+  protected failed = false;
 
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
-    private readonly toastService: ToastService,
-    private readonly router: Router
   ) {}
 
   protected onSubmit(): void {
+    if (this.isLoading || Date.now() < this.availableAt) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.element.nativeElement.querySelector<HTMLInputElement>('input')?.focus();
       return;
     }
-
     this.isLoading = true;
-
-    this.authService.alterarSenha(this.form.getRawValue() as AlterarSenhaDto).subscribe({
-      next: ({ message }) => {
-        this.toastService.success(message || 'Senha alterada com sucesso. Agora você já pode entrar.');
+    this.failed = false;
+    this.message = '';
+    this.authService.solicitarRecuperacao(this.form.getRawValue().email).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.message = 'Se houver uma conta ativa com este e-mail, enviaremos um link para redefinir sua senha. Verifique também o spam.';
         this.isLoading = false;
-        this.form.reset();
-        this.router.navigate(['/login']);
+        this.cooldown(60);
+        this.focusFeedback();
       },
       error: (error) => {
-        this.toastService.error(error.error?.message || 'Não foi possível alterar a senha. Tente novamente.');
         this.isLoading = false;
+        this.failed = true;
+        this.message = error.status === 429 ? 'Muitas tentativas. Aguarde para solicitar novamente.' : 'Não foi possível solicitar agora. Tente novamente mais tarde.';
+        if (error.status === 429) this.cooldown(Number(error.headers?.get('Retry-After')) || 60);
+        this.focusFeedback();
       },
     });
   }
 
-  protected hasError(controlName: string, errorName: string): boolean {
-    const control = this.form.get(controlName);
-    return Boolean(control?.touched && control.hasError(errorName));
+  private cooldown(seconds: number): void {
+    if (this.timer) clearInterval(this.timer);
+    this.availableAt = Date.now() + Math.max(1, Math.min(seconds, 3600)) * 1000;
+    const tick = () => {
+      this.remaining = Math.max(0, Math.ceil((this.availableAt - Date.now()) / 1000));
+      if (!this.remaining && this.timer) clearInterval(this.timer);
+    };
+    tick(); this.timer = setInterval(tick, 1000);
   }
 
-  private passwordsMatch(control: AbstractControl): ValidationErrors | null {
-    const { novaSenha, confirmarSenha } = control.value;
-    return novaSenha && confirmarSenha && novaSenha !== confirmarSenha
-      ? { passwordMismatch: true }
-      : null;
+  private focusFeedback(): void {
+    setTimeout(() => this.element.nativeElement.querySelector<HTMLElement>('[role="status"]')?.focus());
+  }
+
+  ngOnDestroy(): void {
+    if (this.timer) clearInterval(this.timer);
   }
 }

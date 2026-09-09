@@ -6,6 +6,8 @@ import { AuthResponse } from '../../shared/interfaces/auth.interface';
 import { TuiAlertService } from '@taiga-ui/core';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  // Recovery handles accessible inline feedback and never retries a POST.
+  if (/\/auth\/(solicitar-recuperacao-senha|redefinir-senha)(?:[?#]|$)/.test(req.url)) return next(req);
   const authService = inject(AuthService);
   const alerts = inject(TuiAlertService);
 

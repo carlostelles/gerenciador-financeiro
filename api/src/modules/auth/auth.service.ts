@@ -16,6 +16,7 @@ import {
 } from './dto/auth.dto';
 import { LogsService } from '../logs/logs.service';
 import { LogAcao } from '../../common/types';
+import { credentialVersionMatches } from './password-reset/password-reset.rules';
 
 @Injectable()
 export class AuthService {
@@ -34,6 +35,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
+    const credenciaisVersao = usuario.credenciaisVersao ?? 0;
     const isPasswordValid = await bcrypt.compare(senha, usuario.senha);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciais inválidas');
@@ -47,7 +49,12 @@ export class AuthService {
       acao: LogAcao.LOGIN,
     });
 
-    return this.generateTokens(usuario.id, usuario.email, usuario.role);
+    return this.generateTokens(
+      usuario.id,
+      usuario.email,
+      usuario.role,
+      credenciaisVersao,
+    );
   }
 
   async refresh(refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
@@ -57,12 +64,23 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.get('JWT_REFRESH_SECRET'),
       });
+      if (!Number.isSafeInteger(payload.sub) || payload.sub <= 0)
+        throw new UnauthorizedException();
       const usuario = await this.usuariosService.findOne(payload.sub);
-      if (!usuario || !usuario.ativo) {
+      if (
+        !usuario ||
+        !usuario.ativo ||
+        !credentialVersionMatches(payload, usuario.credenciaisVersao ?? 0)
+      ) {
         throw new UnauthorizedException('Usuário não encontrado ou inativo');
       }
 
-      return this.generateTokens(usuario.id, usuario.email, usuario.role);
+      return this.generateTokens(
+        usuario.id,
+        usuario.email,
+        usuario.role,
+        usuario.credenciaisVersao ?? 0,
+      );
     } catch {
       throw new UnauthorizedException('Refresh token inválido');
     }
@@ -82,12 +100,13 @@ export class AuthService {
       throw new UnauthorizedException('Email ou senha atual inválidos');
     }
 
+    const version = usuario.credenciaisVersao ?? 0;
     const senhaAtualValida = await bcrypt.compare(senhaAtual, usuario.senha);
     if (!senhaAtualValida) {
       throw new UnauthorizedException('Email ou senha atual inválidos');
     }
 
-    await this.usuariosService.updatePassword(usuario.id, novaSenha);
+    await this.usuariosService.updatePassword(usuario.id, novaSenha, version);
     await this.logsService.create({
       data: new Date(),
       usuarioId: usuario.id,
@@ -116,8 +135,9 @@ export class AuthService {
     userId: number,
     email: string,
     role: string,
+    credenciaisVersao: number,
   ): Promise<AuthResponseDto> {
-    const payload = { sub: userId, email, role };
+    const payload = { sub: userId, email, role, credenciaisVersao };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

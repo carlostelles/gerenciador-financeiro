@@ -48,7 +48,9 @@ export class LoggingInterceptor implements NestInterceptor {
 
     this.logger.log(`${method} ${path} - ${userInfo}`);
 
-    if (body && Object.keys(body).length > 0) {
+    const recovery =
+      /^\/auth\/(solicitar-recuperacao-senha|redefinir-senha)\/?$/i.test(path);
+    if (!recovery && body && Object.keys(body).length > 0) {
       this.logger.debug(
         `Request Body: ${JSON.stringify(redactSensitiveData(body))}`,
       );
